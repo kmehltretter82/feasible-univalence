@@ -4,7 +4,7 @@ Plan dated 30 October 2026. This workstream prepares the Abel sources for the [f
 
 **First candidate:** Abel–Öhman–Vezzosi, *Decidability of Conversion for Type Theory in Type Theory*, POPL 2018, DOI [10.1145/3158111](https://doi.org/10.1145/3158111).
 
-**Current status:** source and catalogue intake. No Lean declarations have been frozen, no Prove2Me proposal has been uploaded, and no new proof is claimed. This file specifies the preparation work; it is not a launchable mission.
+**Current status:** source and catalogue intake plus a [draft Lean implementation](../formalization/abel2018/README.md), paused at the user's request. The syntax, declarative judgments, and fuel-bounded comparison prototype compile; their source adequacy and conversion correctness remain unproved. No Lean declarations have been frozen and no Prove2Me proposal has been uploaded. This file specifies the preparation work; it is not a launchable mission. See the [handover](../HANDOVER.md).
 
 ## 1. Fix the first source
 

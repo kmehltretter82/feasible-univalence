@@ -1,0 +1,6 @@
+name = "abel2018"
+version = "0.1.0"
+defaultTargets = ["Abel2018"]
+
+[[lean_lib]]
+name = "Abel2018"

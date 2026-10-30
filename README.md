@@ -4,7 +4,7 @@ Research notes, proof ideas, and a Lean 4 formalization roadmap for univalent re
 
 The central question is whether a single dependent type theory can support abstract univalent reasoning, decidable conversion, correct erasure, and extraction of programs with certified execution bounds.
 
-**Status:** research proposal, October 2026. The combined theorem is a proposed target. This repository currently contains mathematical plans and proof ideas; it does not contain a completed calculus, Lean proofs, or launched Prove2Me missions.
+**Status:** paused at the user's request, October 2026. The combined theorem remains a proposed target. The repository contains research plans and a [draft Lean conversion implementation](formalization/abel2018/README.md); conversion correctness and the programme's research theorems remain unproved. No Prove2Me mission has been launched by this workstream. See the [handover](HANDOVER.md).
 
 ## Read the programme
 
