@@ -13,6 +13,8 @@ The central question is whether a single dependent type theory can support abstr
 | [Research proposal](docs/research-proposal.md) | Target theorem, its mathematical limits, existing results, and intended applications. |
 | [Proof ideas](docs/proof-ideas.md) | Candidate arguments, the hard proof obligations, and ways to test them. |
 | [Formalization roadmap](docs/formalization-roadmap.md) | Prioritized source-paper missions, three intermediate papers, and a Prove2Me workflow. |
+| [Live Prove2Me intake](docs/prove2me-intake-2026-10-30.md) | Existing missions, observed proof status, reuse limits, and missing Abel candidates. |
+| [Abel mission plan](docs/abel-mission-plan.md) | Pinned conversion source, main theorem, milestones, and preparation for the first upload. |
 | [Contributing](CONTRIBUTING.md) | How to propose statements, report obstacles, and distinguish ideas from checked results. |
 
 ## Proposed paper sequence

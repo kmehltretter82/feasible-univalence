@@ -4,13 +4,15 @@ Research plan, 30 October 2026. See the [research proposal](research-proposal.md
 
 The recommended route is to develop the mathematics and its formalization together. Established papers supply audited components. Smaller new papers address the compatibility gaps. The final paper closes the combined theorem for one explicit calculus.
 
-This document is a candidate mission catalogue, not a set of launched missions or frozen Lean declarations. Live Prove2Me searches, complete source review, and exact statement audits remain part of mission intake. No claim is made that the listed results are absent from the platform or from existing Lean libraries.
+This document is a candidate mission catalogue, not a set of launched missions or frozen Lean declarations. The [30 October Prove2Me intake](prove2me-intake-2026-10-30.md) records the initial live search: no matching entries were found for the selected Abel sources; related existing missions have different scopes. Complete source review and exact statement audits remain part of mission preparation.
 
 ## What to start with
 
 Start with the conversion-and-erasure line: Abel–Öhman–Vezzosi's conversion result, the graded-erasure extension, and the 2026 recursion/resource result. Their existing Agda developments provide unusually concrete guides to definitions and proof dependencies. Develop the polynomial-time line from Atkey's work alongside it. Delay the cubical integration until an executable graded core is working.
 
 The first new research target should be **resource correctness after extraction**. It has a bounded operational question and a direct connection to an open problem identified by the authors of the graded theory. The larger programme should not depend on settling all of cubical normalization before producing a useful result.
+
+The current workstream takes the Abel sources M1–M3; a separate effort handles Schwichtenberg papers. Prepare M1 first using the [source and mission plan](abel-mission-plan.md). Read the newly identified M11 draft now for prior work, then consider its formalization before Paper C. Hofmann–Moser's existing resource-analysis mission is already marked proved and belongs in the reuse review.
 
 ## Established papers to formalize first
 
@@ -39,6 +41,7 @@ These are not all mandatory prerequisites. A source should become a mission when
 | M8 | Angiuli, Brunerie, Coquand, Harper, Hou (Favonia), Licata, **Syntax and Models of Cartesian Cubical Type Theory**, MSCS 2021. [Paper](https://doi.org/10.1017/S0960129521000347). | A concrete Cartesian cubical syntax and semantic foundation. Review the exact presentation against M9 before choosing shared definitions. |
 | M9 | Sterling and Angiuli, **Normalization for Cubical Type Theory**, LICS 2021. [Paper](https://arxiv.org/abs/2101.11479). | The published normalization and judgmental-equality results, at exactly their stated scope. Main high-risk dependency for the final normalization argument. |
 | M10 | Bezem, Coquand, Dybjer, Escardó, **On Generalized Algebraic Theories and Categories with Families**, MSCS 2021. [Paper](https://arxiv.org/abs/2012.08370). | Initial syntactic models and structured interpretations. Formalize if it simplifies the common model interface; a general categorical framework need not precede every concrete proof. |
+| M11 | Abel, Danielsson, Vezzosi, **Compiling Programs with Erased Univalence**, [2021 draft and extended version](https://www.cse.chalmers.se/~nad/publications/abel-danielsson-vezzosi-erased-univalence.html). | Direct prior work for compilation with erased cubical features. Its fundamental theorem and compilation corollary assume Conjecture 4.1. Preserve that conditional scope, and separately track the unproved metatheory before claiming an unconditional result. |
 
 For universes, examine the extension in Chapter 7 of Sterling's [*First Steps in Synthetic Tait Computability*](https://www.cs.cmu.edu/~rwh/students/sterling.pdf), with the relevant later corrections. [*Controlling unfolding in type theory*](https://doi.org/10.1017/S0960129525100327) reports correcting an oversight in an earlier universe treatment. Pin the corrected argument before making a universe-level claim. A dissertation chapter can be a separately scoped mission, with its exact target stated explicitly.
 
@@ -96,6 +99,8 @@ The starting compatibility problem is concrete: [Atkey's §3.1.4](https://arxiv.
 
 **Initial scope.** Fix a compatible cubical fragment and the finite data needed for a representation-change example. Include a genuine computational transport/univalence case. A purely erased copy of ordinary mathematics with no interaction with executable code does not test the intended bridge.
 
+**Prior-work checkpoint.** Compare the proposed rules with M11's CTT0ω and its restriction of Glue and higher constructors to erased code. Its conditional compilation theorem does not supply quantitative runtime bounds. Determine whether to discharge its conjectured metatheory, prove a comparison with our selected calculus, or follow another audited foundation before claiming the combined result.
+
 **Proposed results.** Establish the boundary between arbitrary mathematical equivalences and certified feasible runtime conversions. Prove that the selected transport, substitution, and composition rules preserve operational resource evidence. If an equivalence's forward operation has a bound, executing the corresponding transport must have a bound justified by a simulation, including administrative overhead and any needed output-size information.
 
 **Proof route.** Extend the resource relation along the cubical operations. The interesting obligations are stability under dimension substitution, dependent substitution, composition, and the univalence-related constructors. Ordinary function-composition bounds are preliminary lemmas, not the main result.
@@ -129,6 +134,7 @@ flowchart TD
   M8[Chosen Cartesian cubical syntax] --> C[Paper C: quantitative transport]
   B --> C
   M7[Abstraction and cost, as needed] --> C
+  M11[Erased-univalence compilation: conditional baseline] -. scope comparison .-> C
   M9[Cubical normalization and universe work] --> F[Final paper: quantitative fundamental theorem]
   C --> F
   B --> F
