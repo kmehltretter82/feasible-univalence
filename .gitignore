@@ -1,0 +1,11 @@
+.DS_Store
+.lake/
+build/
+__pycache__/
+*.pyc
+.env
+.env.*
+credentials.json
+*credentials*.json
+*.key
+*.pem
