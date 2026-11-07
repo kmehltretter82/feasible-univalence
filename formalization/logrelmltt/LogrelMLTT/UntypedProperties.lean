@@ -4,7 +4,8 @@ Lean translation prepared for the Feasible Univalence project, 2026.
 Released under the MIT license; see the source artifact LICENSE.
 
 Source: mr-ohman/logrel-mltt, commit eb2b15ab1c4b45923025834d3bb798943cb44b8e,
-Definition/Untyped/Properties.agda.
+Definition/Untyped/Properties.agda, extended with Σ, Unit and Empty
+(mr-ohman/logrel-mltt master, commit 9d6e290064962a1987c9e1a131c2fb967d6ef928).
 -/
 import LogrelMLTT.Syntax
 
@@ -30,6 +31,17 @@ theorem wkVar_to_wk {ρ ρ' : Wk} (h : ∀ x, wkVar ρ x = wkVar ρ' x) :
   | .natrec A z s n => by
       simp [wk, wkVar_to_wk (wkVar_lift h) A,
         wkVar_to_wk h z, wkVar_to_wk h s, wkVar_to_wk h n]
+  | .sigma A B => by
+      simp [wk, wkVar_to_wk h A, wkVar_to_wk (wkVar_lift h) B]
+  | .prod t u => by
+      simp [wk, wkVar_to_wk h t, wkVar_to_wk h u]
+  | .fst t => congrArg Term.fst (wkVar_to_wk h t)
+  | .snd t => congrArg Term.snd (wkVar_to_wk h t)
+  | .unit => rfl
+  | .star => rfl
+  | .empty => rfl
+  | .emptyrec A e => by
+      simp [wk, wkVar_to_wk h A, wkVar_to_wk h e]
 
 theorem wkVar_lift_id : ∀ x, wkVar (.lift .id) x = wkVar .id x
   | 0 => rfl
@@ -52,6 +64,17 @@ theorem wk_id : ∀ t, wk .id t = t
   | .succ t => congrArg Term.succ (wk_id t)
   | .natrec A z s n => by
       rw [wk, wkVar_to_wk wkVar_lift_id A, wk_id A, wk_id z, wk_id s, wk_id n]
+  | .sigma A B => by
+      rw [wk, wk_id A, wkVar_to_wk wkVar_lift_id B, wk_id B]
+  | .prod t u => by
+      rw [wk, wk_id t, wk_id u]
+  | .fst t => congrArg Term.fst (wk_id t)
+  | .snd t => congrArg Term.snd (wk_id t)
+  | .unit => rfl
+  | .star => rfl
+  | .empty => rfl
+  | .emptyrec A e => by
+      rw [wk, wk_id A, wk_id e]
 
 @[simp]
 theorem wk_lift_id (t : Term) : wk (.lift .id) t = t :=
@@ -82,6 +105,17 @@ theorem wk_comp : ∀ (ρ ρ' : Wk) (t : Term),
   | ρ, ρ', .natrec A z s n => by
       simp [wk, wk_comp (.lift ρ) (.lift ρ') A,
         wk_comp ρ ρ' z, wk_comp ρ ρ' s, wk_comp ρ ρ' n, compWk]
+  | ρ, ρ', .sigma A B => by
+      simp [wk, wk_comp ρ ρ' A, wk_comp (.lift ρ) (.lift ρ') B, compWk]
+  | ρ, ρ', .prod t u => by
+      simp [wk, wk_comp ρ ρ' t, wk_comp ρ ρ' u]
+  | ρ, ρ', .fst t => congrArg Term.fst (wk_comp ρ ρ' t)
+  | ρ, ρ', .snd t => congrArg Term.snd (wk_comp ρ ρ' t)
+  | ρ, ρ', .unit => rfl
+  | ρ, ρ', .star => rfl
+  | ρ, ρ', .empty => rfl
+  | ρ, ρ', .emptyrec A e => by
+      simp [wk, wk_comp ρ ρ' A, wk_comp ρ ρ' e]
 
 theorem lift_step_comp : ∀ ρ : Wk,
     compWk (.step .id) ρ = compWk (.lift ρ) (.step .id)
@@ -121,6 +155,17 @@ theorem substVar_to_subst {σ σ' : Subst} (h : ∀ x, σ x = σ' x) :
   | .natrec A z s n => by
       simp [subst, substVar_to_subst (substVar_lift h) A,
         substVar_to_subst h z, substVar_to_subst h s, substVar_to_subst h n]
+  | .sigma A B => by
+      simp [subst, substVar_to_subst h A, substVar_to_subst (substVar_lift h) B]
+  | .prod t u => by
+      simp [subst, substVar_to_subst h t, substVar_to_subst h u]
+  | .fst t => congrArg Term.fst (substVar_to_subst h t)
+  | .snd t => congrArg Term.snd (substVar_to_subst h t)
+  | .unit => rfl
+  | .star => rfl
+  | .empty => rfl
+  | .emptyrec A e => by
+      simp [subst, substVar_to_subst h A, substVar_to_subst h e]
 
 theorem subst_lift_id : ∀ x, liftSubst idSubst x = idSubst x
   | 0 => rfl
@@ -142,6 +187,17 @@ theorem subst_id : ∀ t, subst idSubst t = t
   | .natrec A z s n => by
       rw [subst, substVar_to_subst subst_lift_id A, subst_id A,
         subst_id z, subst_id s, subst_id n]
+  | .sigma A B => by
+      rw [subst, subst_id A, substVar_to_subst subst_lift_id B, subst_id B]
+  | .prod t u => by
+      rw [subst, subst_id t, subst_id u]
+  | .fst t => congrArg Term.fst (subst_id t)
+  | .snd t => congrArg Term.snd (subst_id t)
+  | .unit => rfl
+  | .star => rfl
+  | .empty => rfl
+  | .emptyrec A e => by
+      rw [subst, subst_id A, subst_id e]
 
 theorem subst_lift_wkSubst {ρ : Wk} {σ : Subst} (t : Term) :
     subst (wkSubst (.lift ρ) (liftSubst σ)) t = subst (liftSubst (wkSubst ρ σ)) t := by
@@ -173,6 +229,17 @@ theorem wk_subst {ρ : Wk} {σ : Subst} :
   | .natrec A z s n => by
       rw [subst, wk, subst, wk_subst A, subst_lift_wkSubst A,
         wk_subst z, wk_subst s, wk_subst n]
+  | .sigma A B => by
+      rw [subst, wk, subst, wk_subst A, wk_subst B, subst_lift_wkSubst B]
+  | .prod t u => by
+      rw [subst, wk, subst, wk_subst t, wk_subst u]
+  | .fst t => congrArg Term.fst (wk_subst t)
+  | .snd t => congrArg Term.snd (wk_subst t)
+  | .unit => rfl
+  | .star => rfl
+  | .empty => rfl
+  | .emptyrec A e => by
+      rw [subst, wk, subst, wk_subst A, wk_subst e]
 
 theorem subst_wk {ρ : Wk} {σ : Subst} :
     ∀ t, subst σ (wk ρ t) = subst (substWk σ ρ) t
@@ -190,6 +257,17 @@ theorem subst_wk {ρ : Wk} {σ : Subst} :
   | .natrec A z s n => by
       rw [wk, subst, subst, subst_wk A, subst_lift_substWk A,
         subst_wk z, subst_wk s, subst_wk n]
+  | .sigma A B => by
+      rw [wk, subst, subst, subst_wk A, subst_wk B, subst_lift_substWk B]
+  | .prod t u => by
+      rw [wk, subst, subst, subst_wk t, subst_wk u]
+  | .fst t => congrArg Term.fst (subst_wk t)
+  | .snd t => congrArg Term.snd (subst_wk t)
+  | .unit => rfl
+  | .star => rfl
+  | .empty => rfl
+  | .emptyrec A e => by
+      rw [wk, subst, subst, subst_wk A, subst_wk e]
 
 theorem wk_subst_lift {ρ : Wk} {σ : Subst} (G : Term) :
     wk (.lift ρ) (subst (liftSubst σ) G) = subst (liftSubst (wkSubst ρ σ)) G :=
@@ -224,6 +302,20 @@ theorem substCompEq {σ σ' : Subst} :
   | .natrec A z s n => by
       rw [subst, subst, substCompEq A, substVar_to_subst substCompLift A,
         substCompEq z, substCompEq s, substCompEq n]
+      rfl
+  | .sigma A B => by
+      rw [subst, subst, substCompEq A, substCompEq B, substVar_to_subst substCompLift B]
+      rfl
+  | .prod t u => by
+      rw [subst, subst, substCompEq t, substCompEq u]
+      rfl
+  | .fst t => congrArg Term.fst (substCompEq t)
+  | .snd t => congrArg Term.snd (substCompEq t)
+  | .unit => rfl
+  | .star => rfl
+  | .empty => rfl
+  | .emptyrec A e => by
+      rw [subst, subst, substCompEq A, substCompEq e]
       rfl
 
 theorem wk_comp_subst {a : Term} (ρ ρ' : Wk) (G : Term) :
