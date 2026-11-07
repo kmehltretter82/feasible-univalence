@@ -511,6 +511,21 @@ structure RedSigmaAt (eqrel : EqRelSet) (l : TypeLevel) (Γ : Context) (A F G : 
     RedTermEq (redF hρ hΔ) a b →
     RedEq (redG hρ hΔ ha) (subst0 (wk (.lift ρ) G) b)
 
+/-- Bundled `Σ`-reducibility data (`Γ ⊩′⟨ l ⟩B⟨ BΣ ⟩ A`). -/
+inductive RedSigma (eqrel : EqRelSet) (l : TypeLevel) (Γ : Context) (A : Term) : Prop where
+  | mk (F G : Term)
+      (D : TypeStarWf Γ A (.sigma F G))
+      (hF : TypeWf Γ F)
+      (hG : TypeWf (F :: Γ) G)
+      (AeqA : eqrel.TypeEqRel Γ (.sigma F G) (.sigma F G))
+      (redF : ∀ {ρ Δ}, WkCtx ρ Δ Γ → CtxWf Δ → RedType eqrel l Δ (wk ρ F))
+      (redG : ∀ {ρ Δ a} (hρ : WkCtx ρ Δ Γ) (hΔ : CtxWf Δ),
+        RedTerm (redF hρ hΔ) a → RedType eqrel l Δ (subst0 (wk (.lift ρ) G) a))
+      (Gext : ∀ {ρ Δ a b} (hρ : WkCtx ρ Δ Γ) (hΔ : CtxWf Δ)
+        (ha : RedTerm (redF hρ hΔ) a) (_hb : RedTerm (redF hρ hΔ) b),
+        RedTermEq (redF hρ hΔ) a b →
+        RedEq (redG hρ hΔ ha) (subst0 (wk (.lift ρ) G) b))
+
 theorem RedType.U {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context}
     (hU : RedU l Γ) : RedType eqrel l Γ .univ := by
   rcases hU with ⟨l', lt, wf⟩
@@ -551,6 +566,11 @@ theorem RedType.sigmaAt {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A F G
     sigmaA.redG
     (fun _ _ _ _ h ↦ h)
     sigmaA.Gext⟩
+
+theorem RedType.sigma {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A : Term}
+    (sigmaA : RedSigma eqrel l Γ A) : RedType eqrel l Γ A := by
+  rcases sigmaA with ⟨F, G, D, hF, hG, AeqA, redF, redG, Gext⟩
+  exact RedType.sigmaAt ⟨D, hF, hG, AeqA, redF, redG, Gext⟩
 
 theorem RedType.empty {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A : Term}
     (D : RedEmpty Γ A) : RedType eqrel l Γ A :=
@@ -648,6 +668,10 @@ theorem logRelShape_of_LogRelAt {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context
   | ne neA => exact .ne neA
   | pi D hF hG AeqA relF relG hF_ex derivF hG_ex derivG Gext =>
       exact .pi D hF hG AeqA relF relG hF_ex derivF hG_ex derivG Gext
+  | empty D => exact .empty D
+  | unit D => exact .unit D
+  | sigma D hF hG AeqA relF relG hF_ex derivF hG_ex derivG Gext =>
+      exact .sigma D hF hG AeqA relF relG hF_ex derivF hG_ex derivG Gext
   | emb hlt hA =>
       cases hlt
       cases hA with
@@ -656,6 +680,10 @@ theorem logRelShape_of_LogRelAt {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context
       | ne neA => exact .ne neA
       | pi D hF hG AeqA relF relG hF_ex derivF hG_ex derivG Gext =>
           exact .pi D hF hG AeqA relF relG hF_ex derivF hG_ex derivG Gext
+      | empty D => exact .empty D
+      | unit D => exact .unit D
+      | sigma D hF hG AeqA relF relG hF_ex derivF hG_ex derivG Gext =>
+          exact .sigma D hF hG AeqA relF relG hF_ex derivF hG_ex derivG Gext
       | emb hlt' _ => cases hlt'
 
 /-- Equivalence of two `RedRel` bundles. -/
@@ -709,30 +737,38 @@ theorem irrelLogRel_step {eqrel : EqRelSet} {l : TypeLevel}
           rw [hRecEq hU.lt hU₂.lt]
           exact RedRelEquiv.refl _
       | nat D =>
-          have h := whnfRedStar D.reduction .univ
-          cases h
+          cases whnfRedStar D.reduction .univ
       | ne neA =>
           have h := whnfRedStar neA.D.reduction .univ
           subst h
           cases neA.neK
       | pi D =>
-          have h := whnfRedStar D.reduction .univ
-          cases h
+          cases whnfRedStar D.reduction .univ
+      | empty D =>
+          cases whnfRedStar D.reduction .univ
+      | unit D =>
+          cases whnfRedStar D.reduction .univ
+      | sigma D =>
+          cases whnfRedStar D.reduction .univ
   | @nat Γ A D₁ =>
       intro A' rel₂ hAA' h₂
       subst hAA'
       cases h₂ with
       | U _ =>
-          have h := whnfRedStar D₁.reduction .univ
-          cases h
+          cases whnfRedStar D₁.reduction .univ
       | nat _ => exact RedRelEquiv.refl _
       | ne neB =>
           have h := whrDetStar ⟨D₁.reduction, .nat⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
           subst h
           cases neB.neK
       | pi D₂ =>
-          have h := whrDetStar ⟨D₁.reduction, .nat⟩ ⟨D₂.reduction, .pi⟩
-          cases h
+          cases whrDetStar ⟨D₁.reduction, .nat⟩ ⟨D₂.reduction, .pi⟩
+      | empty D₂ =>
+          cases whrDetStar ⟨D₁.reduction, .nat⟩ ⟨D₂.reduction, .empty⟩
+      | unit D₂ =>
+          cases whrDetStar ⟨D₁.reduction, .nat⟩ ⟨D₂.reduction, .unit⟩
+      | sigma D₂ =>
+          cases whrDetStar ⟨D₁.reduction, .nat⟩ ⟨D₂.reduction, .sigma⟩
   | @ne Γ A K₁ neA =>
       intro A' rel₂ hAA' h₂
       subst hAA'
@@ -754,20 +790,36 @@ theorem irrelLogRel_step {eqrel : EqRelSet} {l : TypeLevel}
           have h := whrDetStar ⟨D₂.reduction, .pi⟩ ⟨neA.D.reduction, .neutral neA.neK⟩
           subst h
           cases neA.neK
+      | empty D₂ =>
+          have h := whrDetStar ⟨D₂.reduction, .empty⟩ ⟨neA.D.reduction, .neutral neA.neK⟩
+          subst h
+          cases neA.neK
+      | unit D₂ =>
+          have h := whrDetStar ⟨D₂.reduction, .unit⟩ ⟨neA.D.reduction, .neutral neA.neK⟩
+          subst h
+          cases neA.neK
+      | sigma D₂ =>
+          have h := whrDetStar ⟨D₂.reduction, .sigma⟩ ⟨neA.D.reduction, .neutral neA.neK⟩
+          subst h
+          cases neA.neK
   | @pi Γ A F₁ G₁ D₁ _hF₁ _hG₁ _AeqA₁ relF₁ relG₁ hF_ex₁ _derivF₁ hG_ex₁ _derivG₁ _Gext₁ ihF ihG =>
       intro A' rel₂ hAA' h₂
       subst hAA'
       cases h₂ with
       | U _ =>
-          have h := whnfRedStar D₁.reduction .univ
-          cases h
+          cases whnfRedStar D₁.reduction .univ
       | nat D₂ =>
-          have h := whrDetStar ⟨D₂.reduction, .nat⟩ ⟨D₁.reduction, .pi⟩
-          cases h
+          cases whrDetStar ⟨D₂.reduction, .nat⟩ ⟨D₁.reduction, .pi⟩
       | ne neB =>
           have h := whrDetStar ⟨D₁.reduction, .pi⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
           subst h
           cases neB.neK
+      | empty D₂ =>
+          cases whrDetStar ⟨D₂.reduction, .empty⟩ ⟨D₁.reduction, .pi⟩
+      | unit D₂ =>
+          cases whrDetStar ⟨D₂.reduction, .unit⟩ ⟨D₁.reduction, .pi⟩
+      | sigma D₂ =>
+          cases whrDetStar ⟨D₂.reduction, .sigma⟩ ⟨D₁.reduction, .pi⟩
       | @pi l₂ _ _ F₂ G₂ D₂ _ _ _ relF₂ relG₂ hF_ex₂ derivF₂ hG_ex₂ derivG₂ _ =>
           have hPi : Term.pi F₁ G₁ = Term.pi F₂ G₂ :=
             whrDetStar ⟨D₁.reduction, .pi⟩ ⟨D₂.reduction, .pi⟩
@@ -908,6 +960,197 @@ theorem irrelLogRel_step {eqrel : EqRelSet} {l : TypeLevel}
                 hPiTermIff.mpr ht, hPiTermIff.mpr hu, fun hρ hΔ ha₁ ↦ ?_⟩
               have ha₂ := (hFhasTerm hρ hΔ).mp ha₁
               exact (hGeqTerm hρ hΔ ha₁).mpr (appEq hρ hΔ ha₂)
+  | @empty Γ A D₁ =>
+      intro A' rel₂ hAA' h₂
+      subst hAA'
+      cases h₂ with
+      | U _ =>
+          cases whnfRedStar D₁.reduction .univ
+      | nat D₂ =>
+          cases whrDetStar ⟨D₁.reduction, .empty⟩ ⟨D₂.reduction, .nat⟩
+      | ne neB =>
+          have h := whrDetStar ⟨D₁.reduction, .empty⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
+          subst h
+          cases neB.neK
+      | pi D₂ =>
+          cases whrDetStar ⟨D₁.reduction, .empty⟩ ⟨D₂.reduction, .pi⟩
+      | empty _ => exact RedRelEquiv.refl _
+      | unit D₂ =>
+          cases whrDetStar ⟨D₁.reduction, .empty⟩ ⟨D₂.reduction, .unit⟩
+      | sigma D₂ =>
+          cases whrDetStar ⟨D₁.reduction, .empty⟩ ⟨D₂.reduction, .sigma⟩
+  | @unit Γ A D₁ =>
+      intro A' rel₂ hAA' h₂
+      subst hAA'
+      cases h₂ with
+      | U _ =>
+          cases whnfRedStar D₁.reduction .univ
+      | nat D₂ =>
+          cases whrDetStar ⟨D₁.reduction, .unit⟩ ⟨D₂.reduction, .nat⟩
+      | ne neB =>
+          have h := whrDetStar ⟨D₁.reduction, .unit⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
+          subst h
+          cases neB.neK
+      | pi D₂ =>
+          cases whrDetStar ⟨D₁.reduction, .unit⟩ ⟨D₂.reduction, .pi⟩
+      | empty D₂ =>
+          cases whrDetStar ⟨D₁.reduction, .unit⟩ ⟨D₂.reduction, .empty⟩
+      | unit _ => exact RedRelEquiv.refl _
+      | sigma D₂ =>
+          cases whrDetStar ⟨D₁.reduction, .unit⟩ ⟨D₂.reduction, .sigma⟩
+  | @sigma Γ A F₁ G₁ D₁ hF₁ _hG₁ _AeqA₁ relF₁ relG₁ hF_ex₁ _derivF₁ hG_ex₁ _derivG₁ _Gext₁ ihF ihG =>
+      intro A' rel₂ hAA' h₂
+      subst hAA'
+      cases h₂ with
+      | U _ =>
+          cases whnfRedStar D₁.reduction .univ
+      | nat D₂ =>
+          cases whrDetStar ⟨D₂.reduction, .nat⟩ ⟨D₁.reduction, .sigma⟩
+      | ne neB =>
+          have h := whrDetStar ⟨D₁.reduction, .sigma⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
+          subst h
+          cases neB.neK
+      | pi D₂ =>
+          cases whrDetStar ⟨D₂.reduction, .pi⟩ ⟨D₁.reduction, .sigma⟩
+      | empty D₂ =>
+          cases whrDetStar ⟨D₂.reduction, .empty⟩ ⟨D₁.reduction, .sigma⟩
+      | unit D₂ =>
+          cases whrDetStar ⟨D₂.reduction, .unit⟩ ⟨D₁.reduction, .sigma⟩
+      | @sigma l₂ _ _ F₂ G₂ D₂ _ _ _ relF₂ relG₂ hF_ex₂ derivF₂ hG_ex₂ derivG₂ _ =>
+          have hSigma : Term.sigma F₁ G₁ = Term.sigma F₂ G₂ :=
+            whrDetStar ⟨D₁.reduction, .sigma⟩ ⟨D₂.reduction, .sigma⟩
+          injection hSigma with hF₁₂ hG₁₂
+          subst hF₁₂ hG₁₂
+          have hΓ : CtxWf Γ := wfType hF₁
+          have hFeqType : ∀ {ρ Δ B} (hρ : WkCtx ρ Δ Γ) (hΔ : CtxWf Δ),
+              RelFEqType relF₁ ρ Δ B ↔ RelFEqType relF₂ ρ Δ B := by
+            intro ρ Δ B hρ hΔ
+            constructor
+            · rintro ⟨r₁, hr₁, hB⟩
+              rcases hF_ex₂ hρ hΔ with ⟨r₂, hr₂⟩
+              have heq := ihF hρ hΔ r₁ hr₁ rfl (logRelShape_of_LogRelAt (derivF₂ hρ hΔ r₂ hr₂))
+              exact ⟨r₂, hr₂, heq.1.mp hB⟩
+            · rintro ⟨r₂, hr₂, hB⟩
+              rcases hF_ex₁ hρ hΔ with ⟨r₁, hr₁⟩
+              have heq := ihF hρ hΔ r₁ hr₁ rfl (logRelShape_of_LogRelAt (derivF₂ hρ hΔ r₂ hr₂))
+              exact ⟨r₁, hr₁, heq.1.mpr hB⟩
+          have hFhasTerm : ∀ {ρ Δ a} (hρ : WkCtx ρ Δ Γ) (hΔ : CtxWf Δ),
+              RelFHasTerm relF₁ ρ Δ a ↔ RelFHasTerm relF₂ ρ Δ a := by
+            intro ρ Δ a hρ hΔ
+            constructor
+            · rintro ⟨r₁, hr₁, ha⟩
+              rcases hF_ex₂ hρ hΔ with ⟨r₂, hr₂⟩
+              have heq := ihF hρ hΔ r₁ hr₁ rfl (logRelShape_of_LogRelAt (derivF₂ hρ hΔ r₂ hr₂))
+              exact ⟨r₂, hr₂, heq.2.1.mp ha⟩
+            · rintro ⟨r₂, hr₂, ha⟩
+              rcases hF_ex₁ hρ hΔ with ⟨r₁, hr₁⟩
+              have heq := ihF hρ hΔ r₁ hr₁ rfl (logRelShape_of_LogRelAt (derivF₂ hρ hΔ r₂ hr₂))
+              exact ⟨r₁, hr₁, heq.2.1.mpr ha⟩
+          have hFeqTerm : ∀ {ρ Δ a b} (hρ : WkCtx ρ Δ Γ) (hΔ : CtxWf Δ),
+              RelFEqTerm relF₁ ρ Δ a b ↔ RelFEqTerm relF₂ ρ Δ a b := by
+            intro ρ Δ a b hρ hΔ
+            constructor
+            · rintro ⟨r₁, hr₁, hab⟩
+              rcases hF_ex₂ hρ hΔ with ⟨r₂, hr₂⟩
+              have heq := ihF hρ hΔ r₁ hr₁ rfl (logRelShape_of_LogRelAt (derivF₂ hρ hΔ r₂ hr₂))
+              exact ⟨r₂, hr₂, heq.2.2.mp hab⟩
+            · rintro ⟨r₂, hr₂, hab⟩
+              rcases hF_ex₁ hρ hΔ with ⟨r₁, hr₁⟩
+              have heq := ihF hρ hΔ r₁ hr₁ rfl (logRelShape_of_LogRelAt (derivF₂ hρ hΔ r₂ hr₂))
+              exact ⟨r₁, hr₁, heq.2.2.mpr hab⟩
+          have hGeqType : ∀ {ρ Δ a B} (hρ : WkCtx ρ Δ Γ) (hΔ : CtxWf Δ)
+              (ha₁ : RelFHasTerm relF₁ ρ Δ a),
+              RelGEqType relG₁ ρ Δ a B ↔ RelGEqType relG₂ ρ Δ a B := by
+            intro ρ Δ a B hρ hΔ ha₁
+            have ha₂ : RelFHasTerm relF₂ ρ Δ a := (hFhasTerm hρ hΔ).mp ha₁
+            constructor
+            · rintro ⟨s₁, hs₁, hB⟩
+              rcases hG_ex₂ hρ hΔ ha₂ with ⟨s₂, hs₂⟩
+              have heq := ihG hρ hΔ ha₁ s₁ hs₁ rfl
+                (logRelShape_of_LogRelAt (derivG₂ hρ hΔ ha₂ s₂ hs₂))
+              exact ⟨s₂, hs₂, heq.1.mp hB⟩
+            · rintro ⟨s₂, hs₂, hB⟩
+              rcases hG_ex₁ hρ hΔ ha₁ with ⟨s₁, hs₁⟩
+              have heq := ihG hρ hΔ ha₁ s₁ hs₁ rfl
+                (logRelShape_of_LogRelAt (derivG₂ hρ hΔ ha₂ s₂ hs₂))
+              exact ⟨s₁, hs₁, heq.1.mpr hB⟩
+          have hGhasTerm : ∀ {ρ Δ a t} (hρ : WkCtx ρ Δ Γ) (hΔ : CtxWf Δ)
+              (ha₁ : RelFHasTerm relF₁ ρ Δ a),
+              RelGHasTerm relG₁ ρ Δ a t ↔ RelGHasTerm relG₂ ρ Δ a t := by
+            intro ρ Δ a t hρ hΔ ha₁
+            have ha₂ : RelFHasTerm relF₂ ρ Δ a := (hFhasTerm hρ hΔ).mp ha₁
+            constructor
+            · rintro ⟨s₁, hs₁, ht⟩
+              rcases hG_ex₂ hρ hΔ ha₂ with ⟨s₂, hs₂⟩
+              have heq := ihG hρ hΔ ha₁ s₁ hs₁ rfl
+                (logRelShape_of_LogRelAt (derivG₂ hρ hΔ ha₂ s₂ hs₂))
+              exact ⟨s₂, hs₂, heq.2.1.mp ht⟩
+            · rintro ⟨s₂, hs₂, ht⟩
+              rcases hG_ex₁ hρ hΔ ha₁ with ⟨s₁, hs₁⟩
+              have heq := ihG hρ hΔ ha₁ s₁ hs₁ rfl
+                (logRelShape_of_LogRelAt (derivG₂ hρ hΔ ha₂ s₂ hs₂))
+              exact ⟨s₁, hs₁, heq.2.1.mpr ht⟩
+          have hGeqTerm : ∀ {ρ Δ a t u} (hρ : WkCtx ρ Δ Γ) (hΔ : CtxWf Δ)
+              (ha₁ : RelFHasTerm relF₁ ρ Δ a),
+              RelGEqTerm relG₁ ρ Δ a t u ↔ RelGEqTerm relG₂ ρ Δ a t u := by
+            intro ρ Δ a t u hρ hΔ ha₁
+            have ha₂ : RelFHasTerm relF₂ ρ Δ a := (hFhasTerm hρ hΔ).mp ha₁
+            constructor
+            · rintro ⟨s₁, hs₁, htu⟩
+              rcases hG_ex₂ hρ hΔ ha₂ with ⟨s₂, hs₂⟩
+              have heq := ihG hρ hΔ ha₁ s₁ hs₁ rfl
+                (logRelShape_of_LogRelAt (derivG₂ hρ hΔ ha₂ s₂ hs₂))
+              exact ⟨s₂, hs₂, heq.2.2.mp htu⟩
+            · rintro ⟨s₂, hs₂, htu⟩
+              rcases hG_ex₁ hρ hΔ ha₁ with ⟨s₁, hs₁⟩
+              have heq := ihG hρ hΔ ha₁ s₁ hs₁ rfl
+                (logRelShape_of_LogRelAt (derivG₂ hρ hΔ ha₂ s₂ hs₂))
+              exact ⟨s₁, hs₁, heq.2.2.mpr htu⟩
+          have hSigmaTermIff : ∀ {t},
+              RedSigmaTerm eqrel Γ F₁ G₁ relF₁ relG₁ t ↔ RedSigmaTerm eqrel Γ F₁ G₁ relF₂ relG₂ t := by
+            intro t
+            constructor
+            · rintro ⟨p, d, prodP, peqp, fstTerm, sndTerm⟩
+              exact ⟨p, d, prodP, peqp,
+                (hFhasTerm .id hΓ).mp fstTerm,
+                (hGhasTerm .id hΓ fstTerm).mp sndTerm⟩
+            · rintro ⟨p, d, prodP, peqp, fstTerm, sndTerm⟩
+              have fstTerm₁ := (hFhasTerm .id hΓ).mpr fstTerm
+              exact ⟨p, d, prodP, peqp,
+                fstTerm₁,
+                (hGhasTerm .id hΓ fstTerm₁).mpr sndTerm⟩
+          refine ⟨?_, hSigmaTermIff, ?_⟩
+          · intro B
+            constructor
+            · rintro ⟨F', G', D', AeqB, FeqF', GeqG'⟩
+              refine ⟨F', G', D', AeqB,
+                fun hρ hΔ ↦ (hFeqType hρ hΔ).mp (FeqF' hρ hΔ),
+                fun hρ hΔ ha₂ ↦ ?_⟩
+              have ha₁ := (hFhasTerm hρ hΔ).mpr ha₂
+              exact (hGeqType hρ hΔ ha₁).mp (GeqG' hρ hΔ ha₁)
+            · rintro ⟨F', G', D', AeqB, FeqF', GeqG'⟩
+              refine ⟨F', G', D', AeqB,
+                fun hρ hΔ ↦ (hFeqType hρ hΔ).mpr (FeqF' hρ hΔ),
+                fun hρ hΔ ha₁ ↦ ?_⟩
+              have ha₂ := (hFhasTerm hρ hΔ).mp ha₁
+              exact (hGeqType hρ hΔ ha₁).mpr (GeqG' hρ hΔ ha₂)
+          · intro t u
+            constructor
+            · rintro ⟨p, r, d, d', prodP, prodR, peqr, ht, hu, fstP, fstR, fstEq, sndEq⟩
+              exact ⟨p, r, d, d', prodP, prodR, peqr,
+                hSigmaTermIff.mp ht, hSigmaTermIff.mp hu,
+                (hFhasTerm .id hΓ).mp fstP,
+                (hFhasTerm .id hΓ).mp fstR,
+                (hFeqTerm .id hΓ).mp fstEq,
+                (hGeqTerm .id hΓ fstP).mp sndEq⟩
+            · rintro ⟨p, r, d, d', prodP, prodR, peqr, ht, hu, fstP, fstR, fstEq, sndEq⟩
+              have fstP₁ := (hFhasTerm .id hΓ).mpr fstP
+              exact ⟨p, r, d, d', prodP, prodR, peqr,
+                hSigmaTermIff.mpr ht, hSigmaTermIff.mpr hu,
+                fstP₁,
+                (hFhasTerm .id hΓ).mpr fstR,
+                (hFeqTerm .id hΓ).mpr fstEq,
+                (hGeqTerm .id hΓ fstP₁).mpr sndEq⟩
   | @emb Γ A l' rel hlt hA =>
       intro A' rel₂ hAA' h₂
       subst hAA'
@@ -1076,6 +1319,9 @@ theorem escape {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A : Term}
   | nat D => exact D.source
   | ne neA => exact neA.D.source
   | pi D => exact D.source
+  | empty D => exact D.source
+  | unit D => exact D.source
+  | sigma D => exact D.source
 
 /-- Reducible type equality implies `eqrel.TypeEqRel` (`escapeEq`). -/
 theorem escapeEq {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A B : Term}
@@ -1096,6 +1342,15 @@ theorem escapeEq {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A B : Term}
   | pi D _ _ _ _ _ _ _ _ _ _ =>
       rcases hB with ⟨F', G', D', AeqB, _, _⟩
       exact eqrel.redType D.reduction D' .pi .pi AeqB
+  | empty D =>
+      change TypeStar Γ B .empty at hB
+      exact eqrel.redType D.reduction hB .empty .empty (eqrel.emptyRefl (wfType D.source))
+  | unit D =>
+      change TypeStar Γ B .unit at hB
+      exact eqrel.redType D.reduction hB .unit .unit (eqrel.unitRefl (wfType D.source))
+  | sigma D _ _ _ _ _ _ _ _ _ _ =>
+      rcases hB with ⟨F', G', D', AeqB, _, _⟩
+      exact eqrel.redType D.reduction D' .sigma .sigma AeqB
 
 /-- Reducible terms are syntactically well-typed (`escapeTerm`). -/
 theorem escapeTerm {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A t : Term}
@@ -1112,6 +1367,15 @@ theorem escapeTerm {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A t : Term
       rcases ht with ⟨_, d, _⟩
       exact .conv d.source (.symm (subsetStar neA.D.reduction))
   | pi D _ _ _ _ _ _ _ _ _ _ =>
+      rcases ht with ⟨_, d, _, _, _, _⟩
+      exact .conv d.source (.symm (subsetStar D.reduction))
+  | empty D =>
+      rcases ht with ⟨_, d, _, _⟩
+      exact .conv d.source (.symm (subsetStar D.reduction))
+  | unit D =>
+      rcases ht with ⟨_, d, _⟩
+      exact .conv d.source (.symm (subsetStar D.reduction))
+  | sigma D _ _ _ _ _ _ _ _ _ _ =>
       rcases ht with ⟨_, d, _, _, _, _⟩
       exact .conv d.source (.symm (subsetStar D.reduction))
 
@@ -1137,6 +1401,17 @@ theorem escapeTermEq {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A t u : 
       rcases htu with ⟨f, g, d, d', funcF, funcG, feqg, _, _, _⟩
       exact eqrel.redTerm D.reduction d.reduction d'.reduction
         .pi funcF.toWhnf funcG.toWhnf feqg
+  | empty D =>
+      rcases htu with ⟨k, k', d, d', keqk', prop⟩
+      exact eqrel.redTerm D.reduction d.reduction d'.reduction
+        .empty (.neutral prop.neK) (.neutral prop.neM) keqk'
+  | unit D =>
+      rcases htu with ⟨ht, hu⟩
+      exact eqrel.convTerm (eqrel.etaUnit ht hu) (.symm (subsetStar D.reduction))
+  | sigma D _ _ _ _ _ _ _ _ _ _ =>
+      rcases htu with ⟨p, r, d, d', prodP, prodR, peqr, _, _, _, _, _, _⟩
+      exact eqrel.redTerm D.reduction d.reduction d'.reduction
+        .sigma prodP.toWhnf prodR.toWhnf peqr
 
 /-!
 ## Shape Elimination Lemmas (`Definition/LogicalRelation/ShapeView.agda` lines 58–108)
@@ -1153,15 +1428,19 @@ theorem elimU {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context}
           cases lt
           exact ⟨.zero, .zeroLT, wf⟩
   | nat D =>
-      have h := whnfRedStar D.reduction .univ
-      cases h
+      cases whnfRedStar D.reduction .univ
   | ne neA =>
       have h := whnfRedStar neA.D.reduction .univ
       subst h
       cases neA.neK
   | pi D =>
-      have h := whnfRedStar D.reduction .univ
-      cases h
+      cases whnfRedStar D.reduction .univ
+  | empty D =>
+      cases whnfRedStar D.reduction .univ
+  | unit D =>
+      cases whnfRedStar D.reduction .univ
+  | sigma D =>
+      cases whnfRedStar D.reduction .univ
 
 /-- Elimination for `ℕ` (`ℕ-elim′`). -/
 theorem elimNat' {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A : Term}
@@ -1169,20 +1448,74 @@ theorem elimNat' {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A : Term}
   rcases p with ⟨rel, h⟩
   cases logRelShape_of_LogRelAt h with
   | U _ =>
-      have h := whnfRedStar D .univ
-      cases h
+      cases whnfRedStar D .univ
   | nat D' => exact D'
   | ne neA =>
       have h := whrDetStar ⟨D, .nat⟩ ⟨neA.D.reduction, .neutral neA.neK⟩
       subst h
       cases neA.neK
   | pi D' =>
-      have h := whrDetStar ⟨D, .nat⟩ ⟨D'.reduction, .pi⟩
-      cases h
+      cases whrDetStar ⟨D, .nat⟩ ⟨D'.reduction, .pi⟩
+  | empty D' =>
+      cases whrDetStar ⟨D, .nat⟩ ⟨D'.reduction, .empty⟩
+  | unit D' =>
+      cases whrDetStar ⟨D, .nat⟩ ⟨D'.reduction, .unit⟩
+  | sigma D' =>
+      cases whrDetStar ⟨D, .nat⟩ ⟨D'.reduction, .sigma⟩
 
 theorem elimNat {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context}
     (p : RedType eqrel l Γ .nat) : RedNat Γ .nat :=
   elimNat' (.refl (escape p)) p
+
+/-- Elimination for `Empty` (`Empty-elim′`). -/
+theorem elimEmpty' {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A : Term}
+    (D : TypeStar Γ A .empty) (p : RedType eqrel l Γ A) : RedEmpty Γ A := by
+  rcases p with ⟨rel, h⟩
+  cases logRelShape_of_LogRelAt h with
+  | U _ =>
+      cases whnfRedStar D .univ
+  | nat D' =>
+      cases whrDetStar ⟨D, .empty⟩ ⟨D'.reduction, .nat⟩
+  | ne neA =>
+      have h := whrDetStar ⟨D, .empty⟩ ⟨neA.D.reduction, .neutral neA.neK⟩
+      subst h
+      cases neA.neK
+  | pi D' =>
+      cases whrDetStar ⟨D, .empty⟩ ⟨D'.reduction, .pi⟩
+  | empty D' => exact D'
+  | unit D' =>
+      cases whrDetStar ⟨D, .empty⟩ ⟨D'.reduction, .unit⟩
+  | sigma D' =>
+      cases whrDetStar ⟨D, .empty⟩ ⟨D'.reduction, .sigma⟩
+
+theorem elimEmpty {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context}
+    (p : RedType eqrel l Γ .empty) : RedEmpty Γ .empty :=
+  elimEmpty' (.refl (escape p)) p
+
+/-- Elimination for `Unit` (`Unit-elim′`). -/
+theorem elimUnit' {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A : Term}
+    (D : TypeStar Γ A .unit) (p : RedType eqrel l Γ A) : RedUnit Γ A := by
+  rcases p with ⟨rel, h⟩
+  cases logRelShape_of_LogRelAt h with
+  | U _ =>
+      cases whnfRedStar D .univ
+  | nat D' =>
+      cases whrDetStar ⟨D, .unit⟩ ⟨D'.reduction, .nat⟩
+  | ne neA =>
+      have h := whrDetStar ⟨D, .unit⟩ ⟨neA.D.reduction, .neutral neA.neK⟩
+      subst h
+      cases neA.neK
+  | pi D' =>
+      cases whrDetStar ⟨D, .unit⟩ ⟨D'.reduction, .pi⟩
+  | empty D' =>
+      cases whrDetStar ⟨D, .unit⟩ ⟨D'.reduction, .empty⟩
+  | unit D' => exact D'
+  | sigma D' =>
+      cases whrDetStar ⟨D, .unit⟩ ⟨D'.reduction, .sigma⟩
+
+theorem elimUnit {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context}
+    (p : RedType eqrel l Γ .unit) : RedUnit Γ .unit :=
+  elimUnit' (.refl (escape p)) p
 
 /-- Elimination for neutral types with explicit WHNF `K` (`ne-elim′`). -/
 theorem elimNeAt' {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A K : Term}
@@ -1206,6 +1539,18 @@ theorem elimNeAt' {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A K : Term}
       have h := whrDetStar ⟨D'.reduction, .pi⟩ ⟨D, .neutral neK⟩
       subst h
       cases neK
+  | empty D' =>
+      have h := whrDetStar ⟨D'.reduction, .empty⟩ ⟨D, .neutral neK⟩
+      subst h
+      cases neK
+  | unit D' =>
+      have h := whrDetStar ⟨D'.reduction, .unit⟩ ⟨D, .neutral neK⟩
+      subst h
+      cases neK
+  | sigma D' =>
+      have h := whrDetStar ⟨D'.reduction, .sigma⟩ ⟨D, .neutral neK⟩
+      subst h
+      cases neK
 
 /-- Elimination for neutral types (`ne-elim′`). -/
 theorem elimNe' {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A K : Term}
@@ -1224,15 +1569,19 @@ theorem elimPiAt' {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A F G : Ter
   rcases p with ⟨rel, h⟩
   cases logRelShape_of_LogRelAt h with
   | U _ =>
-      have h := whnfRedStar D .univ
-      cases h
+      cases whnfRedStar D .univ
   | nat D' =>
-      have h := whrDetStar ⟨D'.reduction, .nat⟩ ⟨D, .pi⟩
-      cases h
+      cases whrDetStar ⟨D'.reduction, .nat⟩ ⟨D, .pi⟩
   | ne neA =>
       have h := whrDetStar ⟨D, .pi⟩ ⟨neA.D.reduction, .neutral neA.neK⟩
       subst h
       cases neA.neK
+  | empty D' =>
+      cases whrDetStar ⟨D'.reduction, .empty⟩ ⟨D, .pi⟩
+  | unit D' =>
+      cases whrDetStar ⟨D'.reduction, .unit⟩ ⟨D, .pi⟩
+  | sigma D' =>
+      cases whrDetStar ⟨D'.reduction, .sigma⟩ ⟨D, .pi⟩
   | @pi l₀ _ _ F₀ G₀ D' hF hG AeqA relF relG hF_ex derivF hG_ex derivG Gext =>
       have hPi : Term.pi F₀ G₀ = Term.pi F G :=
         whrDetStar ⟨D'.reduction, .pi⟩ ⟨D, .pi⟩
@@ -1272,6 +1621,67 @@ theorem elimPi' {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A F G : Term}
 theorem elimPi {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {F G : Term}
     (p : RedType eqrel l Γ (.pi F G)) : ∃ l₀, RedPi eqrel l₀ Γ (.pi F G) :=
   elimPi' (.refl (escape p)) p
+
+/-- Elimination for `Σ`-types with explicit domain `F` and codomain `G` (`Σ-elim′`). -/
+theorem elimSigmaAt' {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A F G : Term}
+    (D : TypeStar Γ A (.sigma F G)) (p : RedType eqrel l Γ A) :
+    ∃ l₀, RedSigmaAt eqrel l₀ Γ A F G := by
+  rcases p with ⟨rel, h⟩
+  cases logRelShape_of_LogRelAt h with
+  | U _ =>
+      cases whnfRedStar D .univ
+  | nat D' =>
+      cases whrDetStar ⟨D'.reduction, .nat⟩ ⟨D, .sigma⟩
+  | ne neA =>
+      have h := whrDetStar ⟨D, .sigma⟩ ⟨neA.D.reduction, .neutral neA.neK⟩
+      subst h
+      cases neA.neK
+  | pi D' =>
+      cases whrDetStar ⟨D'.reduction, .pi⟩ ⟨D, .sigma⟩
+  | empty D' =>
+      cases whrDetStar ⟨D'.reduction, .empty⟩ ⟨D, .sigma⟩
+  | unit D' =>
+      cases whrDetStar ⟨D'.reduction, .unit⟩ ⟨D, .sigma⟩
+  | @sigma l₀ _ _ F₀ G₀ D' hF hG AeqA relF relG hF_ex derivF hG_ex derivG Gext =>
+      have hSigma : Term.sigma F₀ G₀ = Term.sigma F G :=
+        whrDetStar ⟨D'.reduction, .sigma⟩ ⟨D, .sigma⟩
+      injection hSigma with hF₀ hG₀
+      subst hF₀ hG₀
+      refine ⟨l₀, ⟨D', hF, hG, AeqA, ?_, ?_, ?_⟩⟩
+      · intro ρ Δ hρ hΔ
+        rcases hF_ex hρ hΔ with ⟨r, hr⟩
+        exact ⟨r, derivF hρ hΔ r hr⟩
+      · intro ρ Δ a hρ hΔ ha
+        have ha' : RelFHasTerm relF ρ Δ a := by
+          rcases hF_ex hρ hΔ with ⟨r, hr⟩
+          have hrAt := derivF hρ hΔ r hr
+          exact ⟨r, hr, (RedTerm_of_LogRelAt hrAt _).mp ha⟩
+        rcases hG_ex hρ hΔ ha' with ⟨s, hs⟩
+        exact ⟨s, derivG hρ hΔ ha' s hs⟩
+      · intro ρ Δ a b hρ hΔ ha hb hab
+        have ha' : RelFHasTerm relF ρ Δ a := by
+          rcases hF_ex hρ hΔ with ⟨r, hr⟩
+          exact ⟨r, hr, (RedTerm_of_LogRelAt (derivF hρ hΔ r hr) _).mp ha⟩
+        have hb' : RelFHasTerm relF ρ Δ b := by
+          rcases hF_ex hρ hΔ with ⟨r, hr⟩
+          exact ⟨r, hr, (RedTerm_of_LogRelAt (derivF hρ hΔ r hr) _).mp hb⟩
+        have hab' : RelFEqTerm relF ρ Δ a b := by
+          rcases hF_ex hρ hΔ with ⟨r, hr⟩
+          exact ⟨r, hr, (RedTermEq_of_LogRelAt (derivF hρ hΔ r hr) _).mp hab⟩
+        rcases Gext hρ hΔ ha' hb' hab' with ⟨s, hs, hB⟩
+        exact ⟨s, derivG hρ hΔ ha' s hs, hB⟩
+
+/-- Elimination for `Σ`-types (`Σ-elim′`). -/
+theorem elimSigma' {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A F G : Term}
+    (D : TypeStar Γ A (.sigma F G)) (p : RedType eqrel l Γ A) :
+    ∃ l₀, RedSigma eqrel l₀ Γ A := by
+  rcases elimSigmaAt' D p with ⟨l₀, sigmaA⟩
+  exact ⟨l₀, ⟨F, G, sigmaA.D, sigmaA.hF, sigmaA.hG, sigmaA.AeqA,
+    sigmaA.redF, sigmaA.redG, sigmaA.Gext⟩⟩
+
+theorem elimSigma {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {F G : Term}
+    (p : RedType eqrel l Γ (.sigma F G)) : ∃ l₀, RedSigma eqrel l₀ Γ (.sigma F G) :=
+  elimSigma' (.refl (escape p)) p
 
 /-!
 ## Reflexivity (`Definition/LogicalRelation/Properties/Reflexivity.agda`)
@@ -1328,6 +1738,34 @@ theorem reflLogRel_step {eqrel : EqRelSet} {l : TypeLevel}
           rcases ha with ⟨r, hr, ha'⟩
           exact ⟨r, hr, (ihF hρ hΔ r hr).2 ha'⟩
         exact appEq hρ hΔ ha ha haa
+  | empty D =>
+      refine ⟨D.reduction, ?_⟩
+      rintro t ⟨n, d, neqn, nf⟩
+      exact ⟨n, n, d, d, neqn, ⟨nf.neK, nf.neK, nf.keqk⟩⟩
+  | unit D =>
+      refine ⟨D.reduction, ?_⟩
+      rintro t ⟨_, d, _⟩
+      exact ⟨d.source, d.source⟩
+  | @sigma Γ A F G D hF _hG AeqA relF relG hF_ex _derivF hG_ex _derivG _Gext ihF ihG =>
+      refine ⟨⟨F, G, D.reduction, AeqA, ?_, ?_⟩, ?_⟩
+      · intro ρ Δ hρ hΔ
+        rcases hF_ex hρ hΔ with ⟨r, hr⟩
+        exact ⟨r, hr, (ihF hρ hΔ r hr).1⟩
+      · intro ρ Δ a hρ hΔ ha
+        rcases hG_ex hρ hΔ ha with ⟨s, hs⟩
+        exact ⟨s, hs, (ihG hρ hΔ ha s hs).1⟩
+      · rintro t ⟨p, d, prodP, peqp, fstTerm, sndTerm⟩
+        have hΓ : CtxWf Γ := wfType hF
+        have hFstEq : RelFEqTerm relF .id Γ (.fst p) (.fst p) := by
+          rcases fstTerm with ⟨r, hr, hFst⟩
+          exact ⟨r, hr, (ihF .id hΓ r hr).2 hFst⟩
+        have hSndEq : RelGEqTerm relG .id Γ (.fst p) (.snd p) (.snd p) := by
+          rcases sndTerm with ⟨s, hs, hSnd⟩
+          exact ⟨s, hs, (ihG .id hΓ fstTerm s hs).2 hSnd⟩
+        exact ⟨p, p, d, d, prodP, prodP, peqp,
+          ⟨p, d, prodP, peqp, fstTerm, sndTerm⟩,
+          ⟨p, d, prodP, peqp, fstTerm, sndTerm⟩,
+          fstTerm, fstTerm, hFstEq, hSndEq⟩
   | @emb _ _ l' _ hlt hA => exact ihRec l' hlt hA
 
 theorem reflLogRelAt {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A : Term} {rel : RedRel}
