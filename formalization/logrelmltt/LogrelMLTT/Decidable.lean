@@ -146,11 +146,7 @@ private theorem adeq_var_case {Γ : Context} {x y : Nat} {R : Term}
                 have htrue : (x == z) = true := (nat_beq_iff_eq x z).mpr hxz'
                 rw [hbeq] at htrue
                 cases htrue
-  | app _ _ =>
-      refine ⟨1, none, rfl, (fun _ h ↦ by cases h), ?_⟩
-      intro _ _ hConv
-      cases hConv
-  | natrec _ _ _ _ =>
+  | app _ _ | natrec _ _ _ _ | fst _ | snd _ | emptyrec _ _ =>
       refine ⟨1, none, rfl, (fun _ h ↦ by cases h), ?_⟩
       intro _ _ hConv
       cases hConv
@@ -162,11 +158,7 @@ private theorem adeq_app_case {Γ : Context} {k k₁ t t₁ F G : Term}
     AdeqNeUpMotive Γ (.app k t) (.app k₁ t₁) (subst0 G t) := by
   intro Γ' Δ u u₁ S hΓ' hΔ du
   cases du with
-  | var _ _ =>
-      refine ⟨1, none, rfl, (fun _ h ↦ by cases h), ?_⟩
-      intro _ _ hConv
-      cases hConv
-  | natrec _ _ _ _ =>
+  | var _ _ | natrec _ _ _ _ | fst _ | snd _ | emptyrec _ _ =>
       refine ⟨1, none, rfl, (fun _ h ↦ by cases h), ?_⟩
       intro _ _ hConv
       cases hConv
@@ -237,11 +229,7 @@ private theorem adeq_natrec_case {Γ : Context} {k k₁ h h₁ a₀ b₀ F F₁ 
     AdeqNeUpMotive Γ (.natrec F a₀ h k) (.natrec F₁ b₀ h₁ k₁) (subst0 F k) := by
   intro Γ' Δ u u₁ S hΓ' hΔ du
   cases du with
-  | var _ _ =>
-      refine ⟨1, none, rfl, (fun _ h ↦ by cases h), ?_⟩
-      intro _ _ hConv
-      cases hConv
-  | app _ _ =>
+  | var _ _ | app _ _ | fst _ | snd _ | emptyrec _ _ =>
       refine ⟨1, none, rfl, (fun _ h ↦ by cases h), ?_⟩
       intro _ _ hConv
       cases hConv
@@ -358,6 +346,132 @@ private theorem adeq_natrec_case {Γ : Context} {k k₁ h h₁ a₀ b₀ F F₁ 
                         cases hT
                         exact .natrec hFG hab hhg hkl
 
+private theorem adeq_fst_case {Γ : Context} {p p₁ F G : Term}
+    (hp : ConvNeDown Γ p p₁ (.sigma F G))
+    (ihp : AdeqNeDownMotive Γ p p₁ (.sigma F G)) :
+    AdeqNeUpMotive Γ (.fst p) (.fst p₁) F := by
+  intro Γ' Δ u u₁ S hΓ' hΔ du
+  cases du with
+  | var _ _ | app _ _ | natrec _ _ _ _ | snd _ | emptyrec _ _ =>
+      refine ⟨1, none, rfl, (fun _ h ↦ by cases h), ?_⟩
+      intro _ _ hConv
+      cases hConv
+  | @fst _ r _ _ _ hr =>
+      rcases ihp hΓ' hΔ hr with ⟨f₁, res₁, hRun₁, hSome₁, hNone₁⟩
+      cases res₁ with
+      | none =>
+          refine ⟨f₁ + 1, none, ?_, (fun _ h ↦ by cases h), ?_⟩
+          · dsimp [compareNeutralUp]
+            rw [hRun₁]
+            rfl
+          · intro _ T hConv
+            cases hConv with
+            | fst hpr => exact hNone₁ rfl _ hpr
+      | some M =>
+          have hpr : ConvNeDown Γ' p r M := hSome₁ M rfl
+          have hwM : Whnf M := (neConvNeDown hpr).1
+          have hSigmaM : TypeEq Γ' (.sigma F G) M :=
+            uniqueNeDownLeft (stabilityNeDown hΓ' hp) hpr
+          rcases sigma_eq_A_whnf hSigmaM hwM with ⟨F', G', hM_eq⟩
+          subst hM_eq
+          refine ⟨f₁ + 1, some F', ?_, ?_, (fun h ↦ by cases h)⟩
+          · dsimp [compareNeutralUp]
+            rw [hRun₁]
+            rfl
+          · intro T hT
+            cases hT
+            exact .fst hpr
+
+private theorem adeq_snd_case {Γ : Context} {p p₁ F G : Term}
+    (hp : ConvNeDown Γ p p₁ (.sigma F G))
+    (ihp : AdeqNeDownMotive Γ p p₁ (.sigma F G)) :
+    AdeqNeUpMotive Γ (.snd p) (.snd p₁) (subst0 G (.fst p)) := by
+  intro Γ' Δ u u₁ S hΓ' hΔ du
+  cases du with
+  | var _ _ | app _ _ | natrec _ _ _ _ | fst _ | emptyrec _ _ =>
+      refine ⟨1, none, rfl, (fun _ h ↦ by cases h), ?_⟩
+      intro _ _ hConv
+      cases hConv
+  | @snd _ r _ _ _ hr =>
+      rcases ihp hΓ' hΔ hr with ⟨f₁, res₁, hRun₁, hSome₁, hNone₁⟩
+      cases res₁ with
+      | none =>
+          refine ⟨f₁ + 1, none, ?_, (fun _ h ↦ by cases h), ?_⟩
+          · dsimp [compareNeutralUp]
+            rw [hRun₁]
+            rfl
+          · intro _ T hConv
+            cases hConv with
+            | snd hpr => exact hNone₁ rfl _ hpr
+      | some M =>
+          have hpr : ConvNeDown Γ' p r M := hSome₁ M rfl
+          have hwM : Whnf M := (neConvNeDown hpr).1
+          have hSigmaM : TypeEq Γ' (.sigma F G) M :=
+            uniqueNeDownLeft (stabilityNeDown hΓ' hp) hpr
+          rcases sigma_eq_A_whnf hSigmaM hwM with ⟨F', G', hM_eq⟩
+          subst hM_eq
+          refine ⟨f₁ + 1, some (subst0 G' (.fst p)), ?_, ?_, (fun h ↦ by cases h)⟩
+          · dsimp [compareNeutralUp]
+            rw [hRun₁]
+            rfl
+          · intro T hT
+            cases hT
+            exact .snd hpr
+
+private theorem adeq_emptyrec_case {Γ : Context} {F F₁ k k₁ : Term}
+    (_hFF : ConvTypeUp Γ F F₁)
+    (hkk : ConvNeDown Γ k k₁ .empty)
+    (ihF : AdeqTypeUpMotive Γ F F₁)
+    (ihk : AdeqNeDownMotive Γ k k₁ .empty) :
+    AdeqNeUpMotive Γ (.emptyrec F k) (.emptyrec F₁ k₁) F := by
+  intro Γ' Δ u u₁ S hΓ' hΔ du
+  cases du with
+  | var _ _ | app _ _ | natrec _ _ _ _ | fst _ | snd _ =>
+      refine ⟨1, none, rfl, (fun _ h ↦ by cases h), ?_⟩
+      intro _ _ hConv
+      cases hConv
+  | @emptyrec _ l _ _ _ hGG hll =>
+      rcases ihF hΓ' hΔ hGG with ⟨f₁, b₁, hRun₁, hIff₁⟩
+      cases b₁ with
+      | false =>
+          refine ⟨f₁ + 1, none, ?_, (fun _ h ↦ by cases h), ?_⟩
+          · dsimp [compareNeutralUp]
+            rw [hRun₁]
+            rfl
+          · intro _ T hConv
+            cases hConv with
+            | emptyrec hFG' _ => exact Bool.noConfusion (hIff₁.mpr hFG')
+      | true =>
+          have hFG : ConvTypeUp Γ' F S := hIff₁.mp rfl
+          rcases ihk hΓ' hΔ hll with ⟨f₂, res₂, hRun₂, hSome₂, hNone₂⟩
+          let fuel := Nat.max f₁ f₂
+          have hRun₁' := compareTypeUp_mono (Nat.le_max_left f₁ f₂) hRun₁
+          have hRun₂' := compareNeutralDown_mono (Nat.le_max_right f₁ f₂) hRun₂
+          cases res₂ with
+          | none =>
+              refine ⟨fuel + 1, none, ?_, (fun _ h ↦ by cases h), ?_⟩
+              · dsimp [compareNeutralUp]
+                rw [hRun₁']
+                dsimp [Bind.bind, Option.bind]
+                rw [hRun₂']
+              · intro _ T hConv
+                cases hConv with
+                | emptyrec _ hkl' => exact hNone₂ rfl .empty hkl'
+          | some M =>
+              have hkl : ConvNeDown Γ' k l M := hSome₂ M rfl
+              have hEmptyM : TypeEq Γ' .empty M :=
+                uniqueNeDownLeft (stabilityNeDown hΓ' hkk) hkl
+              have hM_eq : M = .empty := empty_eq_A_whnf hEmptyM (neConvNeDown hkl).1
+              subst hM_eq
+              refine ⟨fuel + 1, some F, ?_, ?_, (fun h ↦ by cases h)⟩
+              · dsimp [compareNeutralUp]
+                rw [hRun₁']
+                dsimp [Bind.bind, Option.bind]
+                rw [hRun₂']
+              · intro T hT
+                cases hT
+                exact .emptyrec hFG hkl
+
 private theorem adeq_neDown_case {Γ : Context} {k k₁ A B : Term}
     (_D : TypeStar Γ A B) (_hw : Whnf B) (_hkk : ConvNeUp Γ k k₁ A)
     (ihk : AdeqNeUpMotive Γ k k₁ A) :
@@ -437,14 +551,7 @@ private theorem adeq_typeDown_univ_case {Γ : Context} (_hΓ : CtxWf Γ) :
   cases dB with
   | univRefl _ =>
       exact ⟨1, true, rfl, ⟨fun _ ↦ .univRefl wfΓ', fun _ ↦ rfl⟩⟩
-  | natRefl _ =>
-      refine ⟨1, false, rfl, ⟨fun h ↦ Bool.noConfusion h, ?_⟩⟩
-      intro hConv
-      generalize hU : Term.univ = U₀ at hConv
-      cases hConv with
-      | ne hne => subst hU; cases (neConvNeDown hne).2.1
-      | _ => cases hU
-  | piCong _ _ _ =>
+  | natRefl _ | emptyRefl _ | unitRefl _ | piCong _ _ _ | sigmaCong _ _ _ =>
       refine ⟨1, false, rfl, ⟨fun h ↦ Bool.noConfusion h, ?_⟩⟩
       intro hConv
       generalize hU : Term.univ = U₀ at hConv
@@ -469,14 +576,7 @@ private theorem adeq_typeDown_nat_case {Γ : Context} (_hΓ : CtxWf Γ) :
   cases dB with
   | natRefl _ =>
       exact ⟨1, true, rfl, ⟨fun _ ↦ .natRefl wfΓ', fun _ ↦ rfl⟩⟩
-  | univRefl _ =>
-      refine ⟨1, false, rfl, ⟨fun h ↦ Bool.noConfusion h, ?_⟩⟩
-      intro hConv
-      generalize hN : Term.nat = N₀ at hConv
-      cases hConv with
-      | ne hne => subst hN; cases (neConvNeDown hne).2.1
-      | _ => cases hN
-  | piCong _ _ _ =>
+  | univRefl _ | emptyRefl _ | unitRefl _ | piCong _ _ _ | sigmaCong _ _ _ =>
       refine ⟨1, false, rfl, ⟨fun h ↦ Bool.noConfusion h, ?_⟩⟩
       intro hConv
       generalize hN : Term.nat = N₀ at hConv
@@ -493,6 +593,56 @@ private theorem adeq_typeDown_nat_case {Γ : Context} (_hΓ : CtxWf Γ) :
         | natRefl _ => cases neB
         | ne hne => subst hN; cases (neConvNeDown hne).2.1
         | _ => cases hN
+
+private theorem adeq_typeDown_empty_case {Γ : Context} (_hΓ : CtxWf Γ) :
+    AdeqTypeDownMotive Γ .empty .empty := by
+  intro Γ' Δ B B₁ hΓ' _ dB
+  have wfΓ' : CtxWf Γ' := (contextConvSubst hΓ').2.1
+  cases dB with
+  | emptyRefl _ =>
+      exact ⟨1, true, rfl, ⟨fun _ ↦ .emptyRefl wfΓ', fun _ ↦ rfl⟩⟩
+  | univRefl _ | natRefl _ | unitRefl _ | piCong _ _ _ | sigmaCong _ _ _ =>
+      refine ⟨1, false, rfl, ⟨fun h ↦ Bool.noConfusion h, ?_⟩⟩
+      intro hConv
+      generalize hE : Term.empty = E₀ at hConv
+      cases hConv with
+      | ne hne => subst hE; cases (neConvNeDown hne).2.1
+      | _ => cases hE
+  | ne hneB =>
+      have neB : Neutral B := (neConvNeDown hneB).2.1
+      refine ⟨1, false, ?_, ⟨fun h ↦ Bool.noConfusion h, ?_⟩⟩
+      · cases neB <;> rfl
+      · intro hConv
+        generalize hE : Term.empty = E₀ at hConv
+        cases hConv with
+        | emptyRefl _ => cases neB
+        | ne hne => subst hE; cases (neConvNeDown hne).2.1
+        | _ => cases hE
+
+private theorem adeq_typeDown_unit_case {Γ : Context} (_hΓ : CtxWf Γ) :
+    AdeqTypeDownMotive Γ .unit .unit := by
+  intro Γ' Δ B B₁ hΓ' _ dB
+  have wfΓ' : CtxWf Γ' := (contextConvSubst hΓ').2.1
+  cases dB with
+  | unitRefl _ =>
+      exact ⟨1, true, rfl, ⟨fun _ ↦ .unitRefl wfΓ', fun _ ↦ rfl⟩⟩
+  | univRefl _ | natRefl _ | emptyRefl _ | piCong _ _ _ | sigmaCong _ _ _ =>
+      refine ⟨1, false, rfl, ⟨fun h ↦ Bool.noConfusion h, ?_⟩⟩
+      intro hConv
+      generalize hU : Term.unit = U₀ at hConv
+      cases hConv with
+      | ne hne => subst hU; cases (neConvNeDown hne).2.1
+      | _ => cases hU
+  | ne hneB =>
+      have neB : Neutral B := (neConvNeDown hneB).2.1
+      refine ⟨1, false, ?_, ⟨fun h ↦ Bool.noConfusion h, ?_⟩⟩
+      · cases neB <;> rfl
+      · intro hConv
+        generalize hU : Term.unit = U₀ at hConv
+        cases hConv with
+        | unitRefl _ => cases neB
+        | ne hne => subst hU; cases (neConvNeDown hne).2.1
+        | _ => cases hU
 
 private theorem adeq_typeDown_ne_case {Γ : Context} {K K₁ : Term}
     (hKK : ConvNeDown Γ K K₁ .univ)
@@ -520,6 +670,24 @@ private theorem adeq_typeDown_ne_case {Γ : Context} {K K₁ : Term}
         cases hConv with
         | natRefl _ => cases neK
         | ne hne => cases (neConvNeDown hne).2.2
+  | emptyRefl _ =>
+      have hcond : ¬ ((neutralHead K && neutralHead .empty) = true) := by
+        dsimp [neutralHead]; rw [Bool.and_false]; intro h; cases h
+      refine ⟨1, false, ?_, ⟨fun h ↦ Bool.noConfusion h, ?_⟩⟩
+      · cases neK <;> (dsimp [compareTypeDown]; rw [if_neg hcond])
+      · intro hConv
+        cases hConv with
+        | emptyRefl _ => cases neK
+        | ne hne => cases (neConvNeDown hne).2.2
+  | unitRefl _ =>
+      have hcond : ¬ ((neutralHead K && neutralHead .unit) = true) := by
+        dsimp [neutralHead]; rw [Bool.and_false]; intro h; cases h
+      refine ⟨1, false, ?_, ⟨fun h ↦ Bool.noConfusion h, ?_⟩⟩
+      · cases neK <;> (dsimp [compareTypeDown]; rw [if_neg hcond])
+      · intro hConv
+        cases hConv with
+        | unitRefl _ => cases neK
+        | ne hne => cases (neConvNeDown hne).2.2
   | @piCong _ H E _ _ _ _ _ =>
       have hcond : ¬ ((neutralHead K && neutralHead (.pi H E)) = true) := by
         dsimp [neutralHead]; rw [Bool.and_false]; intro h; cases h
@@ -528,6 +696,15 @@ private theorem adeq_typeDown_ne_case {Γ : Context} {K K₁ : Term}
       · intro hConv
         cases hConv with
         | piCong _ _ _ => cases neK
+        | ne hne => cases (neConvNeDown hne).2.2
+  | @sigmaCong _ H E _ _ _ _ _ =>
+      have hcond : ¬ ((neutralHead K && neutralHead (.sigma H E)) = true) := by
+        dsimp [neutralHead]; rw [Bool.and_false]; intro h; cases h
+      refine ⟨1, false, ?_, ⟨fun h ↦ Bool.noConfusion h, ?_⟩⟩
+      · cases neK <;> (dsimp [compareTypeDown]; rw [if_neg hcond])
+      · intro hConv
+        cases hConv with
+        | sigmaCong _ _ _ => cases neK
         | ne hne => cases (neConvNeDown hne).2.2
   | ne hLL =>
       have neB : Neutral B := (neConvNeDown hLL).2.1
@@ -541,9 +718,8 @@ private theorem adeq_typeDown_ne_case {Γ : Context} {K K₁ : Term}
               (dsimp [compareTypeDown]; rw [if_pos hcond, hRun]; rfl)
           · intro hConv
             cases hConv with
-            | univRefl _ => cases neK
-            | natRefl _ => cases neK
-            | piCong _ _ _ => cases neK
+            | univRefl _ | natRefl _ | emptyRefl _ | unitRefl _ | piCong _ _ _ | sigmaCong _ _ _ =>
+                cases neK
             | ne hKL => exact False.elim (hNone rfl .univ hKL)
       | some M =>
           have hKL : ConvNeDown Γ' K B M := hSome M rfl
@@ -562,14 +738,7 @@ private theorem adeq_typeDown_pi_case {Γ : Context} {F G F₁ G₁ : Term}
     AdeqTypeDownMotive Γ (.pi F G) (.pi F₁ G₁) := by
   intro Γ' Δ B B₁ hΓ' hΔ dB
   cases dB with
-  | univRefl _ =>
-      refine ⟨1, false, rfl, ⟨fun h ↦ Bool.noConfusion h, ?_⟩⟩
-      intro hConv
-      generalize hP : Term.pi F G = P₀ at hConv
-      cases hConv with
-      | ne hne => subst hP; cases (neConvNeDown hne).2.1
-      | _ => cases hP
-  | natRefl _ =>
+  | univRefl _ | natRefl _ | emptyRefl _ | unitRefl _ | sigmaCong _ _ _ =>
       refine ⟨1, false, rfl, ⟨fun h ↦ Bool.noConfusion h, ?_⟩⟩
       intro hConv
       generalize hP : Term.pi F G = P₀ at hConv
@@ -618,6 +787,63 @@ private theorem adeq_typeDown_pi_case {Γ : Context} {F G F₁ G₁ : Term}
               cases hConv with
               | ne hne => cases (neConvNeDown hne).2.1
               | piCong _ _ hGE' => exact hIff₂.mpr hGE'
+
+private theorem adeq_typeDown_sigma_case {Γ : Context} {F G F₁ G₁ : Term}
+    (hF : TypeWf Γ F)
+    (_hFF : ConvTypeUp Γ F F₁) (_hGG : ConvTypeUp (F :: Γ) G G₁)
+    (ihF : AdeqTypeUpMotive Γ F F₁) (ihG : AdeqTypeUpMotive (F :: Γ) G G₁) :
+    AdeqTypeDownMotive Γ (.sigma F G) (.sigma F₁ G₁) := by
+  intro Γ' Δ B B₁ hΓ' hΔ dB
+  cases dB with
+  | univRefl _ | natRefl _ | emptyRefl _ | unitRefl _ | piCong _ _ _ =>
+      refine ⟨1, false, rfl, ⟨fun h ↦ Bool.noConfusion h, ?_⟩⟩
+      intro hConv
+      generalize hS : Term.sigma F G = S₀ at hConv
+      cases hConv with
+      | ne hne => subst hS; cases (neConvNeDown hne).2.1
+      | _ => cases hS
+  | ne hLL =>
+      have neB : Neutral B := (neConvNeDown hLL).2.1
+      refine ⟨1, false, ?_, ⟨fun h ↦ Bool.noConfusion h, ?_⟩⟩
+      · cases neB <;> rfl
+      · intro hConv
+        generalize hS : Term.sigma F G = S₀ at hConv
+        cases hConv with
+        | sigmaCong _ _ _ => cases neB
+        | ne hne => subst hS; cases (neConvNeDown hne).2.1
+        | _ => cases hS
+  | @sigmaCong _ H E _ _ _ hHH hEE =>
+      rcases ihF hΓ' hΔ hHH with ⟨f₁, b₁, hRun₁, hIff₁⟩
+      cases b₁ with
+      | false =>
+          refine ⟨f₁ + 1, false, ?_, ⟨fun h ↦ Bool.noConfusion h, ?_⟩⟩
+          · dsimp [compareTypeDown]
+            rw [hRun₁]
+            rfl
+          · intro hConv
+            cases hConv with
+            | ne hne => cases (neConvNeDown hne).2.1
+            | sigmaCong _ hFH' _ => exact Bool.noConfusion (hIff₁.mpr hFH')
+      | true =>
+          have hFH : ConvTypeUp Γ' F H := hIff₁.mp rfl
+          have hFH_eq : TypeEq Γ' F H := soundnessConvUp hFH
+          rcases ihG (.cons hΓ' (.refl hF)) (.cons hΔ hFH_eq) hEE with
+            ⟨f₂, b₂, hRun₂, hIff₂⟩
+          let fuel := Nat.max f₁ f₂
+          have hRun₁' := compareTypeUp_mono (Nat.le_max_left f₁ f₂) hRun₁
+          have hRun₂' := compareTypeUp_mono (Nat.le_max_right f₁ f₂) hRun₂
+          refine ⟨fuel + 1, b₂, ?_, ?_⟩
+          · dsimp [compareTypeDown]
+            rw [hRun₁']
+            dsimp [Bind.bind, Option.bind]
+            exact hRun₂'
+          · constructor
+            · intro hb₂
+              exact .sigmaCong (stability hΓ' hF) hFH (hIff₂.mp hb₂)
+            · intro hConv
+              cases hConv with
+              | ne hne => cases (neConvNeDown hne).2.1
+              | sigmaCong _ _ hGE' => exact hIff₂.mpr hGE'
 
 private theorem adeq_termUp_case {Γ : Context} {t t₁ A B t' t₁' : Term}
     (DA : TypeStar Γ A B) (dt : Star Γ t t' B) (_dt₁ : Star Γ t₁ t₁' B)
@@ -685,8 +911,8 @@ private theorem adeq_termDown_natIns_case {Γ : Context} {k k₁ : Term}
   have neK : Neutral k := (neConvNeDown hkk).2.1
   have hnhK : neutralHead k = true := (neutralHead_iff_Neutral k).mpr neK
   cases du with
-  | univ _ _ _ => cases hB₀_eq
-  | etaEq _ _ _ _ _ _ => cases hB₀_eq
+  | univ _ _ _ | emptyIns _ | etaUnit _ _ _ _ | etaEq _ _ _ _ _ _ | sigmaEta _ _ _ _ _ _ _ _ =>
+      cases hB₀_eq
   | neIns _ _ neB₀ _ => subst hB₀_eq; cases neB₀
   | zeroRefl _ =>
       have hcond : ¬ ((neutralHead k && neutralHead .zero) = true) := by
@@ -740,6 +966,46 @@ private theorem adeq_termDown_natIns_case {Γ : Context} {k k₁ : Term}
           · cases neK <;> cases neU <;>
               (dsimp [compareTermDown]; rw [if_pos hcond, hRun]; rfl)
 
+private theorem adeq_termDown_emptyIns_case {Γ : Context} {k k₁ : Term}
+    (hkk : ConvNeDown Γ k k₁ .empty)
+    (ihk : AdeqNeDownMotive Γ k k₁ .empty) :
+    AdeqTermDownMotive Γ k k₁ .empty := by
+  intro Γ' Δ u u₁ A' B₀ hΓ' hΔ du hwA' hAA' hA'B₀
+  have hA'_eq : A' = .empty := empty_eq_A_whnf hAA' hwA'
+  subst hA'_eq
+  have hB₀_eq : B₀ = .empty := empty_eq_A_whnf hA'B₀ (whnfConvTermDown du).1
+  have neK : Neutral k := (neConvNeDown hkk).2.1
+  have hnhK : neutralHead k = true := (neutralHead_iff_Neutral k).mpr neK
+  cases du with
+  | univ _ _ _ | natIns _ | zeroRefl _ | succCong _ | etaUnit _ _ _ _ | etaEq _ _ _ _ _ _ | sigmaEta _ _ _ _ _ _ _ _ =>
+      cases hB₀_eq
+  | neIns _ _ neB₀ _ => subst hB₀_eq; cases neB₀
+  | emptyIns hll =>
+      have neU : Neutral u := (neConvNeDown hll).2.1
+      have hnhU : neutralHead u = true := (neutralHead_iff_Neutral u).mpr neU
+      have hcond : (neutralHead k && neutralHead u) = true := by rw [hnhK, hnhU]; rfl
+      rcases ihk hΓ' hΔ hll with ⟨f, res, hRun, hSome, hNone⟩
+      cases res with
+      | none =>
+          refine ⟨f + 1, false, ?_, ⟨fun h ↦ Bool.noConfusion h, ?_⟩⟩
+          · cases neK <;> cases neU <;>
+              (dsimp [compareTermDown]; rw [if_pos hcond, hRun]; rfl)
+          · intro hConv
+            generalize hE : Term.empty = E₀ at hConv
+            cases hConv with
+            | emptyIns hkl => exact False.elim (hNone rfl .empty hkl)
+            | neIns _ _ neE _ => subst hE; cases neE
+            | _ => cases hE
+      | some M =>
+          have hkl : ConvNeDown Γ' k u M := hSome M rfl
+          have hEmptyM : TypeEq Γ' .empty M :=
+            uniqueNeDownLeft (stabilityNeDown hΓ' hkk) hkl
+          have hM_eq : M = .empty := empty_eq_A_whnf hEmptyM (neConvNeDown hkl).1
+          subst hM_eq
+          refine ⟨f + 1, true, ?_, ⟨fun _ ↦ .emptyIns hkl, fun _ ↦ rfl⟩⟩
+          · cases neK <;> cases neU <;>
+              (dsimp [compareTermDown]; rw [if_pos hcond, hRun]; rfl)
+
 private theorem adeq_termDown_neIns_case {Γ : Context} {k k₁ M N : Term}
     (hk : HasType Γ k N) (_hk₁ : HasType Γ k₁ N) (neN : Neutral N)
     (hkk : ConvNeDown Γ k k₁ M)
@@ -752,11 +1018,8 @@ private theorem adeq_termDown_neIns_case {Γ : Context} {k k₁ M N : Term}
   have hnhA' : neutralHead A' = true := (neutralHead_iff_Neutral A').mpr neA'
   have hnhK : neutralHead k = true := (neutralHead_iff_Neutral k).mpr neK
   cases du with
-  | univ _ _ _ => cases neB₀
-  | natIns _ => cases neB₀
-  | zeroRefl _ => cases neB₀
-  | succCong _ => cases neB₀
-  | etaEq _ _ _ _ _ _ => cases neB₀
+  | univ _ _ _ | natIns _ | emptyIns _ | zeroRefl _ | succCong _ | etaUnit _ _ _ _ | etaEq _ _ _ _ _ _ | sigmaEta _ _ _ _ _ _ _ _ =>
+      cases neB₀
   | neIns hl _ _ hll =>
       have neU : Neutral u := (neConvNeDown hll).2.1
       have hnhU : neutralHead u = true := (neutralHead_iff_Neutral u).mpr neU
@@ -770,11 +1033,8 @@ private theorem adeq_termDown_neIns_case {Γ : Context} {k k₁ M N : Term}
               (dsimp [compareTermDown]; rw [if_pos hcond, hRun]; rfl)
           · intro hConv
             cases hConv with
-            | natIns _ => cases neA'
-            | univ _ _ _ => cases neA'
-            | zeroRefl _ => cases neA'
-            | succCong _ => cases neA'
-            | etaEq _ _ _ _ _ _ => cases neA'
+            | natIns _ | emptyIns _ | univ _ _ _ | zeroRefl _ | succCong _ | etaUnit _ _ _ _ | etaEq _ _ _ _ _ _ | sigmaEta _ _ _ _ _ _ _ _ =>
+                cases neA'
             | neIns _ _ _ hkl => exact False.elim (hNone rfl _ hkl)
       | some M' =>
           have hkl : ConvNeDown Γ' k u M' := hSome M' rfl
@@ -795,10 +1055,8 @@ private theorem adeq_termDown_univ_case {Γ : Context} {A A₁ : Term}
   subst hA'_eq
   have hB₀_eq : B₀ = .univ := U_eq_A hA'B₀
   cases dB with
-  | natIns _ => cases hB₀_eq
-  | zeroRefl _ => cases hB₀_eq
-  | succCong _ => cases hB₀_eq
-  | etaEq _ _ _ _ _ _ => cases hB₀_eq
+  | natIns _ | emptyIns _ | zeroRefl _ | succCong _ | etaUnit _ _ _ _ | etaEq _ _ _ _ _ _ | sigmaEta _ _ _ _ _ _ _ _ =>
+      cases hB₀_eq
   | neIns _ _ neB₀ _ => subst hB₀_eq; cases neB₀
   | univ hB _ hBB =>
       rcases ihA hΓ' hΔ hBB with ⟨f, b, hRun, hIff⟩
@@ -821,8 +1079,8 @@ private theorem adeq_termDown_zero_case {Γ : Context} (_hΓ : CtxWf Γ) :
   subst hA'_eq
   have hB₀_eq : B₀ = .nat := nat_eq_A_whnf hA'B₀ (whnfConvTermDown du).1
   cases du with
-  | univ _ _ _ => cases hB₀_eq
-  | etaEq _ _ _ _ _ _ => cases hB₀_eq
+  | univ _ _ _ | emptyIns _ | etaUnit _ _ _ _ | etaEq _ _ _ _ _ _ | sigmaEta _ _ _ _ _ _ _ _ =>
+      cases hB₀_eq
   | neIns _ _ neB₀ _ => subst hB₀_eq; cases neB₀
   | zeroRefl _ =>
       exact ⟨1, true, rfl, ⟨fun _ ↦ .zeroRefl wfΓ', fun _ ↦ rfl⟩⟩
@@ -857,8 +1115,8 @@ private theorem adeq_termDown_succ_case {Γ : Context} {m m₁ : Term}
   subst hA'_eq
   have hB₀_eq : B₀ = .nat := nat_eq_A_whnf hA'B₀ (whnfConvTermDown du).1
   cases du with
-  | univ _ _ _ => cases hB₀_eq
-  | etaEq _ _ _ _ _ _ => cases hB₀_eq
+  | univ _ _ _ | emptyIns _ | etaUnit _ _ _ _ | etaEq _ _ _ _ _ _ | sigmaEta _ _ _ _ _ _ _ _ =>
+      cases hB₀_eq
   | neIns _ _ neB₀ _ => subst hB₀_eq; cases neB₀
   | zeroRefl _ =>
       refine ⟨1, false, rfl, ⟨fun h ↦ Bool.noConfusion h, ?_⟩⟩
@@ -897,6 +1155,23 @@ private theorem adeq_termDown_succ_case {Γ : Context} {m m₁ : Term}
             exact hIff.mpr hmn
         | _ => cases hs
 
+private theorem adeq_termDown_etaUnit_case {Γ : Context} {e e₁ : Term}
+    (he : HasType Γ e .unit) (_he₁ : HasType Γ e₁ .unit)
+    (hwe : Whnf e) (_hwe₁ : Whnf e₁) :
+    AdeqTermDownMotive Γ e e₁ .unit := by
+  intro Γ' Δ u u₁ A' B₀ hΓ' hΔ du hwA' hAA' hA'B₀
+  have hA'_eq : A' = .unit := unit_eq_A_whnf hAA' hwA'
+  subst hA'_eq
+  have hB₀_eq : B₀ = .unit := unit_eq_A_whnf hA'B₀ (whnfConvTermDown du).1
+  cases du with
+  | univ _ _ _ | natIns _ | emptyIns _ | zeroRefl _ | succCong _ | etaEq _ _ _ _ _ _ | sigmaEta _ _ _ _ _ _ _ _ =>
+      cases hB₀_eq
+  | neIns _ _ neB₀ _ => subst hB₀_eq; cases neB₀
+  | etaUnit hu _ hwu _ =>
+      have he_Γ' : HasType Γ' e .unit := stabilityTerm hΓ' he
+      have hu_Γ' : HasType Γ' u .unit := stabilityTerm (symConEq hΔ) hu
+      exact ⟨1, true, rfl, ⟨fun _ ↦ .etaUnit he_Γ' hu_Γ' hwe hwu, fun _ ↦ rfl⟩⟩
+
 private theorem adeq_termDown_eta_case {Γ : Context} {f f₁ F G : Term}
     (_hF : TypeWf Γ F) (hf : HasType Γ f (.pi F G)) (_hf₁ : HasType Γ f₁ (.pi F G))
     (hwf : Whnf f) (_hwf₁ : Whnf f₁)
@@ -913,10 +1188,8 @@ private theorem adeq_termDown_eta_case {Γ : Context} {f f₁ F G : Term}
     stabilityEq (.cons (reflConEq wfΓ') hFF') hGG'_F
   rcases pi_eq_A_whnf hA'B₀ (whnfConvTermDown du).1 with ⟨F₂, G₂, hB₀_eq⟩
   cases du with
-  | univ _ _ _ => cases hB₀_eq
-  | natIns _ => cases hB₀_eq
-  | zeroRefl _ => cases hB₀_eq
-  | succCong _ => cases hB₀_eq
+  | univ _ _ _ | natIns _ | emptyIns _ | zeroRefl _ | succCong _ | etaUnit _ _ _ _ | sigmaEta _ _ _ _ _ _ _ _ =>
+      cases hB₀_eq
   | neIns _ _ neB₀ _ => subst hB₀_eq; cases neB₀
   | @etaEq _ _ _ F₂' G₂' _ hg _ hwg _ hApp_g =>
       injection hB₀_eq with hF₂_eq hG₂_eq
@@ -947,6 +1220,77 @@ private theorem adeq_termDown_eta_case {Γ : Context} {f f₁ F G : Term}
             exact hIff.mpr hfg
         | _ => cases hP
 
+private theorem adeq_termDown_sigma_case {Γ : Context} {p p₁ F G : Term}
+    (_hF : TypeWf Γ F) (_hG : TypeWf (F :: Γ) G)
+    (hp : HasType Γ p (.sigma F G)) (_hp₁ : HasType Γ p₁ (.sigma F G))
+    (hwp : Whnf p) (_hwp₁ : Whnf p₁)
+    (_hfst : ConvTermUp Γ (.fst p) (.fst p₁) F)
+    (_hsnd : ConvTermUp Γ (.snd p) (.snd p₁) (subst0 G (.fst p)))
+    (ihfst : AdeqTermUpMotive Γ (.fst p) (.fst p₁) F)
+    (ihsnd : AdeqTermUpMotive Γ (.snd p) (.snd p₁) (subst0 G (.fst p))) :
+    AdeqTermDownMotive Γ p p₁ (.sigma F G) := by
+  intro Γ' Δ u u₁ A' B₀ hΓ' hΔ du hwA' hAA' hA'B₀
+  rcases sigma_eq_A_whnf hAA' hwA' with ⟨F', G', hA'_eq⟩
+  subst hA'_eq
+  have ⟨hFF', hGG'⟩ := sigma_injectivity hAA'
+  have ⟨_, wfSigma'⟩ := syntacticEq hAA'
+  have ⟨wfF', wfG'⟩ := syntacticSigma wfSigma'
+  rcases sigma_eq_A_whnf hA'B₀ (whnfConvTermDown du).1 with ⟨F₂, G₂, hB₀_eq⟩
+  cases du with
+  | univ _ _ _ | natIns _ | emptyIns _ | zeroRefl _ | succCong _ | etaUnit _ _ _ _ | etaEq _ _ _ _ _ _ =>
+      cases hB₀_eq
+  | neIns _ _ neB₀ _ => subst hB₀_eq; cases neB₀
+  | @sigmaEta _ _ _ F₂' G₂' _ _ hu _ hwu _ hfst_u hsnd_u =>
+      injection hB₀_eq with hF₂_eq hG₂_eq
+      subst hF₂_eq hG₂_eq
+      have ⟨hF'F₂, hG'G₂⟩ := sigma_injectivity hA'B₀
+      rcases ihfst hΓ' hΔ hfst_u hFF' hF'F₂ with ⟨f₁, b₁, hRun₁, hIff₁⟩
+      cases b₁ with
+      | false =>
+          refine ⟨f₁ + 1, false, ?_, ⟨fun h ↦ Bool.noConfusion h, ?_⟩⟩
+          · dsimp [compareTermDown]
+            rw [hRun₁]
+            rfl
+          · intro hConv
+            generalize hS : Term.sigma F' G' = S₀ at hConv
+            cases hConv with
+            | neIns _ _ neS _ => subst hS; cases neS
+            | sigmaEta _ _ _ _ _ _ hfst' _ =>
+                injection hS with hF'_eq _
+                subst hF'_eq
+                exact Bool.noConfusion (hIff₁.mpr hfst')
+            | _ => cases hS
+      | true =>
+          have hfst_pu : ConvTermUp Γ' (.fst p) (.fst u) F' := hIff₁.mp rfl
+          have hp_Γ' : HasType Γ' p (.sigma F' G') := .conv (stabilityTerm hΓ' hp) hAA'
+          have hGfst_Γ' : TypeEq Γ' (subst0 G (.fst p)) (subst0 G' (.fst p)) :=
+            substTypeEq hGG' (.refl (.conv (.fst wfF' wfG' hp_Γ') (.symm hFF')))
+          have hGfst_Δ : TypeEq Δ (subst0 G' (.fst p)) (subst0 G₂' (.fst u)) :=
+            substTypeEq hG'G₂ (soundnessConvUpTerm (stabilityConvUpTerm hΔ hfst_pu))
+          rcases ihsnd hΓ' hΔ hsnd_u hGfst_Γ' hGfst_Δ with ⟨f₂, b₂, hRun₂, hIff₂⟩
+          let fuel := Nat.max f₁ f₂
+          have hRun₁' := compareTermUp_mono (Nat.le_max_left f₁ f₂) hRun₁
+          have hRun₂' := compareTermUp_mono (Nat.le_max_right f₁ f₂) hRun₂
+          refine ⟨fuel + 1, b₂, ?_, ?_⟩
+          · dsimp [compareTermDown]
+            rw [hRun₁']
+            dsimp [Bind.bind, Option.bind]
+            exact hRun₂'
+          · constructor
+            · intro hb₂
+              have hu_Γ' : HasType Γ' u (.sigma F' G') :=
+                stabilityTerm (symConEq hΔ) (.conv hu (.symm hA'B₀))
+              exact .sigmaEta wfF' wfG' hp_Γ' hu_Γ' hwp hwu hfst_pu (hIff₂.mp hb₂)
+            · intro hConv
+              generalize hS : Term.sigma F' G' = S₀ at hConv
+              cases hConv with
+              | neIns _ _ neS _ => subst hS; cases neS
+              | sigmaEta _ _ _ _ _ _ _ hsnd' =>
+                  injection hS with hF'_eq hG'_eq
+                  subst hF'_eq hG'_eq
+                  exact hIff₂.mpr hsnd'
+              | _ => cases hS
+
 /-!
 ## Main Mutual Adequacy Theorems (`compareNeutral*`, `compareType*`, `compareTerm*`)
 -/
@@ -966,22 +1310,32 @@ theorem compareNeutralUp_adequate {Γ Δ : Context} {t t₁ u u₁ R S : Term}
     (fun hk ht ihk iht ↦ adeq_app_case hk ht ihk iht)
     (fun hFF haa hhh hkk ihF iha ihh ihk ↦
       adeq_natrec_case hFF haa hhh hkk ihF iha ihh ihk)
+    (fun hp ihp ↦ adeq_fst_case hp ihp)
+    (fun hp ihp ↦ adeq_snd_case hp ihp)
+    (fun hFF hkk ihF ihk ↦ adeq_emptyrec_case hFF hkk ihF ihk)
     (fun D hw hkk ihk ↦ adeq_neDown_case D hw hkk ihk)
     (fun DA DA₁ hwA' hwA₁' hDown ihDown ↦
       adeq_typeUp_case DA DA₁ hwA' hwA₁' hDown ihDown)
     (fun hΓ ↦ adeq_typeDown_univ_case hΓ)
     (fun hΓ ↦ adeq_typeDown_nat_case hΓ)
+    (fun hΓ ↦ adeq_typeDown_empty_case hΓ)
+    (fun hΓ ↦ adeq_typeDown_unit_case hΓ)
     (fun hKK ihK ↦ adeq_typeDown_ne_case hKK ihK)
     (fun hF hFF hGG ihF ihG ↦ adeq_typeDown_pi_case hF hFF hGG ihF ihG)
+    (fun hF hFF hGG ihF ihG ↦ adeq_typeDown_sigma_case hF hFF hGG ihF ihG)
     (fun DA dt dt₁ hwB hwt' hwt₁' htu ihtu ↦
       adeq_termUp_case DA dt dt₁ hwB hwt' hwt₁' htu ihtu)
     (fun hkk ihk ↦ adeq_termDown_natIns_case hkk ihk)
+    (fun hkk ihk ↦ adeq_termDown_emptyIns_case hkk ihk)
     (fun hk hk₁ neN hkk ihk ↦ adeq_termDown_neIns_case hk hk₁ neN hkk ihk)
     (fun hA hA₁ hAA ihA ↦ adeq_termDown_univ_case hA hA₁ hAA ihA)
     (fun hΓ ↦ adeq_termDown_zero_case hΓ)
     (fun hmm ihm ↦ adeq_termDown_succ_case hmm ihm)
+    (fun he he₁ hwe hwe₁ ↦ adeq_termDown_etaUnit_case he he₁ hwe hwe₁)
     (fun hF hf hf₁ hwf hwf₁ hApp ihApp ↦
       adeq_termDown_eta_case hF hf hf₁ hwf hwf₁ hApp ihApp)
+    (fun hF hG hp hp₁ hwp hwp₁ hfst hsnd ihfst ihsnd ↦
+      adeq_termDown_sigma_case hF hG hp hp₁ hwp hwp₁ hfst hsnd ihfst ihsnd)
     Γ t t₁ R dt) (reflConEq (contextConvSubst hΓΔ).1) hΓΔ du
 
 /-- Executable adequacy of `compareNeutralDown`. -/
@@ -1010,22 +1364,32 @@ theorem compareTypeDown_adequate {Γ Δ : Context} {A A₁ B B₁ : Term}
     (fun hk ht ihk iht ↦ adeq_app_case hk ht ihk iht)
     (fun hFF haa hhh hkk ihF iha ihh ihk ↦
       adeq_natrec_case hFF haa hhh hkk ihF iha ihh ihk)
+    (fun hp ihp ↦ adeq_fst_case hp ihp)
+    (fun hp ihp ↦ adeq_snd_case hp ihp)
+    (fun hFF hkk ihF ihk ↦ adeq_emptyrec_case hFF hkk ihF ihk)
     (fun D hw hkk ihk ↦ adeq_neDown_case D hw hkk ihk)
     (fun DA DA₁ hwA' hwA₁' hDown ihDown ↦
       adeq_typeUp_case DA DA₁ hwA' hwA₁' hDown ihDown)
     (fun hΓ ↦ adeq_typeDown_univ_case hΓ)
     (fun hΓ ↦ adeq_typeDown_nat_case hΓ)
+    (fun hΓ ↦ adeq_typeDown_empty_case hΓ)
+    (fun hΓ ↦ adeq_typeDown_unit_case hΓ)
     (fun hKK ihK ↦ adeq_typeDown_ne_case hKK ihK)
     (fun hF hFF hGG ihF ihG ↦ adeq_typeDown_pi_case hF hFF hGG ihF ihG)
+    (fun hF hFF hGG ihF ihG ↦ adeq_typeDown_sigma_case hF hFF hGG ihF ihG)
     (fun DA dt dt₁ hwB hwt' hwt₁' htu ihtu ↦
       adeq_termUp_case DA dt dt₁ hwB hwt' hwt₁' htu ihtu)
     (fun hkk ihk ↦ adeq_termDown_natIns_case hkk ihk)
+    (fun hkk ihk ↦ adeq_termDown_emptyIns_case hkk ihk)
     (fun hk hk₁ neN hkk ihk ↦ adeq_termDown_neIns_case hk hk₁ neN hkk ihk)
     (fun hA hA₁ hAA ihA ↦ adeq_termDown_univ_case hA hA₁ hAA ihA)
     (fun hΓ ↦ adeq_termDown_zero_case hΓ)
     (fun hmm ihm ↦ adeq_termDown_succ_case hmm ihm)
+    (fun he he₁ hwe hwe₁ ↦ adeq_termDown_etaUnit_case he he₁ hwe hwe₁)
     (fun hF hf hf₁ hwf hwf₁ hApp ihApp ↦
       adeq_termDown_eta_case hF hf hf₁ hwf hwf₁ hApp ihApp)
+    (fun hF hG hp hp₁ hwp hwp₁ hfst hsnd ihfst ihsnd ↦
+      adeq_termDown_sigma_case hF hG hp hp₁ hwp hwp₁ hfst hsnd ihfst ihsnd)
     Γ A A₁ dA) (reflConEq (contextConvSubst hΓΔ).1) hΓΔ dB
 
 /-- Executable adequacy of `compareTypeUp`. -/
@@ -1055,22 +1419,32 @@ theorem compareTermDown_adequate {Γ Δ : Context} {t t₁ u u₁ A B : Term}
     (fun hk ht ihk iht ↦ adeq_app_case hk ht ihk iht)
     (fun hFF haa hhh hkk ihF iha ihh ihk ↦
       adeq_natrec_case hFF haa hhh hkk ihF iha ihh ihk)
+    (fun hp ihp ↦ adeq_fst_case hp ihp)
+    (fun hp ihp ↦ adeq_snd_case hp ihp)
+    (fun hFF hkk ihF ihk ↦ adeq_emptyrec_case hFF hkk ihF ihk)
     (fun D hw hkk ihk ↦ adeq_neDown_case D hw hkk ihk)
     (fun DA DA₁ hwA' hwA₁' hDown ihDown ↦
       adeq_typeUp_case DA DA₁ hwA' hwA₁' hDown ihDown)
     (fun hΓ ↦ adeq_typeDown_univ_case hΓ)
     (fun hΓ ↦ adeq_typeDown_nat_case hΓ)
+    (fun hΓ ↦ adeq_typeDown_empty_case hΓ)
+    (fun hΓ ↦ adeq_typeDown_unit_case hΓ)
     (fun hKK ihK ↦ adeq_typeDown_ne_case hKK ihK)
     (fun hF hFF hGG ihF ihG ↦ adeq_typeDown_pi_case hF hFF hGG ihF ihG)
+    (fun hF hFF hGG ihF ihG ↦ adeq_typeDown_sigma_case hF hFF hGG ihF ihG)
     (fun DA dt dt₁ hwB hwt' hwt₁' htu ihtu ↦
       adeq_termUp_case DA dt dt₁ hwB hwt' hwt₁' htu ihtu)
     (fun hkk ihk ↦ adeq_termDown_natIns_case hkk ihk)
+    (fun hkk ihk ↦ adeq_termDown_emptyIns_case hkk ihk)
     (fun hk hk₁ neN hkk ihk ↦ adeq_termDown_neIns_case hk hk₁ neN hkk ihk)
     (fun hA hA₁ hAA ihA ↦ adeq_termDown_univ_case hA hA₁ hAA ihA)
     (fun hΓ ↦ adeq_termDown_zero_case hΓ)
     (fun hmm ihm ↦ adeq_termDown_succ_case hmm ihm)
+    (fun he he₁ hwe hwe₁ ↦ adeq_termDown_etaUnit_case he he₁ hwe hwe₁)
     (fun hF hf hf₁ hwf hwf₁ hApp ihApp ↦
       adeq_termDown_eta_case hF hf hf₁ hwf hwf₁ hApp ihApp)
+    (fun hF hG hp hp₁ hwp hwp₁ hfst hsnd ihfst ihsnd ↦
+      adeq_termDown_sigma_case hF hG hp hp₁ hwp hwp₁ hfst hsnd ihfst ihsnd)
     Γ t t₁ A dt) (reflConEq (contextConvSubst hΓΔ).1) hΓΔ du
     (whnfConvTermDown dt).1 (.refl (syntacticEqTerm (soundnessConvDownTerm dt)).1) hAB
 

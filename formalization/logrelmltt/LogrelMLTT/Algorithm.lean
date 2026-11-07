@@ -31,6 +31,9 @@ def neutralHead : Term → Bool
   | .var _ => true
   | .app k _ => neutralHead k
   | .natrec _ _ _ k => neutralHead k
+  | .fst k => neutralHead k
+  | .snd k => neutralHead k
+  | .emptyrec _ k => neutralHead k
   | _ => false
 
 /-- Recover a variable's declared type, weakening once for every traversed binder. -/
@@ -39,7 +42,7 @@ def lookupType : Context → Nat → Option Term
   | A :: _, 0 => some (wk1 A)
   | _ :: Γ, x + 1 => (lookupType Γ x).map wk1
 
-/-- Bounded head evaluation. No reduction occurs inside lambda bodies or successors. -/
+/-- Bounded head evaluation. No reduction occurs inside lambda bodies, pairs, or successors. -/
 def whnfFuel : Nat → Term → Option Term
   | 0, _ => none
   | fuel + 1, .app f a => do
@@ -53,6 +56,19 @@ def whnfFuel : Nat → Term → Option Term
       | .zero => whnfFuel fuel z
       | .succ k => whnfFuel fuel (.app (.app s k) (.natrec A z s k))
       | _ => if neutralHead n' then some (.natrec A z s n') else none
+  | fuel + 1, .fst p => do
+      let p' ← whnfFuel fuel p
+      match p' with
+      | .prod a _ => whnfFuel fuel a
+      | _ => if neutralHead p' then some (.fst p') else none
+  | fuel + 1, .snd p => do
+      let p' ← whnfFuel fuel p
+      match p' with
+      | .prod _ b => whnfFuel fuel b
+      | _ => if neutralHead p' then some (.snd p') else none
+  | fuel + 1, .emptyrec A e => do
+      let e' ← whnfFuel fuel e
+      if neutralHead e' then some (.emptyrec A e') else none
   | _ + 1, t => some t
 
 mutual
@@ -78,6 +94,23 @@ mutual
         let inferred ← compareNeutralDown fuel Γ k l
         match inferred with
         | some .nat => some (some (subst0 F k))
+        | _ => some none
+    | fuel + 1, Γ, .fst p, .fst r => do
+        let inferred ← compareNeutralDown fuel Γ p r
+        match inferred with
+        | some (.sigma F _) => some (some F)
+        | _ => some none
+    | fuel + 1, Γ, .snd p, .snd r => do
+        let inferred ← compareNeutralDown fuel Γ p r
+        match inferred with
+        | some (.sigma _ G) => some (some (subst0 G (.fst p)))
+        | _ => some none
+    | fuel + 1, Γ, .emptyrec F k, .emptyrec G l => do
+        let motives ← compareTypeUp fuel Γ F G
+        if !motives then return none
+        let inferred ← compareNeutralDown fuel Γ k l
+        match inferred with
+        | some .empty => some (some F)
         | _ => some none
     | _ + 1, _, _, _ => some none
 
@@ -105,7 +138,13 @@ mutual
     | 0, _, _, _ => none
     | _ + 1, _, .univ, .univ => some true
     | _ + 1, _, .nat, .nat => some true
+    | _ + 1, _, .empty, .empty => some true
+    | _ + 1, _, .unit, .unit => some true
     | fuel + 1, Γ, .pi F G, .pi H E => do
+        let domains ← compareTypeUp fuel Γ F H
+        if !domains then return false
+        compareTypeUp fuel (F :: Γ) G E
+    | fuel + 1, Γ, .sigma F G, .sigma H E => do
         let domains ← compareTypeUp fuel Γ F H
         if !domains then return false
         compareTypeUp fuel (F :: Γ) G E
@@ -126,7 +165,7 @@ mutual
         let u' ← whnfFuel fuel u
         compareTermDown fuel Γ t' u' B
 
-  /-- Type-directed comparison, including eta expansion at dependent function types. -/
+  /-- Type-directed comparison, including eta expansion at dependent function, pair, and unit types. -/
   def compareTermDown : Nat → Context → Term → Term → Term → Option Bool
     | 0, _, _, _, _ => none
     | fuel + 1, Γ, t, u, .univ => compareTypeDown fuel Γ t u
@@ -139,9 +178,21 @@ mutual
           | some .nat => some true
           | _ => some false
         else some false
+    | fuel + 1, Γ, k, l, .empty =>
+        if neutralHead k && neutralHead l then do
+          let inferred ← compareNeutralDown fuel Γ k l
+          match inferred with
+          | some .empty => some true
+          | _ => some false
+        else some false
+    | _ + 1, _, _, _, .unit => some true
     | fuel + 1, Γ, f, g, .pi F G =>
         compareTermUp fuel (F :: Γ) (.app (wk1 f) (.var 0))
           (.app (wk1 g) (.var 0)) G
+    | fuel + 1, Γ, p, r, .sigma F G => do
+        let fstEq ← compareTermUp fuel Γ (.fst p) (.fst r) F
+        if !fstEq then return false
+        compareTermUp fuel Γ (.snd p) (.snd r) (subst0 G (.fst p))
     | fuel + 1, Γ, k, l, N =>
         if neutralHead N && neutralHead k && neutralHead l then do
           let inferred ← compareNeutralDown fuel Γ k l

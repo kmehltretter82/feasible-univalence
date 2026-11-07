@@ -3,3 +3,13 @@ import LogrelMLTT.UntypedProperties
 import LogrelMLTT.Judgments
 import LogrelMLTT.Weakening
 import LogrelMLTT.TypedProperties
+import LogrelMLTT.Algorithm
+import LogrelMLTT.Conversion
+import LogrelMLTT.LogicalRelation
+import LogrelMLTT.LogicalRelationProperties
+import LogrelMLTT.Substitution
+import LogrelMLTT.Fundamental
+import LogrelMLTT.Consequences
+import LogrelMLTT.Completeness
+import LogrelMLTT.Decidable
+import LogrelMLTT.Decider
