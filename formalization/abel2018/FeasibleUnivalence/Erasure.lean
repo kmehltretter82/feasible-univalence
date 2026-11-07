@@ -1145,9 +1145,17 @@ theorem substSame_of_erased {γ : Conₘ M} {σ : GTerm.GSubst M}
     (h : ∀ x : Nat, σ x ≠ .var x → γ x = 𝕄.zero) :
     SubstSameOnNonZero 𝕄 γ σ := by
   intro x hgx
-  by_cases hs : σ x = .var x
-  · exact hs
-  · exact False.elim (hgx (h x hs))
+  -- Being syntactically `.var x` is decidable without `DecidableEq M`, so the contrapositive
+  -- is constructive (a `by_cases` on `σ x = .var x` would need `Classical.choice` here).
+  have key : ∀ t : GTerm M, (t ≠ .var x → False) → t = .var x := by
+    intro t ht
+    cases t with
+    | var y =>
+      by_cases hy : y = x
+      · rw [hy]
+      · exact (ht (fun e => hy (by injection e))).elim
+    | _ => exact (ht (fun e => by cases e)).elim
+  exact key (σ x) (fun hne => hgx (h x hne))
 
 theorem substSame_lift {γ : Conₘ M} {q : M} {σ : GTerm.GSubst M}
     (hσ : SubstSameOnNonZero 𝕄 γ σ) :

@@ -12,3 +12,4 @@ import Abel2018.Fundamental
 import Abel2018.Consequences
 import Abel2018.Completeness
 import Abel2018.Decidable
+import Abel2018.Decider

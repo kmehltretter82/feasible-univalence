@@ -32,6 +32,14 @@ open Abel2018
   (.natrec .nat .zero (.lam (.lam (.succ (.var 0)))) (.var 0))
   (.natrec .nat (.succ .zero) (.lam (.lam (.succ (.var 0)))) (.var 0)) .nat = some false
 
+-- Fuel-free deciders (`Abel2018.Decider`): no fuel argument, answers certified by
+-- `decideTypeEq_iff` / `decideTermEq_iff`.
+#guard decideTypeEq (TypeWf.nat CtxWf.nil) (TypeWf.univ CtxWf.nil) = false
+#guard decideTypeEq (TypeWf.nat CtxWf.nil) (TypeWf.nat CtxWf.nil) = true
+#guard decideTermEq (HasType.zero CtxWf.nil) (HasType.succ (HasType.zero CtxWf.nil)) = false
+#guard decideTermEq (HasType.succ (HasType.zero CtxWf.nil))
+  (HasType.succ (HasType.zero CtxWf.nil)) = true
+
 -- Verified M1 milestone and main theorem signatures.
 #check @wkTypeWf
 #check @wkHasType
@@ -59,3 +67,8 @@ open Abel2018
 #check @compareTypeUp_decides_typeEq
 #check @compareTermUp_decides_termEq
 #check @theorem_4_12_computational
+#check @decTypeEq
+#check @decTermEq
+#check @decideTypeEq_iff
+#check @decideTermEq_iff
+#check @theorem_4_12_decidable
