@@ -9,6 +9,10 @@ Definition/LogicalRelation/Irrelevance.agda,
 Definition/LogicalRelation/Properties/Escape.agda,
 Definition/LogicalRelation/Properties/Reflexivity.agda,
 Definition/LogicalRelation/Properties/MaybeEmb.agda.
+The Σ, Unit and Empty cases follow mr-ohman/logrel-mltt master, commit
+9d6e290064962a1987c9e1a131c2fb967d6ef928 (same files). As in the rest of this port, the
+logical relation is a Prop-valued indexed inductive that carries the decoded relations
+(`RedRel`) as an index; Σ reuses the Π encoding of domain/codomain families.
 -/
 import LogrelMLTT.TypedProperties
 
@@ -112,6 +116,48 @@ theorem split_of_NaturalEqProp {eqrel : EqRelSet} {Γ : Context} {a b : Term} :
   | .ne nf => ⟨.neutral nf.neK, .neutral nf.neM⟩
 
 /-!
+## Reducibility of Empty and Unit (logrel-mltt master `Definition/LogicalRelation.agda`)
+-/
+
+/-- Reducible empty type (`Γ ⊩Empty A`). -/
+abbrev RedEmpty (Γ : Context) (A : Term) : Prop :=
+  TypeStarWf Γ A .empty
+
+/-- Reducible empty type equality (`Γ ⊩Empty A ≡ B`). -/
+abbrev RedEmptyEq (Γ : Context) (B : Term) : Prop :=
+  TypeStar Γ B .empty
+
+/-- Reducible term of the empty type (`Γ ⊩Empty t ∷Empty`). The source's `Empty-prop` has the
+single constructor `ne`, so its content is inlined as `RedNeNf`. -/
+inductive RedEmptyTerm (eqrel : EqRelSet) (Γ : Context) (t : Term) : Prop where
+  | mk (n : Term) (d : StarWf Γ t n .empty) (neqn : eqrel.TermEqRel Γ n n .empty)
+      (prop : RedNeNf eqrel Γ n .empty)
+
+/-- Reducible term equality of the empty type (`Γ ⊩Empty t ≡ u ∷Empty`); `[Empty]-prop` is
+inlined as `RedNeNfEq`. -/
+inductive RedEmptyTermEq (eqrel : EqRelSet) (Γ : Context) (t u : Term) : Prop where
+  | mk (k k' : Term) (d : StarWf Γ t k .empty) (d' : StarWf Γ u k' .empty)
+      (keqk' : eqrel.TermEqRel Γ k k' .empty) (prop : RedNeNfEq eqrel Γ k k' .empty)
+
+/-- Reducible unit type (`Γ ⊩Unit A`). -/
+abbrev RedUnit (Γ : Context) (A : Term) : Prop :=
+  TypeStarWf Γ A .unit
+
+/-- Reducible unit type equality (`Γ ⊩Unit A ≡ B`). -/
+abbrev RedUnitEq (Γ : Context) (B : Term) : Prop :=
+  TypeStar Γ B .unit
+
+/-- Reducible term of the unit type (`Γ ⊩Unit t ∷Unit`). -/
+inductive RedUnitTerm (Γ : Context) (t : Term) : Prop where
+  | mk (n : Term) (d : StarWf Γ t n .unit) (prop : Whnf n)
+
+/-- Reducible term equality of the unit type (`Γ ⊩Unit t ≡ u ∷Unit`): by η, any two
+well-typed terms of the unit type are equal. -/
+structure RedUnitTermEq (Γ : Context) (t u : Term) : Prop where
+  ht : HasType Γ t .unit
+  hu : HasType Γ u .unit
+
+/-!
 ## Type Levels and Logical Relation Bundle (`Definition/LogicalRelation.agda` lines 130–349)
 -/
 
@@ -182,7 +228,19 @@ def RedNeRel (eqrel : EqRelSet) (Γ : Context) (K : Term) : RedRel where
   hasTerm t := RedNeTerm eqrel Γ K t
   eqTerm t u := RedNeTermEq eqrel Γ K t u
 
-/-- Helper predicates for domain and codomain relation families in `Π`. -/
+/-- Relation bundle for `Empty`. -/
+def RedEmptyRel (eqrel : EqRelSet) (Γ : Context) : RedRel where
+  eqType B := RedEmptyEq Γ B
+  hasTerm t := RedEmptyTerm eqrel Γ t
+  eqTerm t u := RedEmptyTermEq eqrel Γ t u
+
+/-- Relation bundle for `Unit`. -/
+def RedUnitRel (Γ : Context) : RedRel where
+  eqType B := RedUnitEq Γ B
+  hasTerm t := RedUnitTerm Γ t
+  eqTerm t u := RedUnitTermEq Γ t u
+
+/-- Helper predicates for domain and codomain relation families in `Π` and `Σ`. -/
 abbrev RelFEqType (relF : Wk → Context → RedRel → Prop) (ρ : Wk) (Δ : Context) (B : Term) : Prop :=
   ∃ rel, relF ρ Δ rel ∧ rel.eqType B
 
@@ -259,6 +317,58 @@ def RedPiRel (eqrel : EqRelSet) (Γ : Context) (F G : Term)
   hasTerm t := RedPiTerm eqrel Γ F G relF relG t
   eqTerm t u := RedPiTermEq eqrel Γ F G relF relG t u
 
+/-- Reducible `Σ`-type equality (`Γ ⊩¹Σ A ≡ B / [A]`). -/
+inductive RedSigmaEq (eqrel : EqRelSet) (Γ : Context) (F G : Term)
+    (relF : Wk → Context → RedRel → Prop)
+    (relG : Wk → Context → Term → RedRel → Prop)
+    (B : Term) : Prop where
+  | mk (F' G' : Term)
+      (D' : TypeStar Γ B (.sigma F' G'))
+      (AeqB : eqrel.TypeEqRel Γ (.sigma F G) (.sigma F' G'))
+      (FeqF' : ∀ {ρ Δ}, WkCtx ρ Δ Γ → CtxWf Δ → RelFEqType relF ρ Δ (wk ρ F'))
+      (GeqG' : ∀ {ρ Δ a}, WkCtx ρ Δ Γ → CtxWf Δ → RelFHasTerm relF ρ Δ a →
+        RelGEqType relG ρ Δ a (subst0 (wk (.lift ρ) G') a))
+
+/-- Reducible term of `Σ`-type (`Γ ⊩¹Σ t ∷ A / [A]`, logrel-mltt master): the weak-head normal
+form `p` is a product (pair or neutral), and its projections are reducible at the identity
+weakening. -/
+inductive RedSigmaTerm (eqrel : EqRelSet) (Γ : Context) (F G : Term)
+    (relF : Wk → Context → RedRel → Prop)
+    (relG : Wk → Context → Term → RedRel → Prop)
+    (t : Term) : Prop where
+  | mk (p : Term)
+      (d : StarWf Γ t p (.sigma F G))
+      (prodP : ProductView p)
+      (peqp : eqrel.TermEqRel Γ p p (.sigma F G))
+      (fstTerm : RelFHasTerm relF .id Γ (.fst p))
+      (sndTerm : RelGHasTerm relG .id Γ (.fst p) (.snd p))
+
+/-- Reducible term equality of `Σ`-type (`Γ ⊩¹Σ t ≡ u ∷ A / [A]`, logrel-mltt master). -/
+inductive RedSigmaTermEq (eqrel : EqRelSet) (Γ : Context) (F G : Term)
+    (relF : Wk → Context → RedRel → Prop)
+    (relG : Wk → Context → Term → RedRel → Prop)
+    (t u : Term) : Prop where
+  | mk (p r : Term)
+      (d : StarWf Γ t p (.sigma F G))
+      (d' : StarWf Γ u r (.sigma F G))
+      (prodP : ProductView p)
+      (prodR : ProductView r)
+      (peqr : eqrel.TermEqRel Γ p r (.sigma F G))
+      (ht : RedSigmaTerm eqrel Γ F G relF relG t)
+      (hu : RedSigmaTerm eqrel Γ F G relF relG u)
+      (fstP : RelFHasTerm relF .id Γ (.fst p))
+      (fstR : RelFHasTerm relF .id Γ (.fst r))
+      (fstEq : RelFEqTerm relF .id Γ (.fst p) (.fst r))
+      (sndEq : RelGEqTerm relG .id Γ (.fst p) (.snd p) (.snd r))
+
+/-- Relation bundle for `Σ`-types. -/
+def RedSigmaRel (eqrel : EqRelSet) (Γ : Context) (F G : Term)
+    (relF : Wk → Context → RedRel → Prop)
+    (relG : Wk → Context → Term → RedRel → Prop) : RedRel where
+  eqType B := RedSigmaEq eqrel Γ F G relF relG B
+  hasTerm t := RedSigmaTerm eqrel Γ F G relF relG t
+  eqTerm t u := RedSigmaTermEq eqrel Γ F G relF relG t u
+
 /-- One level of the logical relation (`LogRel` in `Definition/LogicalRelation.agda`),
 parameterized by the lower-level relation `rec`. -/
 inductive LogRel (eqrel : EqRelSet) (l : TypeLevel)
@@ -291,6 +401,31 @@ inductive LogRel (eqrel : EqRelSet) (l : TypeLevel)
         RelFEqTerm relF ρ Δ a b →
         RelGEqType relG ρ Δ a (subst0 (wk (.lift ρ) G) b)) :
       LogRel eqrel l rec Γ A (RedPiRel eqrel Γ F G relF relG)
+  | empty {Γ : Context} {A : Term} (D : RedEmpty Γ A) :
+      LogRel eqrel l rec Γ A (RedEmptyRel eqrel Γ)
+  | unit {Γ : Context} {A : Term} (D : RedUnit Γ A) :
+      LogRel eqrel l rec Γ A (RedUnitRel Γ)
+  | sigma {Γ : Context} {A F G : Term}
+      (D : TypeStarWf Γ A (.sigma F G))
+      (hF : TypeWf Γ F)
+      (hG : TypeWf (F :: Γ) G)
+      (AeqA : eqrel.TypeEqRel Γ (.sigma F G) (.sigma F G))
+      (relF : Wk → Context → RedRel → Prop)
+      (relG : Wk → Context → Term → RedRel → Prop)
+      (hF_ex : ∀ {ρ Δ}, WkCtx ρ Δ Γ → CtxWf Δ → ∃ rel, relF ρ Δ rel)
+      (derivF : ∀ {ρ Δ} (_hρ : WkCtx ρ Δ Γ) (_hΔ : CtxWf Δ) (rel : RedRel),
+        relF ρ Δ rel → LogRel eqrel l rec Δ (wk ρ F) rel)
+      (hG_ex : ∀ {ρ Δ a}, WkCtx ρ Δ Γ → CtxWf Δ →
+        RelFHasTerm relF ρ Δ a → ∃ rel, relG ρ Δ a rel)
+      (derivG : ∀ {ρ Δ a} (_hρ : WkCtx ρ Δ Γ) (_hΔ : CtxWf Δ)
+        (_ha : RelFHasTerm relF ρ Δ a) (rel : RedRel),
+        relG ρ Δ a rel → LogRel eqrel l rec Δ (subst0 (wk (.lift ρ) G) a) rel)
+      (Gext : ∀ {ρ Δ a b}, WkCtx ρ Δ Γ → CtxWf Δ →
+        RelFHasTerm relF ρ Δ a →
+        RelFHasTerm relF ρ Δ b →
+        RelFEqTerm relF ρ Δ a b →
+        RelGEqType relG ρ Δ a (subst0 (wk (.lift ρ) G) b)) :
+      LogRel eqrel l rec Γ A (RedSigmaRel eqrel Γ F G relF relG)
   | emb {Γ : Context} {A : Term} {l' : TypeLevel} {rel : RedRel}
       (hlt : TypeLevelLT l' l)
       (hA : rec l' hlt Γ A rel) :
@@ -362,6 +497,20 @@ inductive RedPi (eqrel : EqRelSet) (l : TypeLevel) (Γ : Context) (A : Term) : P
         RedTermEq (redF hρ hΔ) a b →
         RedEq (redG hρ hΔ ha) (subst0 (wk (.lift ρ) G) b))
 
+/-- Bundled `Σ`-reducibility data with explicit components (`Γ ⊩′⟨ l ⟩B⟨ BΣ ⟩ A`). -/
+structure RedSigmaAt (eqrel : EqRelSet) (l : TypeLevel) (Γ : Context) (A F G : Term) : Prop where
+  D : TypeStarWf Γ A (.sigma F G)
+  hF : TypeWf Γ F
+  hG : TypeWf (F :: Γ) G
+  AeqA : eqrel.TypeEqRel Γ (.sigma F G) (.sigma F G)
+  redF : ∀ {ρ Δ}, WkCtx ρ Δ Γ → CtxWf Δ → RedType eqrel l Δ (wk ρ F)
+  redG : ∀ {ρ Δ a} (hρ : WkCtx ρ Δ Γ) (hΔ : CtxWf Δ),
+    RedTerm (redF hρ hΔ) a → RedType eqrel l Δ (subst0 (wk (.lift ρ) G) a)
+  Gext : ∀ {ρ Δ a b} (hρ : WkCtx ρ Δ Γ) (hΔ : CtxWf Δ)
+    (ha : RedTerm (redF hρ hΔ) a) (_hb : RedTerm (redF hρ hΔ) b),
+    RedTermEq (redF hρ hΔ) a b →
+    RedEq (redG hρ hΔ ha) (subst0 (wk (.lift ρ) G) b)
+
 theorem RedType.U {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context}
     (hU : RedU l Γ) : RedType eqrel l Γ .univ := by
   rcases hU with ⟨l', lt, wf⟩
@@ -391,6 +540,25 @@ theorem RedType.pi {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A : Term}
     (piA : RedPi eqrel l Γ A) : RedType eqrel l Γ A := by
   rcases piA with ⟨F, G, D, hF, hG, AeqA, redF, redG, Gext⟩
   exact RedType.piAt ⟨D, hF, hG, AeqA, redF, redG, Gext⟩
+
+theorem RedType.sigmaAt {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A F G : Term}
+    (sigmaA : RedSigmaAt eqrel l Γ A F G) : RedType eqrel l Γ A :=
+  ⟨_, .sigma sigmaA.D sigmaA.hF sigmaA.hG sigmaA.AeqA
+    (fun ρ Δ rel ↦ LogRelAt eqrel l Δ (wk ρ F) rel)
+    (fun ρ Δ a rel ↦ LogRelAt eqrel l Δ (subst0 (wk (.lift ρ) G) a) rel)
+    sigmaA.redF
+    (fun _ _ _ h ↦ h)
+    sigmaA.redG
+    (fun _ _ _ _ h ↦ h)
+    sigmaA.Gext⟩
+
+theorem RedType.empty {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A : Term}
+    (D : RedEmpty Γ A) : RedType eqrel l Γ A :=
+  ⟨_, .empty D⟩
+
+theorem RedType.unit {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A : Term}
+    (D : RedUnit Γ A) : RedType eqrel l Γ A :=
+  ⟨_, .unit D⟩
 
 theorem RedType.emb {eqrel : EqRelSet} {l' l : TypeLevel} {Γ : Context} {A : Term}
     (hlt : TypeLevelLT l' l) (hA : RedType eqrel l' Γ A) : RedType eqrel l Γ A := by
@@ -446,6 +614,31 @@ inductive LogRelShape (eqrel : EqRelSet) : Context → Term → RedRel → Prop 
         RelFEqTerm relF ρ Δ a b →
         RelGEqType relG ρ Δ a (subst0 (wk (.lift ρ) G) b)) :
       LogRelShape eqrel Γ A (RedPiRel eqrel Γ F G relF relG)
+  | empty {Γ : Context} {A : Term} (D : RedEmpty Γ A) :
+      LogRelShape eqrel Γ A (RedEmptyRel eqrel Γ)
+  | unit {Γ : Context} {A : Term} (D : RedUnit Γ A) :
+      LogRelShape eqrel Γ A (RedUnitRel Γ)
+  | sigma {l : TypeLevel} {Γ : Context} {A F G : Term}
+      (D : TypeStarWf Γ A (.sigma F G))
+      (hF : TypeWf Γ F)
+      (hG : TypeWf (F :: Γ) G)
+      (AeqA : eqrel.TypeEqRel Γ (.sigma F G) (.sigma F G))
+      (relF : Wk → Context → RedRel → Prop)
+      (relG : Wk → Context → Term → RedRel → Prop)
+      (hF_ex : ∀ {ρ Δ}, WkCtx ρ Δ Γ → CtxWf Δ → ∃ rel, relF ρ Δ rel)
+      (derivF : ∀ {ρ Δ} (_hρ : WkCtx ρ Δ Γ) (_hΔ : CtxWf Δ) (rel : RedRel),
+        relF ρ Δ rel → LogRelAt eqrel l Δ (wk ρ F) rel)
+      (hG_ex : ∀ {ρ Δ a}, WkCtx ρ Δ Γ → CtxWf Δ →
+        RelFHasTerm relF ρ Δ a → ∃ rel, relG ρ Δ a rel)
+      (derivG : ∀ {ρ Δ a} (_hρ : WkCtx ρ Δ Γ) (_hΔ : CtxWf Δ)
+        (_ha : RelFHasTerm relF ρ Δ a) (rel : RedRel),
+        relG ρ Δ a rel → LogRelAt eqrel l Δ (subst0 (wk (.lift ρ) G) a) rel)
+      (Gext : ∀ {ρ Δ a b}, WkCtx ρ Δ Γ → CtxWf Δ →
+        RelFHasTerm relF ρ Δ a →
+        RelFHasTerm relF ρ Δ b →
+        RelFEqTerm relF ρ Δ a b →
+        RelGEqType relG ρ Δ a (subst0 (wk (.lift ρ) G) b)) :
+      LogRelShape eqrel Γ A (RedSigmaRel eqrel Γ F G relF relG)
 
 theorem logRelShape_of_LogRelAt {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A : Term}
     {rel : RedRel} (h : LogRelAt eqrel l Γ A rel) : LogRelShape eqrel Γ A rel := by
