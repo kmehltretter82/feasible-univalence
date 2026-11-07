@@ -1,2 +1,5 @@
 import LogrelMLTT.Syntax
 import LogrelMLTT.UntypedProperties
+import LogrelMLTT.Judgments
+import LogrelMLTT.Weakening
+import LogrelMLTT.TypedProperties

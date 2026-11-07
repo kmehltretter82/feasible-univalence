@@ -341,180 +341,229 @@ private theorem wk_natrecSucc_term_eq_case {Γ : Context} {n z s F : Term}
   rw [wk, wk_beta (ρ := ρ) (a := .succ n) F]
   exact TermEq.natrecSucc hρn hρF hρz hρs
 
+private theorem wk_sigma_type_case {Γ : Context} {F G : Term}
+    (ihF : WkTypeWfMotive Γ F) (ihG : WkTypeWfMotive (F :: Γ) G) :
+    WkTypeWfMotive Γ (.sigma F G) :=
+  fun hρ hΔ ↦
+    let hρF := ihF hρ hΔ
+    .sigma hρF (ihG (.lift hρ) (.cons hΔ hρF))
+
+private theorem wk_sigma_term_case {Γ : Context} {F G : Term}
+    (ihF : WkHasTypeMotive Γ F .univ) (ihG : WkHasTypeMotive (F :: Γ) G .univ) :
+    WkHasTypeMotive Γ (.sigma F G) .univ :=
+  fun hρ hΔ ↦
+    let hρF := ihF hρ hΔ
+    .sigma hρF (ihG (.lift hρ) (.cons hΔ (.fromUniv hρF)))
+
+private theorem wk_prod_case {Γ : Context} {F G t u : Term}
+    (ihF : WkTypeWfMotive Γ F) (ihG : WkTypeWfMotive (F :: Γ) G)
+    (iht : WkHasTypeMotive Γ t F) (ihu : WkHasTypeMotive Γ u (subst0 G t)) :
+    WkHasTypeMotive Γ (.prod t u) (.sigma F G) := by
+  intro Δ ρ hρ hΔ
+  have hρF := ihF hρ hΔ
+  have hu := ihu hρ hΔ
+  rw [wk_beta (ρ := ρ) (a := t) G] at hu
+  exact HasType.prod hρF (ihG (.lift hρ) (.cons hΔ hρF)) (iht hρ hΔ) hu
+
+private theorem wk_fst_case {Γ : Context} {F G t : Term}
+    (ihF : WkTypeWfMotive Γ F) (ihG : WkTypeWfMotive (F :: Γ) G)
+    (iht : WkHasTypeMotive Γ t (.sigma F G)) :
+    WkHasTypeMotive Γ (.fst t) F := by
+  intro Δ ρ hρ hΔ
+  have hρF := ihF hρ hΔ
+  exact HasType.fst hρF (ihG (.lift hρ) (.cons hΔ hρF)) (iht hρ hΔ)
+
+private theorem wk_snd_case {Γ : Context} {F G t : Term}
+    (ihF : WkTypeWfMotive Γ F) (ihG : WkTypeWfMotive (F :: Γ) G)
+    (iht : WkHasTypeMotive Γ t (.sigma F G)) :
+    WkHasTypeMotive Γ (.snd t) (subst0 G (.fst t)) := by
+  intro Δ ρ hρ hΔ
+  have hρF := ihF hρ hΔ
+  have h := HasType.snd hρF (ihG (.lift hρ) (.cons hΔ hρF)) (iht hρ hΔ)
+  rw [wk_beta (ρ := ρ) (a := .fst t) G]
+  exact h
+
+private theorem wk_sigma_type_eq_case {Γ : Context} {F H G E : Term}
+    (ihF : WkTypeWfMotive Γ F)
+    (ihFH : WkTypeEqMotive Γ F H)
+    (ihGE : WkTypeEqMotive (F :: Γ) G E) :
+    WkTypeEqMotive Γ (.sigma F G) (.sigma H E) :=
+  fun hρ hΔ ↦
+    let hρF := ihF hρ hΔ
+    .sigma hρF (ihFH hρ hΔ) (ihGE (.lift hρ) (.cons hΔ hρF))
+
+private theorem wk_sigma_term_eq_case {Γ : Context} {E F G H : Term}
+    (ihF : WkTypeWfMotive Γ F)
+    (ihFH : WkTermEqMotive Γ F H .univ)
+    (ihGE : WkTermEqMotive (F :: Γ) G E .univ) :
+    WkTermEqMotive Γ (.sigma F G) (.sigma H E) .univ :=
+  fun hρ hΔ ↦
+    let hρF := ihF hρ hΔ
+    .sigma hρF (ihFH hρ hΔ) (ihGE (.lift hρ) (.cons hΔ hρF))
+
+private theorem wk_fst_term_eq_case {Γ : Context} {t t' F G : Term}
+    (ihF : WkTypeWfMotive Γ F) (ihG : WkTypeWfMotive (F :: Γ) G)
+    (iht : WkTermEqMotive Γ t t' (.sigma F G)) :
+    WkTermEqMotive Γ (.fst t) (.fst t') F := by
+  intro Δ ρ hρ hΔ
+  have hρF := ihF hρ hΔ
+  exact TermEq.fst hρF (ihG (.lift hρ) (.cons hΔ hρF)) (iht hρ hΔ)
+
+private theorem wk_snd_term_eq_case {Γ : Context} {t t' F G : Term}
+    (ihF : WkTypeWfMotive Γ F) (ihG : WkTypeWfMotive (F :: Γ) G)
+    (iht : WkTermEqMotive Γ t t' (.sigma F G)) :
+    WkTermEqMotive Γ (.snd t) (.snd t') (subst0 G (.fst t)) := by
+  intro Δ ρ hρ hΔ
+  have hρF := ihF hρ hΔ
+  have h := TermEq.snd hρF (ihG (.lift hρ) (.cons hΔ hρF)) (iht hρ hΔ)
+  rw [wk_beta (ρ := ρ) (a := .fst t) G]
+  exact h
+
+private theorem wk_sigmaBeta1_case {Γ : Context} {F G t u : Term}
+    (ihF : WkTypeWfMotive Γ F) (ihG : WkTypeWfMotive (F :: Γ) G)
+    (iht : WkHasTypeMotive Γ t F) (ihu : WkHasTypeMotive Γ u (subst0 G t)) :
+    WkTermEqMotive Γ (.fst (.prod t u)) t F := by
+  intro Δ ρ hρ hΔ
+  have hρF := ihF hρ hΔ
+  have hu := ihu hρ hΔ
+  rw [wk_beta (ρ := ρ) (a := t) G] at hu
+  exact TermEq.sigmaBeta1 hρF (ihG (.lift hρ) (.cons hΔ hρF)) (iht hρ hΔ) hu
+
+private theorem wk_sigmaBeta2_case {Γ : Context} {F G t u : Term}
+    (ihF : WkTypeWfMotive Γ F) (ihG : WkTypeWfMotive (F :: Γ) G)
+    (iht : WkHasTypeMotive Γ t F) (ihu : WkHasTypeMotive Γ u (subst0 G t)) :
+    WkTermEqMotive Γ (.snd (.prod t u)) u (subst0 G (.fst (.prod t u))) := by
+  intro Δ ρ hρ hΔ
+  have hρF := ihF hρ hΔ
+  have hu := ihu hρ hΔ
+  rw [wk_beta (ρ := ρ) (a := t) G] at hu
+  have h := TermEq.sigmaBeta2 hρF (ihG (.lift hρ) (.cons hΔ hρF)) (iht hρ hΔ) hu
+  rw [wk_beta (ρ := ρ) (a := .fst (.prod t u)) G]
+  exact h
+
+private theorem wk_sigmaEta_case {Γ : Context} {p r F G : Term}
+    (ihF : WkTypeWfMotive Γ F) (ihG : WkTypeWfMotive (F :: Γ) G)
+    (ihp : WkHasTypeMotive Γ p (.sigma F G)) (ihr : WkHasTypeMotive Γ r (.sigma F G))
+    (ihfst : WkTermEqMotive Γ (.fst p) (.fst r) F)
+    (ihsnd : WkTermEqMotive Γ (.snd p) (.snd r) (subst0 G (.fst p))) :
+    WkTermEqMotive Γ p r (.sigma F G) := by
+  intro Δ ρ hρ hΔ
+  have hρF := ihF hρ hΔ
+  have hsnd := ihsnd hρ hΔ
+  rw [wk_beta (ρ := ρ) (a := .fst p) G] at hsnd
+  exact TermEq.sigmaEta hρF (ihG (.lift hρ) (.cons hΔ hρF)) (ihp hρ hΔ) (ihr hρ hΔ)
+    (ihfst hρ hΔ) hsnd
+
+mutual
+/-- Weakening of well-formed types (`wk`, Lemma 2.7). -/
+theorem wkTypeWfAux : ∀ {Γ : Context} {A : Term}, TypeWf Γ A → WkTypeWfMotive Γ A
+  | _, _, .nat hΓ => wk_nat_case hΓ
+  | _, _, .univ hΓ => wk_univ_case hΓ
+  | _, _, .pi hF hG => wk_pi_type_case hF hG (wkTypeWfAux hF) (wkTypeWfAux hG)
+  | _, _, .fromUniv hA => wk_fromUniv_type_case hA (wkHasTypeAux hA)
+  | _, _, .empty _ => fun _ hΔ ↦ .empty hΔ
+  | _, _, .unit _ => fun _ hΔ ↦ .unit hΔ
+  | _, _, .sigma hF hG => wk_sigma_type_case (wkTypeWfAux hF) (wkTypeWfAux hG)
+
+/-- Weakening of well-typed terms (`wkTerm`, Lemma 2.7). -/
+theorem wkHasTypeAux : ∀ {Γ : Context} {t A : Term}, HasType Γ t A → WkHasTypeMotive Γ t A
+  | _, _, _, .nat hΓ => wk_nat_term_case hΓ
+  | _, _, _, .pi hF hG => wk_pi_term_case hF hG (wkHasTypeAux hF) (wkHasTypeAux hG)
+  | _, _, _, .var hΓ hm => wk_var_case hΓ hm
+  | _, _, _, .lam hF ht => wk_lam_case hF ht (wkTypeWfAux hF) (wkHasTypeAux ht)
+  | _, _, _, .app hg ha => wk_app_case hg ha (wkHasTypeAux hg) (wkHasTypeAux ha)
+  | _, _, _, .zero hΓ => wk_zero_case hΓ
+  | _, _, _, .succ hn => wk_succ_case hn (wkHasTypeAux hn)
+  | _, _, _, .natrec hG hz hs hn =>
+      wk_natrec_case hG hz hs hn (wkTypeWfAux hG) (wkHasTypeAux hz) (wkHasTypeAux hs)
+        (wkHasTypeAux hn)
+  | _, _, _, .conv ht hEq => wk_conv_case ht hEq (wkHasTypeAux ht) (wkTypeEqAux hEq)
+  | _, _, _, .sigma hF hG => wk_sigma_term_case (wkHasTypeAux hF) (wkHasTypeAux hG)
+  | _, _, _, .empty _ => fun _ hΔ ↦ .empty hΔ
+  | _, _, _, .unit _ => fun _ hΔ ↦ .unit hΔ
+  | _, _, _, .prod hF hG ht hu =>
+      wk_prod_case (wkTypeWfAux hF) (wkTypeWfAux hG) (wkHasTypeAux ht) (wkHasTypeAux hu)
+  | _, _, _, .fst hF hG ht => wk_fst_case (wkTypeWfAux hF) (wkTypeWfAux hG) (wkHasTypeAux ht)
+  | _, _, _, .snd hF hG ht => wk_snd_case (wkTypeWfAux hF) (wkTypeWfAux hG) (wkHasTypeAux ht)
+  | _, _, _, .emptyrec hA he =>
+      fun hρ hΔ ↦ .emptyrec (wkTypeWfAux hA hρ hΔ) (wkHasTypeAux he hρ hΔ)
+  | _, _, _, .star _ => fun _ hΔ ↦ .star hΔ
+
+/-- Weakening of type equality (`wkEq`, Lemma 2.7). -/
+theorem wkTypeEqAux : ∀ {Γ : Context} {A B : Term}, TypeEq Γ A B → WkTypeEqMotive Γ A B
+  | _, _, _, .fromUniv hEq => wk_fromUniv_eq_case hEq (wkTermEqAux hEq)
+  | _, _, _, .refl hA => wk_refl_type_case hA (wkTypeWfAux hA)
+  | _, _, _, .symm hEq => wk_symm_type_case hEq (wkTypeEqAux hEq)
+  | _, _, _, .trans h₁ h₂ => wk_trans_type_case h₁ h₂ (wkTypeEqAux h₁) (wkTypeEqAux h₂)
+  | _, _, _, .pi hF hFH hGE =>
+      wk_pi_type_eq_case hF hFH hGE (wkTypeWfAux hF) (wkTypeEqAux hFH) (wkTypeEqAux hGE)
+  | _, _, _, .sigma hF hFH hGE =>
+      wk_sigma_type_eq_case (wkTypeWfAux hF) (wkTypeEqAux hFH) (wkTypeEqAux hGE)
+
+/-- Weakening of term equality (`wkEqTerm`, Lemma 2.7). -/
+theorem wkTermEqAux : ∀ {Γ : Context} {t u A : Term}, TermEq Γ t u A → WkTermEqMotive Γ t u A
+  | _, _, _, _, .refl ht => wk_refl_term_case ht (wkHasTypeAux ht)
+  | _, _, _, _, .symm hEq => wk_symm_term_case hEq (wkTermEqAux hEq)
+  | _, _, _, _, .trans h₁ h₂ => wk_trans_term_case h₁ h₂ (wkTermEqAux h₁) (wkTermEqAux h₂)
+  | _, _, _, _, .conv hEq hAB => wk_conv_term_case hEq hAB (wkTermEqAux hEq) (wkTypeEqAux hAB)
+  | _, _, _, _, .pi hF hFH hGE =>
+      wk_pi_term_eq_case hF hFH hGE (wkTypeWfAux hF) (wkTermEqAux hFH) (wkTermEqAux hGE)
+  | _, _, _, _, .app hfg hab => wk_app_term_eq_case hfg hab (wkTermEqAux hfg) (wkTermEqAux hab)
+  | _, _, _, _, .beta hF ht ha =>
+      wk_beta_term_eq_case hF ht ha (wkTypeWfAux hF) (wkHasTypeAux ht) (wkHasTypeAux ha)
+  | _, _, _, _, .eta hF hf hg hfg =>
+      wk_eta_term_eq_case hF hf hg hfg (wkTypeWfAux hF) (wkHasTypeAux hf) (wkHasTypeAux hg)
+        (wkTermEqAux hfg)
+  | _, _, _, _, .succ hmn => wk_succ_term_eq_case hmn (wkTermEqAux hmn)
+  | _, _, _, _, .natrec hFF' hzz' hss' hnn' =>
+      wk_natrec_term_eq_case hFF' hzz' hss' hnn' (wkTypeEqAux hFF') (wkTermEqAux hzz')
+        (wkTermEqAux hss') (wkTermEqAux hnn')
+  | _, _, _, _, .natrecZero hF hz hs =>
+      wk_natrecZero_term_eq_case hF hz hs (wkTypeWfAux hF) (wkHasTypeAux hz) (wkHasTypeAux hs)
+  | _, _, _, _, .natrecSucc hn hF hz hs =>
+      wk_natrecSucc_term_eq_case hn hF hz hs (wkHasTypeAux hn) (wkTypeWfAux hF)
+        (wkHasTypeAux hz) (wkHasTypeAux hs)
+  | _, _, _, _, .sigma hF hFH hGE =>
+      wk_sigma_term_eq_case (wkTypeWfAux hF) (wkTermEqAux hFH) (wkTermEqAux hGE)
+  | _, _, _, _, .fst hF hG ht =>
+      wk_fst_term_eq_case (wkTypeWfAux hF) (wkTypeWfAux hG) (wkTermEqAux ht)
+  | _, _, _, _, .snd hF hG ht =>
+      wk_snd_term_eq_case (wkTypeWfAux hF) (wkTypeWfAux hG) (wkTermEqAux ht)
+  | _, _, _, _, .sigmaBeta1 hF hG ht hu =>
+      wk_sigmaBeta1_case (wkTypeWfAux hF) (wkTypeWfAux hG) (wkHasTypeAux ht) (wkHasTypeAux hu)
+  | _, _, _, _, .sigmaBeta2 hF hG ht hu =>
+      wk_sigmaBeta2_case (wkTypeWfAux hF) (wkTypeWfAux hG) (wkHasTypeAux ht) (wkHasTypeAux hu)
+  | _, _, _, _, .sigmaEta hF hG hp hr hfst hsnd =>
+      wk_sigmaEta_case (wkTypeWfAux hF) (wkTypeWfAux hG) (wkHasTypeAux hp) (wkHasTypeAux hr)
+        (wkTermEqAux hfst) (wkTermEqAux hsnd)
+  | _, _, _, _, .emptyrec hAA' hee' =>
+      fun hρ hΔ ↦ .emptyrec (wkTypeEqAux hAA' hρ hΔ) (wkTermEqAux hee' hρ hΔ)
+  | _, _, _, _, .etaUnit he he' =>
+      fun hρ hΔ ↦ .etaUnit (wkHasTypeAux he hρ hΔ) (wkHasTypeAux he' hρ hΔ)
+end
+
 /-- Weakening of well-formed types (`wk`, Lemma 2.7). -/
 theorem wkTypeWf {Γ Δ : Context} {A : Term} {ρ : Wk}
     (hρ : WkCtx ρ Δ Γ) (hΔ : CtxWf Δ) (d : TypeWf Γ A) : TypeWf Δ (wk ρ A) :=
-  (TypeWf.rec (motive_1 := fun _ _ ↦ True)
-    (motive_2 := fun Γ A _ ↦ WkTypeWfMotive Γ A)
-    (motive_3 := fun Γ t A _ ↦ WkHasTypeMotive Γ t A)
-    (motive_4 := fun Γ A B _ ↦ WkTypeEqMotive Γ A B)
-    (motive_5 := fun Γ t u A _ ↦ WkTermEqMotive Γ t u A)
-    trivial
-    (fun _ _ _ _ ↦ trivial)
-    (fun hΓ _ ↦ wk_nat_case hΓ)
-    (fun hΓ _ ↦ wk_univ_case hΓ)
-    (fun hF hG ihF ihG ↦ wk_pi_type_case hF hG ihF ihG)
-    (fun hA ihA ↦ wk_fromUniv_type_case hA ihA)
-    (fun hΓ _ ↦ wk_nat_term_case hΓ)
-    (fun hF hG ihF ihG ↦ wk_pi_term_case hF hG ihF ihG)
-    (fun hΓ hm _ ↦ wk_var_case hΓ hm)
-    (fun hF ht ihF iht ↦ wk_lam_case hF ht ihF iht)
-    (fun hg ha ihg iha ↦ wk_app_case hg ha ihg iha)
-    (fun hΓ _ ↦ wk_zero_case hΓ)
-    (fun hn ihn ↦ wk_succ_case hn ihn)
-    (fun hG hz hs hn ihG ihz ihs ihn ↦ wk_natrec_case hG hz hs hn ihG ihz ihs ihn)
-    (fun ht hEq iht ihEq ↦ wk_conv_case ht hEq iht ihEq)
-    (fun hEq ihEq ↦ wk_fromUniv_eq_case hEq ihEq)
-    (fun hA ihA ↦ wk_refl_type_case hA ihA)
-    (fun hEq ihEq ↦ wk_symm_type_case hEq ihEq)
-    (fun h₁ h₂ ih₁ ih₂ ↦ wk_trans_type_case h₁ h₂ ih₁ ih₂)
-    (fun hF hFH hGE ihF ihFH ihGE ↦ wk_pi_type_eq_case hF hFH hGE ihF ihFH ihGE)
-    (fun ht iht ↦ wk_refl_term_case ht iht)
-    (fun hEq ihEq ↦ wk_symm_term_case hEq ihEq)
-    (fun h₁ h₂ ih₁ ih₂ ↦ wk_trans_term_case h₁ h₂ ih₁ ih₂)
-    (fun hEq hAB ihEq ihAB ↦ wk_conv_term_case hEq hAB ihEq ihAB)
-    (fun hF hFH hGE ihF ihFH ihGE ↦ wk_pi_term_eq_case hF hFH hGE ihF ihFH ihGE)
-    (fun hfg hab ihfg ihab ↦ wk_app_term_eq_case hfg hab ihfg ihab)
-    (fun hF ht ha ihF iht iha ↦ wk_beta_term_eq_case hF ht ha ihF iht iha)
-    (fun hF hf hg hfg ihF ihf ihg ihfg ↦ wk_eta_term_eq_case hF hf hg hfg ihF ihf ihg ihfg)
-    (fun hmn ihmn ↦ wk_succ_term_eq_case hmn ihmn)
-    (fun hFF' hzz' hss' hnn' ihFF' ihzz' ihss' ihnn' ↦
-      wk_natrec_term_eq_case hFF' hzz' hss' hnn' ihFF' ihzz' ihss' ihnn')
-    (fun hF hz hs ihF ihz ihs ↦ wk_natrecZero_term_eq_case hF hz hs ihF ihz ihs)
-    (fun hn hF hz hs ihn ihF ihz ihs ↦ wk_natrecSucc_term_eq_case hn hF hz hs ihn ihF ihz ihs)
-    d) hρ hΔ
+  wkTypeWfAux d hρ hΔ
 
 /-- Weakening of well-typed terms (`wkTerm`, Lemma 2.7). -/
 theorem wkHasType {Γ Δ : Context} {t A : Term} {ρ : Wk}
     (hρ : WkCtx ρ Δ Γ) (hΔ : CtxWf Δ) (d : HasType Γ t A) :
     HasType Δ (wk ρ t) (wk ρ A) :=
-  (HasType.rec (motive_1 := fun _ _ ↦ True)
-    (motive_2 := fun Γ A _ ↦ WkTypeWfMotive Γ A)
-    (motive_3 := fun Γ t A _ ↦ WkHasTypeMotive Γ t A)
-    (motive_4 := fun Γ A B _ ↦ WkTypeEqMotive Γ A B)
-    (motive_5 := fun Γ t u A _ ↦ WkTermEqMotive Γ t u A)
-    trivial
-    (fun _ _ _ _ ↦ trivial)
-    (fun hΓ _ ↦ wk_nat_case hΓ)
-    (fun hΓ _ ↦ wk_univ_case hΓ)
-    (fun hF hG ihF ihG ↦ wk_pi_type_case hF hG ihF ihG)
-    (fun hA ihA ↦ wk_fromUniv_type_case hA ihA)
-    (fun hΓ _ ↦ wk_nat_term_case hΓ)
-    (fun hF hG ihF ihG ↦ wk_pi_term_case hF hG ihF ihG)
-    (fun hΓ hm _ ↦ wk_var_case hΓ hm)
-    (fun hF ht ihF iht ↦ wk_lam_case hF ht ihF iht)
-    (fun hg ha ihg iha ↦ wk_app_case hg ha ihg iha)
-    (fun hΓ _ ↦ wk_zero_case hΓ)
-    (fun hn ihn ↦ wk_succ_case hn ihn)
-    (fun hG hz hs hn ihG ihz ihs ihn ↦ wk_natrec_case hG hz hs hn ihG ihz ihs ihn)
-    (fun ht hEq iht ihEq ↦ wk_conv_case ht hEq iht ihEq)
-    (fun hEq ihEq ↦ wk_fromUniv_eq_case hEq ihEq)
-    (fun hA ihA ↦ wk_refl_type_case hA ihA)
-    (fun hEq ihEq ↦ wk_symm_type_case hEq ihEq)
-    (fun h₁ h₂ ih₁ ih₂ ↦ wk_trans_type_case h₁ h₂ ih₁ ih₂)
-    (fun hF hFH hGE ihF ihFH ihGE ↦ wk_pi_type_eq_case hF hFH hGE ihF ihFH ihGE)
-    (fun ht iht ↦ wk_refl_term_case ht iht)
-    (fun hEq ihEq ↦ wk_symm_term_case hEq ihEq)
-    (fun h₁ h₂ ih₁ ih₂ ↦ wk_trans_term_case h₁ h₂ ih₁ ih₂)
-    (fun hEq hAB ihEq ihAB ↦ wk_conv_term_case hEq hAB ihEq ihAB)
-    (fun hF hFH hGE ihF ihFH ihGE ↦ wk_pi_term_eq_case hF hFH hGE ihF ihFH ihGE)
-    (fun hfg hab ihfg ihab ↦ wk_app_term_eq_case hfg hab ihfg ihab)
-    (fun hF ht ha ihF iht iha ↦ wk_beta_term_eq_case hF ht ha ihF iht iha)
-    (fun hF hf hg hfg ihF ihf ihg ihfg ↦ wk_eta_term_eq_case hF hf hg hfg ihF ihf ihg ihfg)
-    (fun hmn ihmn ↦ wk_succ_term_eq_case hmn ihmn)
-    (fun hFF' hzz' hss' hnn' ihFF' ihzz' ihss' ihnn' ↦
-      wk_natrec_term_eq_case hFF' hzz' hss' hnn' ihFF' ihzz' ihss' ihnn')
-    (fun hF hz hs ihF ihz ihs ↦ wk_natrecZero_term_eq_case hF hz hs ihF ihz ihs)
-    (fun hn hF hz hs ihn ihF ihz ihs ↦ wk_natrecSucc_term_eq_case hn hF hz hs ihn ihF ihz ihs)
-    d) hρ hΔ
+  wkHasTypeAux d hρ hΔ
 
 /-- Weakening of type equality (`wkEq`, Lemma 2.7). -/
 theorem wkTypeEq {Γ Δ : Context} {A B : Term} {ρ : Wk}
     (hρ : WkCtx ρ Δ Γ) (hΔ : CtxWf Δ) (d : TypeEq Γ A B) :
     TypeEq Δ (wk ρ A) (wk ρ B) :=
-  (TypeEq.rec (motive_1 := fun _ _ ↦ True)
-    (motive_2 := fun Γ A _ ↦ WkTypeWfMotive Γ A)
-    (motive_3 := fun Γ t A _ ↦ WkHasTypeMotive Γ t A)
-    (motive_4 := fun Γ A B _ ↦ WkTypeEqMotive Γ A B)
-    (motive_5 := fun Γ t u A _ ↦ WkTermEqMotive Γ t u A)
-    trivial
-    (fun _ _ _ _ ↦ trivial)
-    (fun hΓ _ ↦ wk_nat_case hΓ)
-    (fun hΓ _ ↦ wk_univ_case hΓ)
-    (fun hF hG ihF ihG ↦ wk_pi_type_case hF hG ihF ihG)
-    (fun hA ihA ↦ wk_fromUniv_type_case hA ihA)
-    (fun hΓ _ ↦ wk_nat_term_case hΓ)
-    (fun hF hG ihF ihG ↦ wk_pi_term_case hF hG ihF ihG)
-    (fun hΓ hm _ ↦ wk_var_case hΓ hm)
-    (fun hF ht ihF iht ↦ wk_lam_case hF ht ihF iht)
-    (fun hg ha ihg iha ↦ wk_app_case hg ha ihg iha)
-    (fun hΓ _ ↦ wk_zero_case hΓ)
-    (fun hn ihn ↦ wk_succ_case hn ihn)
-    (fun hG hz hs hn ihG ihz ihs ihn ↦ wk_natrec_case hG hz hs hn ihG ihz ihs ihn)
-    (fun ht hEq iht ihEq ↦ wk_conv_case ht hEq iht ihEq)
-    (fun hEq ihEq ↦ wk_fromUniv_eq_case hEq ihEq)
-    (fun hA ihA ↦ wk_refl_type_case hA ihA)
-    (fun hEq ihEq ↦ wk_symm_type_case hEq ihEq)
-    (fun h₁ h₂ ih₁ ih₂ ↦ wk_trans_type_case h₁ h₂ ih₁ ih₂)
-    (fun hF hFH hGE ihF ihFH ihGE ↦ wk_pi_type_eq_case hF hFH hGE ihF ihFH ihGE)
-    (fun ht iht ↦ wk_refl_term_case ht iht)
-    (fun hEq ihEq ↦ wk_symm_term_case hEq ihEq)
-    (fun h₁ h₂ ih₁ ih₂ ↦ wk_trans_term_case h₁ h₂ ih₁ ih₂)
-    (fun hEq hAB ihEq ihAB ↦ wk_conv_term_case hEq hAB ihEq ihAB)
-    (fun hF hFH hGE ihF ihFH ihGE ↦ wk_pi_term_eq_case hF hFH hGE ihF ihFH ihGE)
-    (fun hfg hab ihfg ihab ↦ wk_app_term_eq_case hfg hab ihfg ihab)
-    (fun hF ht ha ihF iht iha ↦ wk_beta_term_eq_case hF ht ha ihF iht iha)
-    (fun hF hf hg hfg ihF ihf ihg ihfg ↦ wk_eta_term_eq_case hF hf hg hfg ihF ihf ihg ihfg)
-    (fun hmn ihmn ↦ wk_succ_term_eq_case hmn ihmn)
-    (fun hFF' hzz' hss' hnn' ihFF' ihzz' ihss' ihnn' ↦
-      wk_natrec_term_eq_case hFF' hzz' hss' hnn' ihFF' ihzz' ihss' ihnn')
-    (fun hF hz hs ihF ihz ihs ↦ wk_natrecZero_term_eq_case hF hz hs ihF ihz ihs)
-    (fun hn hF hz hs ihn ihF ihz ihs ↦ wk_natrecSucc_term_eq_case hn hF hz hs ihn ihF ihz ihs)
-    d) hρ hΔ
+  wkTypeEqAux d hρ hΔ
 
 /-- Weakening of term equality (`wkEqTerm`, Lemma 2.7). -/
 theorem wkTermEq {Γ Δ : Context} {t u A : Term} {ρ : Wk}
     (hρ : WkCtx ρ Δ Γ) (hΔ : CtxWf Δ) (d : TermEq Γ t u A) :
     TermEq Δ (wk ρ t) (wk ρ u) (wk ρ A) :=
-  (TermEq.rec (motive_1 := fun _ _ ↦ True)
-    (motive_2 := fun Γ A _ ↦ WkTypeWfMotive Γ A)
-    (motive_3 := fun Γ t A _ ↦ WkHasTypeMotive Γ t A)
-    (motive_4 := fun Γ A B _ ↦ WkTypeEqMotive Γ A B)
-    (motive_5 := fun Γ t u A _ ↦ WkTermEqMotive Γ t u A)
-    trivial
-    (fun _ _ _ _ ↦ trivial)
-    (fun hΓ _ ↦ wk_nat_case hΓ)
-    (fun hΓ _ ↦ wk_univ_case hΓ)
-    (fun hF hG ihF ihG ↦ wk_pi_type_case hF hG ihF ihG)
-    (fun hA ihA ↦ wk_fromUniv_type_case hA ihA)
-    (fun hΓ _ ↦ wk_nat_term_case hΓ)
-    (fun hF hG ihF ihG ↦ wk_pi_term_case hF hG ihF ihG)
-    (fun hΓ hm _ ↦ wk_var_case hΓ hm)
-    (fun hF ht ihF iht ↦ wk_lam_case hF ht ihF iht)
-    (fun hg ha ihg iha ↦ wk_app_case hg ha ihg iha)
-    (fun hΓ _ ↦ wk_zero_case hΓ)
-    (fun hn ihn ↦ wk_succ_case hn ihn)
-    (fun hG hz hs hn ihG ihz ihs ihn ↦ wk_natrec_case hG hz hs hn ihG ihz ihs ihn)
-    (fun ht hEq iht ihEq ↦ wk_conv_case ht hEq iht ihEq)
-    (fun hEq ihEq ↦ wk_fromUniv_eq_case hEq ihEq)
-    (fun hA ihA ↦ wk_refl_type_case hA ihA)
-    (fun hEq ihEq ↦ wk_symm_type_case hEq ihEq)
-    (fun h₁ h₂ ih₁ ih₂ ↦ wk_trans_type_case h₁ h₂ ih₁ ih₂)
-    (fun hF hFH hGE ihF ihFH ihGE ↦ wk_pi_type_eq_case hF hFH hGE ihF ihFH ihGE)
-    (fun ht iht ↦ wk_refl_term_case ht iht)
-    (fun hEq ihEq ↦ wk_symm_term_case hEq ihEq)
-    (fun h₁ h₂ ih₁ ih₂ ↦ wk_trans_term_case h₁ h₂ ih₁ ih₂)
-    (fun hEq hAB ihEq ihAB ↦ wk_conv_term_case hEq hAB ihEq ihAB)
-    (fun hF hFH hGE ihF ihFH ihGE ↦ wk_pi_term_eq_case hF hFH hGE ihF ihFH ihGE)
-    (fun hfg hab ihfg ihab ↦ wk_app_term_eq_case hfg hab ihfg ihab)
-    (fun hF ht ha ihF iht iha ↦ wk_beta_term_eq_case hF ht ha ihF iht iha)
-    (fun hF hf hg hfg ihF ihf ihg ihfg ↦ wk_eta_term_eq_case hF hf hg hfg ihF ihf ihg ihfg)
-    (fun hmn ihmn ↦ wk_succ_term_eq_case hmn ihmn)
-    (fun hFF' hzz' hss' hnn' ihFF' ihzz' ihss' ihnn' ↦
-      wk_natrec_term_eq_case hFF' hzz' hss' hnn' ihFF' ihzz' ihss' ihnn')
-    (fun hF hz hs ihF ihz ihs ↦ wk_natrecZero_term_eq_case hF hz hs ihF ihz ihs)
-    (fun hn hF hz hs ihn ihF ihz ihs ↦ wk_natrecSucc_term_eq_case hn hF hz hs ihn ihF ihz ihs)
-    d) hρ hΔ
+  wkTermEqAux d hρ hΔ
 
 /-- Weakening of single-step term reduction (`wkRedTerm`). -/
 theorem wkStep {Γ Δ : Context} {t u A : Term} {ρ : Wk}
@@ -569,6 +618,29 @@ theorem wkStep {Γ Δ : Context} {t u A : Term} {ρ : Wk}
         exact h
       rw [wk, wk_beta (ρ := ρ) (a := .succ n) F]
       exact Step.natrecSucc hρn hρF hρz hρs
+  | @fst t t' F G hF hG _ ih =>
+      have hρF := wkTypeWf hρ hΔ hF
+      exact Step.fst hρF (wkTypeWf (.lift hρ) (.cons hΔ hρF) hG) ih
+  | @snd t t' F G hF hG _ ih =>
+      have hρF := wkTypeWf hρ hΔ hF
+      have h := Step.snd hρF (wkTypeWf (.lift hρ) (.cons hΔ hρF) hG) ih
+      rw [wk_beta (ρ := ρ) (a := .fst t) G]
+      exact h
+  | @sigmaBeta1 F G t u hF hG ht hu =>
+      have hρF := wkTypeWf hρ hΔ hF
+      have hu' := wkHasType hρ hΔ hu
+      rw [wk_beta (ρ := ρ) (a := t) G] at hu'
+      exact Step.sigmaBeta1 hρF (wkTypeWf (.lift hρ) (.cons hΔ hρF) hG) (wkHasType hρ hΔ ht) hu'
+  | @sigmaBeta2 F G t u hF hG ht hu =>
+      have hρF := wkTypeWf hρ hΔ hF
+      have hu' := wkHasType hρ hΔ hu
+      rw [wk_beta (ρ := ρ) (a := t) G] at hu'
+      have h := Step.sigmaBeta2 hρF (wkTypeWf (.lift hρ) (.cons hΔ hρF) hG)
+        (wkHasType hρ hΔ ht) hu'
+      rw [wk_beta (ρ := ρ) (a := .fst (.prod t u)) G]
+      exact h
+  | emptyrec hA _ ih =>
+      exact Step.emptyrec (wkTypeWf hρ hΔ hA) ih
 
 /-- Weakening of single-step type reduction (`wkRed`). -/
 theorem wkTypeStep {Γ Δ : Context} {A B : Term} {ρ : Wk}

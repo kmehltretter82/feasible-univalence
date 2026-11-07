@@ -4,7 +4,8 @@ Lean translation prepared for the Feasible Univalence project, 2026.
 Released under the MIT license; see the source artifact LICENSE.
 
 Source: mr-ohman/logrel-mltt, commit eb2b15ab1c4b45923025834d3bb798943cb44b8e,
-Definition/Typed.agda. Judgments express inhabitation of the source derivation types.
+Definition/Typed.agda, extended with the Σ, Unit and Empty rules of mr-ohman/logrel-mltt
+master, commit 9d6e290064962a1987c9e1a131c2fb967d6ef928 (same file). Judgments express inhabitation of the source derivation types.
 Contexts are newest-first lists rather than snoc lists. This definition layer makes no
 claim to reproduce the source's metatheoretic absence of K in Lean's own metatheory.
 -/
@@ -27,6 +28,9 @@ mutual
     | univ {Γ} : CtxWf Γ → TypeWf Γ .univ
     | pi {Γ F G} : TypeWf Γ F → TypeWf (F :: Γ) G → TypeWf Γ (.pi F G)
     | fromUniv {Γ A} : HasType Γ A .univ → TypeWf Γ A
+    | empty {Γ} : CtxWf Γ → TypeWf Γ .empty
+    | unit {Γ} : CtxWf Γ → TypeWf Γ .unit
+    | sigma {Γ F G} : TypeWf Γ F → TypeWf (F :: Γ) G → TypeWf Γ (.sigma F G)
 
   inductive HasType : Context → Term → Term → Prop where
     | nat {Γ} : CtxWf Γ → HasType Γ .nat .univ
@@ -43,6 +47,18 @@ mutual
         HasType Γ s (recStepType G) → HasType Γ n .nat →
         HasType Γ (.natrec G z s n) (subst0 G n)
     | conv {Γ t A B} : HasType Γ t A → TypeEq Γ A B → HasType Γ t B
+    | sigma {Γ F G} : HasType Γ F .univ → HasType (F :: Γ) G .univ →
+        HasType Γ (.sigma F G) .univ
+    | empty {Γ} : CtxWf Γ → HasType Γ .empty .univ
+    | unit {Γ} : CtxWf Γ → HasType Γ .unit .univ
+    | prod {Γ F G t u} : TypeWf Γ F → TypeWf (F :: Γ) G → HasType Γ t F →
+        HasType Γ u (subst0 G t) → HasType Γ (.prod t u) (.sigma F G)
+    | fst {Γ F G t} : TypeWf Γ F → TypeWf (F :: Γ) G → HasType Γ t (.sigma F G) →
+        HasType Γ (.fst t) F
+    | snd {Γ F G t} : TypeWf Γ F → TypeWf (F :: Γ) G → HasType Γ t (.sigma F G) →
+        HasType Γ (.snd t) (subst0 G (.fst t))
+    | emptyrec {Γ A e} : TypeWf Γ A → HasType Γ e .empty → HasType Γ (.emptyrec A e) A
+    | star {Γ} : CtxWf Γ → HasType Γ .star .unit
 
   inductive TypeEq : Context → Term → Term → Prop where
     | fromUniv {Γ A B} : TermEq Γ A B .univ → TypeEq Γ A B
@@ -51,6 +67,8 @@ mutual
     | trans {Γ A B C} : TypeEq Γ A B → TypeEq Γ B C → TypeEq Γ A C
     | pi {Γ F H G E} : TypeWf Γ F → TypeEq Γ F H → TypeEq (F :: Γ) G E →
         TypeEq Γ (.pi F G) (.pi H E)
+    | sigma {Γ F H G E} : TypeWf Γ F → TypeEq Γ F H → TypeEq (F :: Γ) G E →
+        TypeEq Γ (.sigma F G) (.sigma H E)
 
   inductive TermEq : Context → Term → Term → Term → Prop where
     | refl {Γ t A} : HasType Γ t A → TermEq Γ t t A
@@ -79,6 +97,24 @@ mutual
         HasType Γ z (subst0 F .zero) → HasType Γ s (recStepType F) →
         TermEq Γ (.natrec F z s (.succ n)) (.app (.app s n) (.natrec F z s n))
           (subst0 F (.succ n))
+    | sigma {Γ E F G H} : TypeWf Γ F → TermEq Γ F H .univ →
+        TermEq (F :: Γ) G E .univ → TermEq Γ (.sigma F G) (.sigma H E) .univ
+    | fst {Γ t t' F G} : TypeWf Γ F → TypeWf (F :: Γ) G → TermEq Γ t t' (.sigma F G) →
+        TermEq Γ (.fst t) (.fst t') F
+    | snd {Γ t t' F G} : TypeWf Γ F → TypeWf (F :: Γ) G → TermEq Γ t t' (.sigma F G) →
+        TermEq Γ (.snd t) (.snd t') (subst0 G (.fst t))
+    | sigmaBeta1 {Γ F G t u} : TypeWf Γ F → TypeWf (F :: Γ) G → HasType Γ t F →
+        HasType Γ u (subst0 G t) → TermEq Γ (.fst (.prod t u)) t F
+    | sigmaBeta2 {Γ F G t u} : TypeWf Γ F → TypeWf (F :: Γ) G → HasType Γ t F →
+        HasType Γ u (subst0 G t) →
+        TermEq Γ (.snd (.prod t u)) u (subst0 G (.fst (.prod t u)))
+    | sigmaEta {Γ p r F G} : TypeWf Γ F → TypeWf (F :: Γ) G →
+        HasType Γ p (.sigma F G) → HasType Γ r (.sigma F G) →
+        TermEq Γ (.fst p) (.fst r) F → TermEq Γ (.snd p) (.snd r) (subst0 G (.fst p)) →
+        TermEq Γ p r (.sigma F G)
+    | emptyrec {Γ A A' e e'} : TypeEq Γ A A' → TermEq Γ e e' .empty →
+        TermEq Γ (.emptyrec A e) (.emptyrec A' e') A
+    | etaUnit {Γ e e'} : HasType Γ e .unit → HasType Γ e' .unit → TermEq Γ e e' .unit
 end
 
 /-- Typed weak-head reduction; in particular there is no reduction under a lambda or successor. -/
@@ -97,6 +133,16 @@ inductive Step (Γ : Context) : Term → Term → Term → Prop where
       HasType Γ z (subst0 F .zero) → HasType Γ s (recStepType F) →
       Step Γ (.natrec F z s (.succ n)) (.app (.app s n) (.natrec F z s n))
         (subst0 F (.succ n))
+  | fst {t t' F G} : TypeWf Γ F → TypeWf (F :: Γ) G → Step Γ t t' (.sigma F G) →
+      Step Γ (.fst t) (.fst t') F
+  | snd {t t' F G} : TypeWf Γ F → TypeWf (F :: Γ) G → Step Γ t t' (.sigma F G) →
+      Step Γ (.snd t) (.snd t') (subst0 G (.fst t))
+  | sigmaBeta1 {F G t u} : TypeWf Γ F → TypeWf (F :: Γ) G → HasType Γ t F →
+      HasType Γ u (subst0 G t) → Step Γ (.fst (.prod t u)) t F
+  | sigmaBeta2 {F G t u} : TypeWf Γ F → TypeWf (F :: Γ) G → HasType Γ t F →
+      HasType Γ u (subst0 G t) → Step Γ (.snd (.prod t u)) u (subst0 G (.fst (.prod t u)))
+  | emptyrec {n n' A} : TypeWf Γ A → Step Γ n n' .empty →
+      Step Γ (.emptyrec A n) (.emptyrec A n') A
 
 inductive TypeStep (Γ : Context) : Term → Term → Prop where
   | fromUniv {A B} : Step Γ A B .univ → TypeStep Γ A B
