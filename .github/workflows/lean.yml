@@ -20,6 +20,9 @@ jobs:
           - dir: formalization/atkey2024
             roots: Atkey2024
             checks: MachineChecks.lean
+          - dir: formalization/logrelmltt
+            roots: LogrelMLTT
+            checks: AlgorithmChecks.lean
     defaults:
       run:
         shell: bash
