@@ -1,3 +1,10 @@
+import FeasibleUnivalence.BC.Poly
+import FeasibleUnivalence.BC.Syntax
+import FeasibleUnivalence.BC.StackProg
+import FeasibleUnivalence.BC.TM
+import FeasibleUnivalence.BC.CompileStmt
+import FeasibleUnivalence.BC.Soundness
+import FeasibleUnivalence.BC.Completeness
 import FeasibleUnivalence.Modality
 import FeasibleUnivalence.Usage
 import FeasibleUnivalence.Erasure
