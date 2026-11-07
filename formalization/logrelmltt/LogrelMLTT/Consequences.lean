@@ -44,19 +44,23 @@ theorem TypeWf.indOnly
     (empty : ∀ {Γ} (hΓ : CtxWf Γ), motive Γ .empty (.empty hΓ))
     (unit : ∀ {Γ} (hΓ : CtxWf Γ), motive Γ .unit (.unit hΓ))
     (sigma : ∀ {Γ F G} (hF : TypeWf Γ F) (hG : TypeWf (F :: Γ) G),
-      motive Γ F hF → motive (F :: Γ) G hG → motive Γ (.sigma F G) (.sigma hF hG)) :
+      motive Γ F hF → motive (F :: Γ) G hG → motive Γ (.sigma F G) (.sigma hF hG))
+    (id : ∀ {Γ A t u} (hA : TypeWf Γ A) (ht : HasType Γ t A) (hu : HasType Γ u A),
+      motive Γ A hA → motive Γ (.id A t u) (.id hA ht hu)) :
     ∀ {Γ : Context} {A : Term} (d : TypeWf Γ A), motive Γ A d
   | _, _, .nat hΓ => nat hΓ
   | _, _, .univ hΓ => univ hΓ
   | _, _, .pi hF hG => pi hF hG
-      (TypeWf.indOnly nat univ pi fromUniv empty unit sigma hF)
-      (TypeWf.indOnly nat univ pi fromUniv empty unit sigma hG)
+      (TypeWf.indOnly nat univ pi fromUniv empty unit sigma id hF)
+      (TypeWf.indOnly nat univ pi fromUniv empty unit sigma id hG)
   | _, _, .fromUniv hA => fromUniv hA
   | _, _, .empty hΓ => empty hΓ
   | _, _, .unit hΓ => unit hΓ
   | _, _, .sigma hF hG => sigma hF hG
-      (TypeWf.indOnly nat univ pi fromUniv empty unit sigma hF)
-      (TypeWf.indOnly nat univ pi fromUniv empty unit sigma hG)
+      (TypeWf.indOnly nat univ pi fromUniv empty unit sigma id hF)
+      (TypeWf.indOnly nat univ pi fromUniv empty unit sigma id hG)
+  | _, _, .id hA ht hu => id hA ht hu
+      (TypeWf.indOnly nat univ pi fromUniv empty unit sigma id hA)
 
 theorem TypeEq.indOnly
     {motive : ∀ (Γ : Context) (A B : Term), TypeEq Γ A B → Prop}
@@ -70,20 +74,25 @@ theorem TypeEq.indOnly
       motive Γ (.pi F G) (.pi H E) (.pi hF hFH hGE))
     (sigma : ∀ {Γ F H G E} (hF : TypeWf Γ F) (hFH : TypeEq Γ F H) (hGE : TypeEq (F :: Γ) G E),
       motive Γ F H hFH → motive (F :: Γ) G E hGE →
-      motive Γ (.sigma F G) (.sigma H E) (.sigma hF hFH hGE)) :
+      motive Γ (.sigma F G) (.sigma H E) (.sigma hF hFH hGE))
+    (id : ∀ {Γ A A' t t' u u'} (hAA' : TypeEq Γ A A') (htt' : TermEq Γ t t' A)
+      (huu' : TermEq Γ u u' A),
+      motive Γ A A' hAA' → motive Γ (.id A t u) (.id A' t' u') (.id hAA' htt' huu')) :
     ∀ {Γ : Context} {A B : Term} (d : TypeEq Γ A B), motive Γ A B d
   | _, _, _, .fromUniv h => fromUniv h
   | _, _, _, .refl hA => refl hA
-  | _, _, _, .symm h => symm h (TypeEq.indOnly fromUniv refl symm trans pi sigma h)
+  | _, _, _, .symm h => symm h (TypeEq.indOnly fromUniv refl symm trans pi sigma id h)
   | _, _, _, .trans h₁ h₂ => trans h₁ h₂
-      (TypeEq.indOnly fromUniv refl symm trans pi sigma h₁)
-      (TypeEq.indOnly fromUniv refl symm trans pi sigma h₂)
+      (TypeEq.indOnly fromUniv refl symm trans pi sigma id h₁)
+      (TypeEq.indOnly fromUniv refl symm trans pi sigma id h₂)
   | _, _, _, .pi hF hFH hGE => pi hF hFH hGE
-      (TypeEq.indOnly fromUniv refl symm trans pi sigma hFH)
-      (TypeEq.indOnly fromUniv refl symm trans pi sigma hGE)
+      (TypeEq.indOnly fromUniv refl symm trans pi sigma id hFH)
+      (TypeEq.indOnly fromUniv refl symm trans pi sigma id hGE)
   | _, _, _, .sigma hF hFH hGE => sigma hF hFH hGE
-      (TypeEq.indOnly fromUniv refl symm trans pi sigma hFH)
-      (TypeEq.indOnly fromUniv refl symm trans pi sigma hGE)
+      (TypeEq.indOnly fromUniv refl symm trans pi sigma id hFH)
+      (TypeEq.indOnly fromUniv refl symm trans pi sigma id hGE)
+  | _, _, _, .id hAA' htt' huu' => id hAA' htt' huu'
+      (TypeEq.indOnly fromUniv refl symm trans pi sigma id hAA')
 
 /-!
 ## Syntactic Validity (`Definition/Typed/Consequences/Syntactic.agda`, Theorem 3.24)
@@ -133,8 +142,40 @@ theorem syntacticSigma {Γ : Context} {F G : Term} (hSigma : TypeWf Γ (.sigma F
   rcases elimSigmaAt' (.refl hSigma) pSigma with ⟨_, sigmaA⟩
   exact ⟨sigmaA.hF, sigmaA.hG⟩
 
+/-- Elimination of a reducible `Id`-type (`elimIdExact`). -/
+theorem elimIdExact {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A t u : Term}
+    (pId : RedType eqrel l Γ (.id A t u)) :
+    ∃ (l₀ : TypeLevel) (relA : RedRel) (hA : LogRelAt eqrel l₀ Γ A relA),
+      LogRelAt eqrel l₀ Γ (.id A t u) (RedIdRel eqrel Γ A t u relA) ∧
+      RedTerm ⟨relA, hA⟩ t ∧ RedTerm ⟨relA, hA⟩ u := by
+  rcases pId with ⟨rel, h⟩
+  cases logRelShape_of_LogRelAt h with
+  | nat D' => cases whnfRedStar D'.reduction .id
+  | empty D' => cases whnfRedStar D'.reduction .id
+  | unit D' => cases whnfRedStar D'.reduction .id
+  | ne neA =>
+      have hEq := whnfRedStar neA.D.reduction .id
+      subst hEq
+      cases neA.neK
+  | pi D' => cases whnfRedStar D'.reduction .id
+  | sigma D' => cases whnfRedStar D'.reduction .id
+  | @id l₀ _ _ Ty₀ lhs₀ rhs₀ relTy D' AeqA derivTy hasLhs hasRhs lhsEqLhs rhsEqRhs =>
+      have hId : Term.id A t u = Term.id Ty₀ lhs₀ rhs₀ :=
+        whnfRedStar D'.reduction .id
+      injection hId with hA' ht' hu'
+      subst hA' ht' hu'
+      exact ⟨l₀, relTy, derivTy,
+        .id D' AeqA derivTy hasLhs hasRhs lhsEqLhs rhsEqRhs,
+        ⟨relTy, derivTy, hasLhs⟩, ⟨relTy, derivTy, hasRhs⟩⟩
+
+/-- Syntactic validity of `Id`-types (`syntacticId`). -/
+theorem syntacticId {Γ : Context} {A t u : Term} (hId : TypeWf Γ (.id A t u)) :
+    TypeWf Γ A ∧ HasType Γ t A ∧ HasType Γ u A := by
+  rcases elimIdExact (reducible (eqrel := synEqRel) hId) with ⟨_, relA, hA, _, pt, pu⟩
+  exact ⟨escape ⟨relA, hA⟩, escapeTerm ⟨relA, hA⟩ pt, escapeTerm ⟨relA, hA⟩ pu⟩
+
 /-!
-## Injectivity of `Π`- and `Σ`-Types (`Definition/Typed/Consequences/Injectivity.agda`, Theorem 3.26)
+## Injectivity of `Π`-, `Σ`-, and `Id`-Types (`Definition/Typed/Consequences/Injectivity.agda`, Theorem 3.26)
 -/
 
 /-- Injectivity of `Π` for type equality (`injectivity`, Theorem 3.26). -/
@@ -208,6 +249,23 @@ theorem sigma_injectivity {Γ : Context} {F G H E : Term}
     escapeEq (sigmaFG.redG hρ₁ hΔ₁ ha0) (GeqG' hρ₁ hΔ₁ ha0)
   rw [wkSingleSubstId, wkSingleSubstId] at hGE_wk
   exact ⟨hFH_wk, hGE_wk⟩
+
+/-- Injectivity of `Id` for type equality (`Id-injectivity`). -/
+theorem id_injectivity {Γ : Context} {A A' t t' u u' : Term}
+    (h : TypeEq Γ (.id A t u) (.id A' t' u')) :
+    TypeEq Γ A A' ∧ TermEq Γ t t' A ∧ TermEq Γ u u' A := by
+  rcases reducibleEq (eqrel := synEqRel) h with ⟨pId, _pId', hEq⟩
+  rcases elimIdExact pId with ⟨l₀, relA, hA, hAt, _, _⟩
+  have pId₀ : RedType synEqRel l₀ Γ (.id A t u) := ⟨_, hAt⟩
+  have hIdEq : RedIdEq synEqRel Γ A t u relA (.id A' t' u') :=
+    (RedEq_of_LogRelAt hAt pId₀).mp (irrelevanceEq pId pId₀ hEq)
+  rcases hIdEq with ⟨tyR, lhsR, rhsR, D', _, eqTy, eqLhs, eqRhs, _⟩
+  have hR : Term.id A' t' u' = Term.id tyR lhsR rhsR := whnfRedStar D' .id
+  injection hR with hA' ht' hu'
+  subst hA' ht' hu'
+  exact ⟨escapeEq ⟨relA, hA⟩ ⟨relA, hA, eqTy⟩,
+    escapeTermEq ⟨relA, hA⟩ ⟨relA, hA, eqLhs⟩,
+    escapeTermEq ⟨relA, hA⟩ ⟨relA, hA, eqRhs⟩⟩
 
 /-!
 ## Equality Characterization (`Definition/Typed/Consequences/Equality.agda`, Theorem 3.33)
@@ -294,6 +352,16 @@ theorem sigma_eq_A {Γ : Context} {F G A : Term} (h : TypeEq Γ (.sigma F G) A) 
   have pFG₀ : RedType synEqRel l₀ Γ (.sigma F G) := ⟨_, hAt⟩
   rcases (RedEq_of_LogRelAt hAt pFG₀).mp (irrelevanceEq pFG pFG₀ hEq) with ⟨H, E, D', _, _, _⟩
   exact ⟨H, E, D'⟩
+
+/-- Any type equal to an `Id`-type reduces to an `Id`-type (`Id≡A`). -/
+theorem id_eq_A {Γ : Context} {A t u B : Term} (h : TypeEq Γ (.id A t u) B) :
+    ∃ A' t' u', TypeStar Γ B (.id A' t' u') := by
+  rcases reducibleEq (eqrel := synEqRel) h with ⟨pId, _pB, hEq⟩
+  rcases elimIdExact pId with ⟨l₀, relA, _, hAt, _, _⟩
+  have pId₀ : RedType synEqRel l₀ Γ (.id A t u) := ⟨_, hAt⟩
+  rcases (RedEq_of_LogRelAt hAt pId₀).mp (irrelevanceEq pId pId₀ hEq) with
+    ⟨A', t', u', D', _, _, _, _, _⟩
+  exact ⟨A', t', u', D'⟩
 
 /-!
 ## Inequality of Type Constructors (`Definition/Typed/Consequences/Inequality.agda`, Theorem 3.25)
@@ -551,6 +619,90 @@ theorem pi_ne_sigma_red {Γ : Context} {A B F G H E : Term}
     (hAB : TypeEq Γ A B) (DA : TypeStar Γ A (.pi F G)) (DB : TypeStar Γ B (.sigma H E)) : False :=
   pi_ne_sigma (.trans (.symm (subsetStar DA)) (.trans hAB (subsetStar DB)))
 
+/-- `U` is not judgmentally equal to any `Id`-type (`U≢Id`). -/
+theorem U_ne_id {Γ : Context} {A t u : Term} : ¬ TypeEq Γ .univ (.id A t u) := by
+  intro h
+  have hEq := U_eq_A h
+  cases hEq
+
+/-- `U` is not judgmentally equal to any type reducing to an `Id`-type (`U≢Id-red`). -/
+theorem U_ne_id_red {Γ : Context} {B A t u : Term}
+    (hU : TypeEq Γ .univ B) (D : TypeStar Γ B (.id A t u)) : False :=
+  U_ne_id (.trans hU (subsetStar D))
+
+/-- `ℕ` is not judgmentally equal to any `Id`-type (`ℕ≢Id`). -/
+theorem nat_ne_id {Γ : Context} {A t u : Term} : ¬ TypeEq Γ .nat (.id A t u) := by
+  intro h
+  have hRed := nat_eq_A h
+  have hEq := whnfRedStar hRed .id
+  cases hEq
+
+/-- Any type reducing to `ℕ` is not judgmentally equal to any type reducing to `Id` (`ℕ≢Id-red`). -/
+theorem nat_ne_id_red {Γ : Context} {B C A t u : Term}
+    (hBC : TypeEq Γ B C) (DB : TypeStar Γ B .nat) (DC : TypeStar Γ C (.id A t u)) : False :=
+  nat_ne_id (.trans (.symm (subsetStar DB)) (.trans hBC (subsetStar DC)))
+
+/-- `Empty` is not judgmentally equal to any `Id`-type (`Empty≢Id`). -/
+theorem empty_ne_id {Γ : Context} {A t u : Term} : ¬ TypeEq Γ .empty (.id A t u) := by
+  intro h
+  have hRed := empty_eq_A h
+  have hEq := whnfRedStar hRed .id
+  cases hEq
+
+/-- Any type reducing to `Empty` is not judgmentally equal to any type reducing to `Id` (`Empty≢Id-red`). -/
+theorem empty_ne_id_red {Γ : Context} {B C A t u : Term}
+    (hBC : TypeEq Γ B C) (DB : TypeStar Γ B .empty) (DC : TypeStar Γ C (.id A t u)) : False :=
+  empty_ne_id (.trans (.symm (subsetStar DB)) (.trans hBC (subsetStar DC)))
+
+/-- `Unit` is not judgmentally equal to any `Id`-type (`Unit≢Id`). -/
+theorem unit_ne_id {Γ : Context} {A t u : Term} : ¬ TypeEq Γ .unit (.id A t u) := by
+  intro h
+  have hRed := unit_eq_A h
+  have hEq := whnfRedStar hRed .id
+  cases hEq
+
+/-- Any type reducing to `Unit` is not judgmentally equal to any type reducing to `Id` (`Unit≢Id-red`). -/
+theorem unit_ne_id_red {Γ : Context} {B C A t u : Term}
+    (hBC : TypeEq Γ B C) (DB : TypeStar Γ B .unit) (DC : TypeStar Γ C (.id A t u)) : False :=
+  unit_ne_id (.trans (.symm (subsetStar DB)) (.trans hBC (subsetStar DC)))
+
+/-- A `Π`-type is not judgmentally equal to any `Id`-type (`Π≢Id`). -/
+theorem pi_ne_id {Γ : Context} {F G A t u : Term} : ¬ TypeEq Γ (.pi F G) (.id A t u) := by
+  intro h
+  rcases pi_eq_A h with ⟨F', G', hRed⟩
+  have hEq := whnfRedStar hRed .id
+  cases hEq
+
+/-- Any type reducing to `Π` is not judgmentally equal to any type reducing to `Id` (`Π≢Id-red`). -/
+theorem pi_ne_id_red {Γ : Context} {B C F G A t u : Term}
+    (hBC : TypeEq Γ B C) (DB : TypeStar Γ B (.pi F G)) (DC : TypeStar Γ C (.id A t u)) : False :=
+  pi_ne_id (.trans (.symm (subsetStar DB)) (.trans hBC (subsetStar DC)))
+
+/-- A `Σ`-type is not judgmentally equal to any `Id`-type (`Σ≢Id`). -/
+theorem sigma_ne_id {Γ : Context} {F G A t u : Term} : ¬ TypeEq Γ (.sigma F G) (.id A t u) := by
+  intro h
+  rcases sigma_eq_A h with ⟨F', G', hRed⟩
+  have hEq := whnfRedStar hRed .id
+  cases hEq
+
+/-- Any type reducing to `Σ` is not judgmentally equal to any type reducing to `Id` (`Σ≢Id-red`). -/
+theorem sigma_ne_id_red {Γ : Context} {B C F G A t u : Term}
+    (hBC : TypeEq Γ B C) (DB : TypeStar Γ B (.sigma F G)) (DC : TypeStar Γ C (.id A t u)) : False :=
+  sigma_ne_id (.trans (.symm (subsetStar DB)) (.trans hBC (subsetStar DC)))
+
+/-- An `Id`-type is not judgmentally equal to any neutral type (`Id≢ne`). -/
+theorem id_ne_ne {Γ : Context} {A t u K : Term} (neK : Neutral K) : ¬ TypeEq Γ (.id A t u) K := by
+  intro h
+  rcases id_eq_A h with ⟨A', t', u', hRed⟩
+  have hEq := whnfRedStar hRed (.neutral neK)
+  subst hEq
+  cases neK
+
+/-- Any type reducing to `Id` is not judgmentally equal to any type reducing to a neutral (`Id≢ne-red`). -/
+theorem id_ne_ne_red {Γ : Context} {B C A t u K : Term} (neK : Neutral K)
+    (hBC : TypeEq Γ B C) (DB : TypeStar Γ B (.id A t u)) (DC : TypeStar Γ C K) : False :=
+  id_ne_ne neK (.trans (.symm (subsetStar DB)) (.trans hBC (subsetStar DC)))
+
 /-!
 ## Syntactic Substitution Consequences (`Definition/Typed/Consequences/Substitution.agda`, Theorem 3.32)
 -/
@@ -734,6 +886,39 @@ theorem substUpTypeEq {Γ : Context} {F G E t u : Term}
     (hGE : TypeEq (F :: Γ) G E) (htu : TermEq (F :: Γ) t u (wk1 F)) :
     TypeEq (F :: Γ) (substKeep G t) (substKeep E u) :=
   substitutionEq hGE (singleSubstUpEq htu) (wfTermEq htu)
+
+/-- Well-formed two-variable substitution for an `idrec` motive (`doubleSubstId`). -/
+theorem doubleSubstId {Γ : Context} {A t u h : Term}
+    (_ht : HasType Γ t A) (hu : HasType Γ u A) (hh : HasType Γ h (.id A t u)) :
+    SubstWf Γ (consSubst (sgSubst u) h) (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) := by
+  refine .cons (singleSubst hu) ?_
+  change HasType Γ h (subst (consSubst idSubst u) (.id (wk1 A) (wk1 t) (.var 0)))
+  rw [subst_consSubst_id_wk1, subst_id, subst_id]
+  exact hh
+
+/-- Well-formed two-variable substitution equality for an `idrec` motive (`doubleSubstIdEq`). -/
+theorem doubleSubstIdEq {Γ : Context} {A t u u' h h' : Term}
+    (_ht : HasType Γ t A) (huu' : TermEq Γ u u' A) (hhh' : TermEq Γ h h' (.id A t u)) :
+    SubstEq Γ (consSubst (sgSubst u) h) (consSubst (sgSubst u') h')
+      (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) := by
+  refine .cons (singleSubstEq huu') ?_
+  change TermEq Γ h h' (subst (consSubst idSubst u) (.id (wk1 A) (wk1 t) (.var 0)))
+  rw [subst_consSubst_id_wk1, subst_id, subst_id]
+  exact hhh'
+
+/-- Two-variable substitution in an `idrec` motive type (`subst2Type`). -/
+theorem subst2Type {Γ : Context} {A P t u h : Term}
+    (hP : TypeWf (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P)
+    (ht : HasType Γ t A) (hu : HasType Γ u A) (hh : HasType Γ h (.id A t u)) :
+    TypeWf Γ (subst2 P u h) :=
+  substitution hP (doubleSubstId ht hu hh) (wfTerm ht)
+
+/-- Two-variable substitution in an `idrec` motive type equality (`subst2TypeEq`). -/
+theorem subst2TypeEq {Γ : Context} {A P P' t u u' h h' : Term}
+    (hPP' : TypeEq (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P P')
+    (ht : HasType Γ t A) (huu' : TermEq Γ u u' A) (hhh' : TermEq Γ h h' (.id A t u)) :
+    TypeEq Γ (subst2 P u h) (subst2 P' u' h') :=
+  substitutionEq hPP' (doubleSubstIdEq ht huu' hhh') (wfTerm ht)
 
 /-!
 ## Inversion of Typing (`Definition/Typed/Consequences/Inversion.agda`)
@@ -961,6 +1146,51 @@ theorem inversion_star {Γ : Context} {A : Term}
   | conv _ hAB ih => exact .trans (.symm hAB) (ih ht)
   | _ => cases ht
 
+/-- Inversion of typing for `Id A t u` (`inversion-Id`). -/
+theorem inversion_id {Γ : Context} {A t u B : Term}
+    (h : HasType Γ (.id A t u) B) :
+    HasType Γ A .univ ∧ HasType Γ t A ∧ HasType Γ u A ∧ TypeEq Γ B .univ := by
+  generalize hTerm : Term.id A t u = p at h
+  induction h using HasType.indOnly with
+  | id hA ht hu =>
+      injection hTerm with hA' ht' hu'
+      subst hA' ht' hu'
+      exact ⟨hA, ht, hu, .refl (.univ (wfTerm hA))⟩
+  | conv _ hBC ih =>
+      rcases ih hTerm with ⟨hA, ht, hu, hEq⟩
+      exact ⟨hA, ht, hu, .trans (.symm hBC) hEq⟩
+  | _ => cases hTerm
+
+/-- Inversion of typing for `rfl` (`inversion-rfl`). -/
+theorem inversion_rfl {Γ : Context} {B : Term}
+    (h : HasType Γ .rfl B) :
+    ∃ A t, TypeWf Γ A ∧ HasType Γ t A ∧ TypeEq Γ B (.id A t t) := by
+  generalize hTerm : Term.rfl = p at h
+  induction h using HasType.indOnly with
+  | rfl hA ht =>
+      exact ⟨_, _, hA, ht, .refl (.id hA ht ht)⟩
+  | conv _ hBC ih =>
+      rcases ih hTerm with ⟨A, t, hA, ht, hEq⟩
+      exact ⟨A, t, hA, ht, .trans (.symm hBC) hEq⟩
+  | _ => cases hTerm
+
+/-- Inversion of typing for `idrec A P r t u h` (`inversion-J`). -/
+theorem inversion_idrec {Γ : Context} {A P r t u h B : Term}
+    (d : HasType Γ (.idrec A P r t u h) B) :
+    TypeWf Γ A ∧ TypeWf (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P ∧
+    HasType Γ r (subst2 P t .rfl) ∧ HasType Γ t A ∧ HasType Γ u A ∧
+    HasType Γ h (.id A t u) ∧ TypeEq Γ B (subst2 P u h) := by
+  generalize hTerm : Term.idrec A P r t u h = p at d
+  induction d using HasType.indOnly with
+  | idrec hA hP hr ht hu hh =>
+      injection hTerm with hA' hP' hr' ht' hu' hh'
+      subst hA' hP' hr' ht' hu' hh'
+      exact ⟨hA, hP, hr, ht, hu, hh, .refl (subst2Type hP ht hu hh)⟩
+  | conv _ hBC ih =>
+      rcases ih hTerm with ⟨hA, hP, hr, ht, hu, hh, hEq⟩
+      exact ⟨hA, hP, hr, ht, hu, hh, .trans (.symm hBC) hEq⟩
+  | _ => cases hTerm
+
 /-- A WHNF term of `Σ`-type is a `ProductView` (`whnfProduct`). -/
 theorem whnfProduct {Γ : Context} {p F G : Term}
     (hp : HasType Γ p (.sigma F G)) (hw : Whnf p) : ProductView p := by
@@ -977,6 +1207,9 @@ theorem whnfProduct {Γ : Context} {p F G : Term}
   | nat => exact False.elim (U_ne_sigma (.symm (inversion_nat hp)))
   | empty => exact False.elim (U_ne_sigma (.symm (inversion_empty hp)))
   | unit => exact False.elim (U_ne_sigma (.symm (inversion_unit hp)))
+  | id =>
+      rcases inversion_id hp with ⟨_, _, _, hEq⟩
+      exact False.elim (U_ne_sigma (.symm hEq))
   | lam =>
       rcases inversion_lam hp with ⟨_, _, _, _, hEq⟩
       exact False.elim (pi_ne_sigma (.symm hEq))
@@ -985,6 +1218,40 @@ theorem whnfProduct {Γ : Context} {p F G : Term}
       rcases inversion_suc hp with ⟨_, hEq⟩
       exact False.elim (nat_ne_sigma (.symm hEq))
   | star => exact False.elim (unit_ne_sigma (.symm (inversion_star hp)))
+  | rfl =>
+      rcases inversion_rfl hp with ⟨_, _, _, _, hEq⟩
+      exact False.elim (sigma_ne_id hEq)
+
+/-- A WHNF term of `Id`-type is an `IdentityView` (`whnfIdentity`). -/
+theorem whnfIdentity {Γ : Context} {h A t u : Term}
+    (hh : HasType Γ h (.id A t u)) (hw : Whnf h) : IdentityView h := by
+  cases hw with
+  | rfl => exact .rfl
+  | neutral neH => exact .neutral neH
+  | univ => exact False.elim (inversion_U hh)
+  | pi =>
+      rcases inversion_pi hh with ⟨_, _, hEq⟩
+      exact False.elim (U_ne_id (.symm hEq))
+  | sigma =>
+      rcases inversion_sigma hh with ⟨_, _, hEq⟩
+      exact False.elim (U_ne_id (.symm hEq))
+  | nat => exact False.elim (U_ne_id (.symm (inversion_nat hh)))
+  | empty => exact False.elim (U_ne_id (.symm (inversion_empty hh)))
+  | unit => exact False.elim (U_ne_id (.symm (inversion_unit hh)))
+  | id =>
+      rcases inversion_id hh with ⟨_, _, _, hEq⟩
+      exact False.elim (U_ne_id (.symm hEq))
+  | lam =>
+      rcases inversion_lam hh with ⟨_, _, _, _, hEq⟩
+      exact False.elim (pi_ne_id (.symm hEq))
+  | prod =>
+      rcases inversion_prod hh with ⟨_, _, _, _, _, _, hEq⟩
+      exact False.elim (sigma_ne_id (.symm hEq))
+  | zero => exact False.elim (nat_ne_id (.symm (inversion_zero hh)))
+  | succ =>
+      rcases inversion_suc hh with ⟨_, hEq⟩
+      exact False.elim (nat_ne_id (.symm hEq))
+  | star => exact False.elim (unit_ne_id (.symm (inversion_star hh)))
 
 /-!
 ## Universe Inversion (`Definition/Typed/Consequences/InverseUniv.agda`)
@@ -997,6 +1264,7 @@ inductive UFull : Term → Prop where
   | pi2 {F G : Term} : UFull G → UFull (.pi F G)
   | sigma1 {F G : Term} : UFull F → UFull (.sigma F G)
   | sigma2 {F G : Term} : UFull G → UFull (.sigma F G)
+  | id {A t u : Term} : UFull A → UFull (.id A t u)
 
 /-- Well-typed terms cannot contain `U` (`noU`). -/
 theorem noU {Γ : Context} {t A : Term} (ht : HasType Γ t A) : ¬ UFull t := by
@@ -1011,6 +1279,10 @@ theorem noU {Γ : Context} {t A : Term} (ht : HasType Γ t A) : ¬ UFull t := by
       cases hU with
       | sigma1 uF => exact ihF uF
       | sigma2 uG => exact ihG uG
+  | id _ _ _ ihA _ _ =>
+      intro hU
+      cases hU with
+      | id uA => exact ihA uA
   | conv _ _ ih => exact ih
   | _ => intro hU; cases hU
 
@@ -1032,6 +1304,8 @@ theorem inverseUniv {Γ : Context} {A : Term}
   | unit hΓ => exact .unit hΓ
   | sigma _ _ ihF ihG =>
       exact .sigma (ihF (fun uF ↦ hNotU (.sigma1 uF))) (ihG (fun uG ↦ hNotU (.sigma2 uG)))
+  | id _ ht hu ihA =>
+      exact .id (ihA (fun uA ↦ hNotU (.id uA))) ht hu
 
 /-- If a neutral term `A` is a well-formed type, then `A` is a term of `U` (`inverseUnivNe`). -/
 theorem inverseUnivNe {Γ : Context} {A : Term}
@@ -1075,6 +1349,10 @@ theorem inverseUnivEq' {Γ : Context} {A B : Term}
       · exact .sigma hF
           (ihF (.inr (fun uH ↦ hNotHE (.sigma1 uH))))
           (ihG (.inr (fun uE ↦ hNotHE (.sigma2 uE))))
+  | id _ htt' huu' ihA =>
+      rcases hNotU with hNotId | hNotId'
+      · exact .id (ihA (.inl (fun uA ↦ hNotId (.id uA)))) htt' huu'
+      · exact .id (ihA (.inr (fun uA' ↦ hNotId' (.id uA')))) htt' huu'
 
 /-- If `Γ ⊢ A ∷ U` and `Γ ⊢ A ≡ B`, then `Γ ⊢ A ≡ B ∷ U` (`inverseUnivEq`). -/
 theorem inverseUnivEq {Γ : Context} {A B : Term}
@@ -1143,6 +1421,10 @@ theorem neTypeEq {Γ : Context} {t A B : Term}
       rcases inversion_emptyrec htA with ⟨_, _, hAC⟩
       rcases inversion_emptyrec htB with ⟨_, _, hBC⟩
       exact .trans hAC (.symm hBC)
+  | idrec _ =>
+      rcases inversion_idrec htA with ⟨_, _, _, _, _, _, hAP⟩
+      rcases inversion_idrec htB with ⟨_, _, _, _, _, _, hBP⟩
+      exact .trans hAP (.symm hBP)
 
 /-!
 ## Congruence of `recStepType` (`Definition/Typed/Consequences/SucCong.agda`)
@@ -1180,6 +1462,7 @@ theorem whNorm' {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A : Term}
   | ne neA => exact ⟨_, .neutral neA.neK, neA.D⟩
   | pi D _ _ _ _ _ _ _ _ _ _ => exact ⟨_, .pi, D⟩
   | sigma D _ _ _ _ _ _ _ _ _ _ => exact ⟨_, .sigma, D⟩
+  | id D _ _ _ _ _ _ => exact ⟨_, .id, D⟩
 
 /-- Every well-formed type reduces to a weak-head normal form (`whNorm`, Theorem 3.28). -/
 theorem whNorm {Γ : Context} {A : Term} (hA : TypeWf Γ A) :
@@ -1218,6 +1501,10 @@ theorem whNormTerm' {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A a : Ter
   | sigma D _ _ _ _ _ _ _ _ _ _ =>
       rcases ha with ⟨p, d, pProd, _, _, _⟩
       exact ⟨p, pProd.toWhnf,
+        convStarWf d (.symm (subsetStar D.reduction))⟩
+  | id D _ _ _ _ _ _ =>
+      rcases ha with ⟨n, d, _, prop⟩
+      exact ⟨n, (identity_of_RedIdTermProp prop).toWhnf,
         convStarWf d (.symm (subsetStar D.reduction))⟩
 
 /-- Every well-formed term reduces to a weak-head normal form (`whNormTerm`, Theorem 3.28). -/
@@ -1278,6 +1565,9 @@ theorem whnfClosedUnit {u : Term} (hu : HasType [] u .unit) (hw : Whnf u) : u = 
   | nat => exact False.elim (U_ne_unit (.symm (inversion_nat hu)))
   | empty => exact False.elim (U_ne_unit (.symm (inversion_empty hu)))
   | unit => exact False.elim (U_ne_unit (.symm (inversion_unit hu)))
+  | id =>
+      rcases inversion_id hu with ⟨_, _, _, hEq⟩
+      exact False.elim (U_ne_unit (.symm hEq))
   | lam =>
       rcases inversion_lam hu with ⟨_, _, _, _, hEq⟩
       exact False.elim (unit_ne_pi hEq)
@@ -1288,6 +1578,9 @@ theorem whnfClosedUnit {u : Term} (hu : HasType [] u .unit) (hw : Whnf u) : u = 
   | succ =>
       rcases inversion_suc hu with ⟨_, hEq⟩
       exact False.elim (nat_ne_unit (.symm hEq))
+  | rfl =>
+      rcases inversion_rfl hu with ⟨_, _, _, _, hEq⟩
+      exact False.elim (unit_ne_id hEq)
 
 /-- Reduction canonicity for closed terms of type `Unit`: every closed term `⊢ t ∷ Unit`
 weak-head reduces to `star`. -/
@@ -1303,6 +1596,23 @@ is judgmentally equal to `star`. -/
 theorem canonicity_unit {t : Term} (ht : HasType [] t .unit) :
     TermEq [] t .star .unit :=
   .etaUnit ht (.star .nil)
+
+/-- Canonicity for closed terms of an identity type `Id A t u`:
+every closed proof `⊢ h ∷ Id A t u` weak-head reduces to `rfl`, is judgmentally equal to `rfl`,
+and witnesses judgmental equality `⊢ t ≡ u ∷ A` (`canonicityId`). -/
+theorem canonicity_id {A t u h : Term} (hh : HasType [] h (.id A t u)) :
+    Star [] h .rfl (.id A t u) ∧ TermEq [] t u A ∧ TermEq [] h .rfl (.id A t u) := by
+  rcases reducibleTerm (eqrel := synEqRel) hh with ⟨pId, ph⟩
+  rcases elimIdExact pId with ⟨l₀, relA, hA, hAt, _, _⟩
+  have pId₀ : RedType synEqRel l₀ [] (.id A t u) := ⟨_, hAt⟩
+  rcases (RedTerm_of_LogRelAt hAt pId₀).mp (irrelevanceTerm pId pId₀ ph) with
+    ⟨n, d, _, prop⟩
+  cases prop with
+  | ne nf => exact False.elim (noNe nf.hk nf.neK)
+  | rfl htu =>
+      exact ⟨d.reduction,
+        escapeTermEq ⟨relA, hA⟩ ⟨relA, hA, htu⟩,
+        subsetStarTerm d.reduction⟩
 
 /-- Non-inhabitation helper for `RedEmptyTerm` in the empty context (`¬Empty′`). -/
 theorem noEmpty' {n : Term} (hn : RedEmptyTerm synEqRel [] n) : False := by

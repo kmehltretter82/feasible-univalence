@@ -31,6 +31,7 @@ mutual
     | empty {Γ} : CtxWf Γ → TypeWf Γ .empty
     | unit {Γ} : CtxWf Γ → TypeWf Γ .unit
     | sigma {Γ F G} : TypeWf Γ F → TypeWf (F :: Γ) G → TypeWf Γ (.sigma F G)
+    | id {Γ A t u} : TypeWf Γ A → HasType Γ t A → HasType Γ u A → TypeWf Γ (.id A t u)
 
   inductive HasType : Context → Term → Term → Prop where
     | nat {Γ} : CtxWf Γ → HasType Γ .nat .univ
@@ -59,6 +60,13 @@ mutual
         HasType Γ (.snd t) (subst0 G (.fst t))
     | emptyrec {Γ A e} : TypeWf Γ A → HasType Γ e .empty → HasType Γ (.emptyrec A e) A
     | star {Γ} : CtxWf Γ → HasType Γ .star .unit
+    | id {Γ A t u} : HasType Γ A .univ → HasType Γ t A → HasType Γ u A →
+        HasType Γ (.id A t u) .univ
+    | rfl {Γ A t} : TypeWf Γ A → HasType Γ t A → HasType Γ .rfl (.id A t t)
+    | idrec {Γ A P r t u h} : TypeWf Γ A →
+        TypeWf (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P →
+        HasType Γ r (subst2 P t .rfl) → HasType Γ t A → HasType Γ u A →
+        HasType Γ h (.id A t u) → HasType Γ (.idrec A P r t u h) (subst2 P u h)
 
   inductive TypeEq : Context → Term → Term → Prop where
     | fromUniv {Γ A B} : TermEq Γ A B .univ → TypeEq Γ A B
@@ -69,6 +77,8 @@ mutual
         TypeEq Γ (.pi F G) (.pi H E)
     | sigma {Γ F H G E} : TypeWf Γ F → TypeEq Γ F H → TypeEq (F :: Γ) G E →
         TypeEq Γ (.sigma F G) (.sigma H E)
+    | id {Γ A A' t t' u u'} : TypeEq Γ A A' → TermEq Γ t t' A → TermEq Γ u u' A →
+        TypeEq Γ (.id A t u) (.id A' t' u')
 
   inductive TermEq : Context → Term → Term → Term → Prop where
     | refl {Γ t A} : HasType Γ t A → TermEq Γ t t A
@@ -115,6 +125,18 @@ mutual
     | emptyrec {Γ A A' e e'} : TypeEq Γ A A' → TermEq Γ e e' .empty →
         TermEq Γ (.emptyrec A e) (.emptyrec A' e') A
     | etaUnit {Γ e e'} : HasType Γ e .unit → HasType Γ e' .unit → TermEq Γ e e' .unit
+    | id {Γ A A' t t' u u'} : TermEq Γ A A' .univ → TermEq Γ t t' A → TermEq Γ u u' A →
+        TermEq Γ (.id A t u) (.id A' t' u') .univ
+    | idrec {Γ A A' P P' r r' t t' u u' h h'} :
+        TypeWf Γ A → TypeEq Γ A A' → HasType Γ t A → TermEq Γ t t' A →
+        TypeEq (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P P' →
+        TermEq Γ r r' (subst2 P t .rfl) →
+        TermEq Γ u u' A → TermEq Γ h h' (.id A t u) →
+        TermEq Γ (.idrec A P r t u h) (.idrec A' P' r' t' u' h') (subst2 P u h)
+    | idrecBeta {Γ A P r t} : TypeWf Γ A →
+        TypeWf (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P →
+        HasType Γ r (subst2 P t .rfl) → HasType Γ t A →
+        TermEq Γ (.idrec A P r t t .rfl) r (subst2 P t .rfl)
 end
 
 /-- Typed weak-head reduction; in particular there is no reduction under a lambda or successor. -/
@@ -143,6 +165,17 @@ inductive Step (Γ : Context) : Term → Term → Term → Prop where
       HasType Γ u (subst0 G t) → Step Γ (.snd (.prod t u)) u (subst0 G (.fst (.prod t u)))
   | emptyrec {n n' A} : TypeWf Γ A → Step Γ n n' .empty →
       Step Γ (.emptyrec A n) (.emptyrec A n') A
+  | idrec {A P r t u h h'} : TypeWf Γ A →
+      TypeWf (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P →
+      HasType Γ r (subst2 P t .rfl) → HasType Γ t A → HasType Γ u A →
+      Step Γ h h' (.id A t u) →
+      Step Γ (.idrec A P r t u h) (.idrec A P r t u h') (subst2 P u h)
+  | idrecBeta {A P r t u} : TypeWf Γ A →
+      TypeWf (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P →
+      HasType Γ r (subst2 P t .rfl) → HasType Γ t A → HasType Γ u A →
+      TermEq Γ t u A →
+      TypeEq Γ (subst2 P t .rfl) (subst2 P u .rfl) →
+      Step Γ (.idrec A P r t u .rfl) r (subst2 P t .rfl)
 
 inductive TypeStep (Γ : Context) : Term → Term → Prop where
   | fromUniv {A B} : Step Γ A B .univ → TypeStep Γ A B

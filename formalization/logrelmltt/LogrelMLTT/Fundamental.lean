@@ -1774,6 +1774,216 @@ theorem fund_termEq_etaUnit {eqrel : EqRelSet} {Γ : Context} {e e' : Term}
   have he'₁ : ValidTerm hUnit₁ e' := irrelevanceValidTerm hUnit₂ hUnit₁ he'
   exact ⟨hΓ, hUnit₁, he, he'₁, etaUnitValid hUnit₁ he he'₁⟩
 
+theorem fund_type_id {eqrel : EqRelSet} {Γ : Context} {A t u : Term}
+    (ihA : FundTypeMotive eqrel Γ A)
+    (iht : FundTermMotive eqrel Γ t A)
+    (ihu : FundTermMotive eqrel Γ u A) :
+    FundTypeMotive eqrel Γ (.id A t u) := by
+  rcases ihA with ⟨hΓ, hA⟩
+  rcases iht with ⟨_, hA₁, ht⟩
+  rcases ihu with ⟨_, hA₂, hu⟩
+  exact ⟨hΓ, idValid hA (irrelevanceValidTerm hA₁ hA ht) (irrelevanceValidTerm hA₂ hA hu)⟩
+
+theorem fund_term_id {eqrel : EqRelSet} {Γ : Context} {A t u : Term}
+    (ihA : FundTermMotive eqrel Γ A .univ)
+    (iht : FundTermMotive eqrel Γ t A)
+    (ihu : FundTermMotive eqrel Γ u A) :
+    FundTermMotive eqrel Γ (.id A t u) .univ := by
+  rcases ihA with ⟨hΓ, hU₀, hAt⟩
+  rcases iht with ⟨_, hA₁, ht⟩
+  rcases ihu with ⟨_, hA₂, hu⟩
+  have hU' : ValidType eqrel .one Γ .univ := UValid
+  have hAt' : ValidTerm hU' A := irrelevanceValidTerm hU₀ hU' hAt
+  exact ⟨hΓ, hU', idTermValid hA₁ hAt' ht (irrelevanceValidTerm hA₂ hA₁ hu)⟩
+
+theorem fund_term_rfl {eqrel : EqRelSet} {Γ : Context} {A t : Term}
+    (ihA : FundTypeMotive eqrel Γ A)
+    (iht : FundTermMotive eqrel Γ t A) :
+    FundTermMotive eqrel Γ .rfl (.id A t t) := by
+  rcases ihA with ⟨hΓ, hA⟩
+  rcases iht with ⟨_, hA₁, ht⟩
+  have ht' : ValidTerm hA t := irrelevanceValidTerm hA₁ hA ht
+  exact ⟨hΓ, idValid hA ht' ht', rflValid hA ht'⟩
+
+theorem fund_term_idrec {eqrel : EqRelSet} {Γ : Context} {A P r t u h : Term}
+    (ihA : FundTypeMotive eqrel Γ A)
+    (ihP : FundTypeMotive eqrel (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P)
+    (ihr : FundTermMotive eqrel Γ r (subst2 P t .rfl))
+    (iht : FundTermMotive eqrel Γ t A)
+    (ihu : FundTermMotive eqrel Γ u A)
+    (ihh : FundTermMotive eqrel Γ h (.id A t u)) :
+    FundTermMotive eqrel Γ (.idrec A P r t u h) (subst2 P u h) := by
+  rcases ihA with ⟨hΓ, hA⟩
+  rcases ihP with ⟨_, hP⟩
+  rcases ihr with ⟨_, hPtrfl, hr⟩
+  rcases iht with ⟨_, hA₁, ht⟩
+  rcases ihu with ⟨_, hA₂, hu⟩
+  rcases ihh with ⟨_, hId, hh⟩
+  have ht' : ValidTerm hA t := irrelevanceValidTerm hA₁ hA ht
+  have hu' : ValidTerm hA u := irrelevanceValidTerm hA₂ hA hu
+  have hPtrfl' : ValidType eqrel .one Γ (subst2 P t .rfl) :=
+    substS2Id hA ht' hP ht' (rflValid hA ht')
+  have hr' : ValidTerm hPtrfl' r := irrelevanceValidTerm hPtrfl hPtrfl' hr
+  have hId' : ValidType eqrel .one Γ (.id A t u) := idValid hA ht' hu'
+  have hh' : ValidTerm hId' h := irrelevanceValidTerm hId hId' hh
+  exact ⟨hΓ, substS2Id hA ht' hP hu' hh', idrecValid hA ht' hP hr' hu' hh'⟩
+
+theorem fund_typeEq_id {eqrel : EqRelSet} {Γ : Context} {A A' t t' u u' : Term}
+    (ihAA' : FundTypeEqMotive eqrel Γ A A')
+    (ihtt' : FundTermEqMotive eqrel Γ t t' A)
+    (ihuu' : FundTermEqMotive eqrel Γ u u' A) :
+    FundTypeEqMotive eqrel Γ (.id A t u) (.id A' t' u') := by
+  rcases ihAA' with ⟨hΓ, hA, hA', hAA'⟩
+  rcases ihtt' with ⟨_, hA₁, ht, ht', htt'⟩
+  rcases ihuu' with ⟨_, hA₂, hu, hu', huu'⟩
+  have ht₁ : ValidTerm hA t := irrelevanceValidTerm hA₁ hA ht
+  have ht'₁ : ValidTerm hA' t' := convValid hA hA' hAA' (irrelevanceValidTerm hA₁ hA ht')
+  have htt'₁ : ValidTermEq hA t t' := irrelevanceValidEqTerm hA₁ hA htt'
+  have hu₁ : ValidTerm hA u := irrelevanceValidTerm hA₂ hA hu
+  have hu'₁ : ValidTerm hA' u' := convValid hA hA' hAA' (irrelevanceValidTerm hA₂ hA hu')
+  have huu'₁ : ValidTermEq hA u u' := irrelevanceValidEqTerm hA₂ hA huu'
+  exact ⟨hΓ,
+    idValid hA ht₁ hu₁,
+    idValid hA' ht'₁ hu'₁,
+    idCongValid hA hA' hAA' ht₁ ht'₁ htt'₁ hu₁ hu'₁ huu'₁⟩
+
+theorem fund_termEq_id {eqrel : EqRelSet} {Γ : Context} {A A' t t' u u' : Term}
+    (ihAA' : FundTermEqMotive eqrel Γ A A' .univ)
+    (ihtt' : FundTermEqMotive eqrel Γ t t' A)
+    (ihuu' : FundTermEqMotive eqrel Γ u u' A) :
+    FundTermEqMotive eqrel Γ (.id A t u) (.id A' t' u') .univ := by
+  rcases ihAA' with ⟨hΓ, hU₀, hAt, hA't, hAA't⟩
+  rcases ihtt' with ⟨_, hA₁, ht, ht', htt'⟩
+  rcases ihuu' with ⟨_, hA₂, hu, hu', huu'⟩
+  have hU' : ValidType eqrel .one Γ .univ := UValid
+  have hAt' : ValidTerm hU' A := irrelevanceValidTerm hU₀ hU' hAt
+  have hA't' : ValidTerm hU' A' := irrelevanceValidTerm hU₀ hU' hA't
+  have hAA't' : ValidTermEq hU' A A' := irrelevanceValidEqTerm hU₀ hU' hAA't
+  have hA : ValidType eqrel .one Γ A := univValid hU' hAt'
+  have hA' : ValidType eqrel .one Γ A' := univValid hU' hA't'
+  have hAA' : ValidTypeEq hA A' := univEqValid hU' hA hAA't'
+  have ht₁ : ValidTerm hA t := irrelevanceValidTerm hA₁ hA ht
+  have ht'₁ : ValidTerm hA' t' := convValid hA hA' hAA' (irrelevanceValidTerm hA₁ hA ht')
+  have htt'₁ : ValidTermEq hA t t' := irrelevanceValidEqTerm hA₁ hA htt'
+  have hu₁ : ValidTerm hA u := irrelevanceValidTerm hA₂ hA hu
+  have hu'₁ : ValidTerm hA' u' := convValid hA hA' hAA' (irrelevanceValidTerm hA₂ hA hu')
+  have huu'₁ : ValidTermEq hA u u' := irrelevanceValidEqTerm hA₂ hA huu'
+  exact ⟨hΓ, hU',
+    idTermValid hA hAt' ht₁ hu₁,
+    idTermValid hA' hA't' ht'₁ hu'₁,
+    idCongTermValid hA hA' hAt' hA't' hAA't' ht₁ ht'₁ htt'₁ hu₁ hu'₁ huu'₁⟩
+
+theorem fund_termEq_idrec {eqrel : EqRelSet} {Γ : Context}
+    {A A' P P' r r' t t' u u' h h' : Term}
+    (ihA : FundTypeMotive eqrel Γ A)
+    (ihAA' : FundTypeEqMotive eqrel Γ A A')
+    (iht : FundTermMotive eqrel Γ t A)
+    (ihtt' : FundTermEqMotive eqrel Γ t t' A)
+    (ihPP' : FundTypeEqMotive eqrel (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P P')
+    (ihrr' : FundTermEqMotive eqrel Γ r r' (subst2 P t .rfl))
+    (ihuu' : FundTermEqMotive eqrel Γ u u' A)
+    (ihhh' : FundTermEqMotive eqrel Γ h h' (.id A t u)) :
+    FundTermEqMotive eqrel Γ (.idrec A P r t u h) (.idrec A' P' r' t' u' h') (subst2 P u h) := by
+  rcases ihA with ⟨hΓ, hA⟩
+  rcases ihAA' with ⟨_, _, hA', hAA'⟩
+  rcases iht with ⟨_, _, _⟩
+  rcases ihtt' with ⟨_, hA₁, ht, ht', htt'⟩
+  rcases ihPP' with ⟨_, hP, hP', hPP'⟩
+  rcases ihrr' with ⟨_, hPtrfl₀, hr, hr', hrr'⟩
+  rcases ihuu' with ⟨_, hA₂, hu, hu', huu'⟩
+  rcases ihhh' with ⟨_, hId₀, hh, hh', hhh'⟩
+  have ht₁ : ValidTerm hA t := irrelevanceValidTerm hA₁ hA ht
+  have ht'_A : ValidTerm hA t' := irrelevanceValidTerm hA₁ hA ht'
+  have ht'₁ : ValidTerm hA' t' := convValid hA hA' hAA' ht'_A
+  have htt'₁ : ValidTermEq hA t t' := irrelevanceValidEqTerm hA₁ hA htt'
+  have hPtrfl : ValidType eqrel .one Γ (subst2 P t .rfl) :=
+    substS2Id hA ht₁ hP ht₁ (rflValid hA ht₁)
+  have hr₁ : ValidTerm hPtrfl r := irrelevanceValidTerm hPtrfl₀ hPtrfl hr
+  have hr'₁ : ValidTerm hPtrfl r' := irrelevanceValidTerm hPtrfl₀ hPtrfl hr'
+  have hrr'₁ : ValidTermEq hPtrfl r r' := irrelevanceValidEqTerm hPtrfl₀ hPtrfl hrr'
+  have hu₁ : ValidTerm hA u := irrelevanceValidTerm hA₂ hA hu
+  have hu'_A : ValidTerm hA u' := irrelevanceValidTerm hA₂ hA hu'
+  have hu'₁ : ValidTerm hA' u' := convValid hA hA' hAA' hu'_A
+  have huu'₁ : ValidTermEq hA u u' := irrelevanceValidEqTerm hA₂ hA huu'
+  have hId : ValidType eqrel .one Γ (.id A t u) := idValid hA ht₁ hu₁
+  have hId' : ValidType eqrel .one Γ (.id A' t' u') := idValid hA' ht'₁ hu'₁
+  have hIdEq : ValidTypeEq hId (.id A' t' u') :=
+    idCongValid hA hA' hAA' ht₁ ht'₁ htt'₁ hu₁ hu'₁ huu'₁
+  have hh₁ : ValidTerm hId h := irrelevanceValidTerm hId₀ hId hh
+  have hh'_Id : ValidTerm hId h' := irrelevanceValidTerm hId₀ hId hh'
+  have hh'₁ : ValidTerm hId' h' := convValid hId hId' hIdEq hh'_Id
+  have hhh'₁ : ValidTermEq hId h h' := irrelevanceValidEqTerm hId₀ hId hhh'
+  have hPuh : ValidType eqrel .one Γ (subst2 P u h) := substS2Id hA ht₁ hP hu₁ hh₁
+  have hIdrecL : ValidTerm hPuh (.idrec A P r t u h) :=
+    idrecValid hA ht₁ hP hr₁ hu₁ hh₁
+  have hIdrecEq : ValidTermEq hPuh (.idrec A P r t u h) (.idrec A' P' r' t' u' h') :=
+    idrecCongValid hA hA' hAA' ht₁ ht'₁ htt'₁ hP hP' hPP' hr₁ hr'₁ hrr'₁
+      hu₁ hu'₁ huu'₁ hh₁ hh'₁ hhh'₁
+  have hP'_lifted : ValidType eqrel .one (.id (wk1 A') (wk1 t') (.var 0) :: A' :: Γ) P' :=
+    irrelevanceLift2 hA hA' hAA' (idMotiveCtxType hA ht₁) (idMotiveCtxType hA' ht'₁)
+      (idMotiveCtxTypeEq hA hA' hAA' ht₁ ht'₁ htt'₁) hP'
+  have hP't'rfl : ValidType eqrel .one Γ (subst2 P' t' .rfl) :=
+    substS2Id hA' ht'₁ hP'_lifted ht'₁ (rflValid hA' ht'₁)
+  have hPtrfl_eq_P't'rfl_in_A : ValidTypeEq hPtrfl (subst2 P' t' .rfl) := by
+    intro Δ σ hΔ hσ
+    have pA_σ := (hA hΔ hσ).red
+    have pt_σ := (ht₁ hΔ hσ).term
+    have pt'_σ := (ht'_A hΔ hσ).term
+    have pRfl_t := rflTerm pA_σ pt_σ pt_σ (reflEqTerm pA_σ pt_σ)
+    have pRfl_t' := rflTerm pA_σ pt_σ pt'_σ (htt'₁ hΔ hσ)
+    have pPtrfl₀ := redIdMotiveSubst2 hΔ hσ hA ht₁ hP pt_σ pRfl_t
+    exact irrelevanceEq'' (subst2_subst_commute P t .rfl σ).symm
+      (subst2_subst_commute P' t' .rfl σ).symm pPtrfl₀ (hPtrfl hΔ hσ).red
+      (redIdMotiveSubst2Eq hΔ hσ hσ (reflSubst hσ) hA ht₁ hP hP' hPP'
+        pt_σ pRfl_t pt'_σ pRfl_t' (htt'₁ hΔ hσ)
+        (rflEqTerm pA_σ pt_σ pt_σ (reflEqTerm pA_σ pt_σ)))
+  have hr'_P't'rfl : ValidTerm hP't'rfl r' :=
+    convValid hPtrfl hP't'rfl hPtrfl_eq_P't'rfl_in_A hr'₁
+  have hP'u'h' : ValidType eqrel .one Γ (subst2 P' u' h') :=
+    substS2Id hA' ht'₁ hP'_lifted hu'₁ hh'₁
+  have hIdrecR_in_P'u'h' : ValidTerm hP'u'h' (.idrec A' P' r' t' u' h') :=
+    idrecValid hA' ht'₁ hP'_lifted hr'_P't'rfl hu'₁ hh'₁
+  have hh'_in_A_u' : ValidTerm (idValid hA ht₁ hu'_A) h' :=
+    convValid hId (idValid hA ht₁ hu'_A)
+      (idCongValid hA hA (reflValid hA) ht₁ ht₁ (reflValidTerm hA ht₁) hu₁ hu'_A huu'₁)
+      hh'_Id
+  have hPuh_eq_P'u'h' : ValidTypeEq hPuh (subst2 P' u' h') :=
+    substS2IdEq hA ht₁ hP hP' hPP' hu₁ hu'_A huu'₁ hh₁ hh'_in_A_u' hhh'₁
+  have hIdrecR : ValidTerm hPuh (.idrec A' P' r' t' u' h') :=
+    conv2Valid hPuh hP'u'h' hPuh_eq_P'u'h' hIdrecR_in_P'u'h'
+  exact ⟨hΓ, hPuh, hIdrecL, hIdrecR, hIdrecEq⟩
+
+theorem fund_termEq_idrecBeta {eqrel : EqRelSet} {Γ : Context} {A P r t : Term}
+    (ihA : FundTypeMotive eqrel Γ A)
+    (ihP : FundTypeMotive eqrel (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P)
+    (ihr : FundTermMotive eqrel Γ r (subst2 P t .rfl))
+    (iht : FundTermMotive eqrel Γ t A) :
+    FundTermEqMotive eqrel Γ (.idrec A P r t t .rfl) r (subst2 P t .rfl) := by
+  rcases ihA with ⟨hΓ, hA⟩
+  rcases ihP with ⟨_, hP⟩
+  rcases ihr with ⟨_, hPtrfl, hr⟩
+  rcases iht with ⟨_, hA₁, ht⟩
+  have ht' : ValidTerm hA t := irrelevanceValidTerm hA₁ hA ht
+  have hRed : ValidRedTerm eqrel Γ (.idrec A P r t t .rfl) r (subst2 P t .rfl) := by
+    intro Δ σ hΔ hσ
+    have wfA : TypeWf Δ (subst σ A) := escape (hA hΔ hσ).red
+    have wft : HasType Δ (subst σ t) (subst σ A) := escapeTerm (hA hΔ hσ).red (ht' hΔ hσ).term
+    have wfP : TypeWf (.id (wk1 (subst σ A)) (wk1 (subst σ t)) (.var 0) :: subst σ A :: Δ)
+        (subst (liftSubst (liftSubst σ)) P) :=
+      escapeIdMotive hΔ hσ hA ht' hP
+    have wfr : HasType Δ (subst σ r)
+        (subst2 (subst (liftSubst (liftSubst σ)) P) (subst σ t) .rfl) := by
+      have h := escapeTerm (hPtrfl hΔ hσ).red (hr hΔ hσ).term
+      rwa [subst2_subst_commute P t .rfl σ] at h
+    have wfPtrfl : TypeWf Δ (subst2 (subst (liftSubst (liftSubst σ)) P) (subst σ t) .rfl) := by
+      have h := escape (hPtrfl hΔ hσ).red
+      rwa [subst2_subst_commute P t .rfl σ] at h
+    have hStep := Step.idrecBeta wfA wfP wfr wft wft (.refl wft) (.refl wfPtrfl)
+    rw [subst2_subst_commute P t .rfl σ]
+    exact hStep
+  rcases redSubstTermValid hRed hPtrfl hr with ⟨hd, heq⟩
+  exact ⟨hΓ, hPtrfl, hd, hr, heq⟩
+
 /-- Fundamental theorem for contexts (`valid`, Theorem 3.21). -/
 theorem valid {eqrel : EqRelSet} {Γ : Context} (d : CtxWf Γ) : ValidCtx eqrel Γ :=
   @CtxWf.rec
@@ -1791,6 +2001,7 @@ theorem valid {eqrel : EqRelSet} {Γ : Context} (d : CtxWf Γ) : ValidCtx eqrel 
     (fun _ ihΓ ↦ ⟨ihΓ, emptyValid⟩)
     (fun _ ihΓ ↦ ⟨ihΓ, unitValid⟩)
     (fun _ _ ihF ihG ↦ ⟨ihF.1, sigmaValid ihF.2 ihG.2⟩)
+    (fun _ _ _ ihA iht ihu ↦ fund_type_id ihA iht ihu)
     (fun _ ihΓ ↦ ⟨ihΓ, UValid, natTermValid⟩)
     (fun _ _ ihF ihG ↦ fund_term_pi ihF ihG)
     (fun _ hm ihΓ ↦ ⟨ihΓ, fundamentalVar hm ihΓ⟩)
@@ -1808,12 +2019,16 @@ theorem valid {eqrel : EqRelSet} {Γ : Context} (d : CtxWf Γ) : ValidCtx eqrel 
     (fun _ _ _ ihF ihG iht ↦ fund_term_snd ihF ihG iht)
     (fun _ _ ihA ihe ↦ fund_term_emptyrec ihA ihe)
     (fun _ ihΓ ↦ ⟨ihΓ, unitValid, starValid⟩)
+    (fun _ _ _ ihA iht ihu ↦ fund_term_id ihA iht ihu)
+    (fun _ _ ihA iht ↦ fund_term_rfl ihA iht)
+    (fun _ _ _ _ _ _ ihA ihP ihr iht ihu ihh ↦ fund_term_idrec ihA ihP ihr iht ihu ihh)
     (fun _ ihEq ↦ fund_typeEq_fromUniv ihEq)
     (fun _ ihA ↦ fund_typeEq_refl ihA)
     (fun _ ihEq ↦ fund_typeEq_symm ihEq)
     (fun _ _ ih₁ ih₂ ↦ fund_typeEq_trans ih₁ ih₂)
     (fun _ _ _ _ ihFH ihGE ↦ fund_typeEq_pi ihFH ihGE)
     (fun _ _ _ _ ihFH ihGE ↦ fund_typeEq_sigma ihFH ihGE)
+    (fun _ _ _ ihAA' ihtt' ihuu' ↦ fund_typeEq_id ihAA' ihtt' ihuu')
     (fun _ iht ↦ fund_termEq_refl iht)
     (fun _ ihEq ↦ fund_termEq_symm ihEq)
     (fun _ _ ih₁ ih₂ ↦ fund_termEq_trans ih₁ ih₂)
@@ -1834,6 +2049,10 @@ theorem valid {eqrel : EqRelSet} {Γ : Context} (d : CtxWf Γ) : ValidCtx eqrel 
     (fun _ _ _ _ _ _ ihF ihG ihp ihr ihFst ihSnd ↦ fund_termEq_sigmaEta ihF ihG ihp ihr ihFst ihSnd)
     (fun _ _ ihA ihe ↦ fund_termEq_emptyrec ihA ihe)
     (fun _ _ ihe ihe' ↦ fund_termEq_etaUnit ihe ihe')
+    (fun _ _ _ ihAA' ihtt' ihuu' ↦ fund_termEq_id ihAA' ihtt' ihuu')
+    (fun _ _ _ _ _ _ _ _ ihA ihAA' iht ihtt' ihPP' ihrr' ihuu' ihhh' ↦
+      fund_termEq_idrec ihA ihAA' iht ihtt' ihPP' ihrr' ihuu' ihhh')
+    (fun _ _ _ _ ihA ihP ihr iht ↦ fund_termEq_idrecBeta ihA ihP ihr iht)
     Γ d
 
 /-- Fundamental theorem for types (`fundamental`, Theorem 3.21). -/
@@ -1854,6 +2073,7 @@ theorem fundamental {eqrel : EqRelSet} {Γ : Context} {A : Term} (d : TypeWf Γ 
     (fun _ ihΓ ↦ ⟨ihΓ, emptyValid⟩)
     (fun _ ihΓ ↦ ⟨ihΓ, unitValid⟩)
     (fun _ _ ihF ihG ↦ ⟨ihF.1, sigmaValid ihF.2 ihG.2⟩)
+    (fun _ _ _ ihA iht ihu ↦ fund_type_id ihA iht ihu)
     (fun _ ihΓ ↦ ⟨ihΓ, UValid, natTermValid⟩)
     (fun _ _ ihF ihG ↦ fund_term_pi ihF ihG)
     (fun _ hm ihΓ ↦ ⟨ihΓ, fundamentalVar hm ihΓ⟩)
@@ -1871,12 +2091,16 @@ theorem fundamental {eqrel : EqRelSet} {Γ : Context} {A : Term} (d : TypeWf Γ 
     (fun _ _ _ ihF ihG iht ↦ fund_term_snd ihF ihG iht)
     (fun _ _ ihA ihe ↦ fund_term_emptyrec ihA ihe)
     (fun _ ihΓ ↦ ⟨ihΓ, unitValid, starValid⟩)
+    (fun _ _ _ ihA iht ihu ↦ fund_term_id ihA iht ihu)
+    (fun _ _ ihA iht ↦ fund_term_rfl ihA iht)
+    (fun _ _ _ _ _ _ ihA ihP ihr iht ihu ihh ↦ fund_term_idrec ihA ihP ihr iht ihu ihh)
     (fun _ ihEq ↦ fund_typeEq_fromUniv ihEq)
     (fun _ ihA ↦ fund_typeEq_refl ihA)
     (fun _ ihEq ↦ fund_typeEq_symm ihEq)
     (fun _ _ ih₁ ih₂ ↦ fund_typeEq_trans ih₁ ih₂)
     (fun _ _ _ _ ihFH ihGE ↦ fund_typeEq_pi ihFH ihGE)
     (fun _ _ _ _ ihFH ihGE ↦ fund_typeEq_sigma ihFH ihGE)
+    (fun _ _ _ ihAA' ihtt' ihuu' ↦ fund_typeEq_id ihAA' ihtt' ihuu')
     (fun _ iht ↦ fund_termEq_refl iht)
     (fun _ ihEq ↦ fund_termEq_symm ihEq)
     (fun _ _ ih₁ ih₂ ↦ fund_termEq_trans ih₁ ih₂)
@@ -1897,6 +2121,10 @@ theorem fundamental {eqrel : EqRelSet} {Γ : Context} {A : Term} (d : TypeWf Γ 
     (fun _ _ _ _ _ _ ihF ihG ihp ihr ihFst ihSnd ↦ fund_termEq_sigmaEta ihF ihG ihp ihr ihFst ihSnd)
     (fun _ _ ihA ihe ↦ fund_termEq_emptyrec ihA ihe)
     (fun _ _ ihe ihe' ↦ fund_termEq_etaUnit ihe ihe')
+    (fun _ _ _ ihAA' ihtt' ihuu' ↦ fund_termEq_id ihAA' ihtt' ihuu')
+    (fun _ _ _ _ _ _ _ _ ihA ihAA' iht ihtt' ihPP' ihrr' ihuu' ihhh' ↦
+      fund_termEq_idrec ihA ihAA' iht ihtt' ihPP' ihrr' ihuu' ihhh')
+    (fun _ _ _ _ ihA ihP ihr iht ↦ fund_termEq_idrecBeta ihA ihP ihr iht)
     Γ A d
 
 /-- Fundamental theorem for terms (`fundamentalTerm`, Theorem 3.21). -/
@@ -1917,6 +2145,7 @@ theorem fundamentalTerm {eqrel : EqRelSet} {Γ : Context} {t A : Term} (d : HasT
     (fun _ ihΓ ↦ ⟨ihΓ, emptyValid⟩)
     (fun _ ihΓ ↦ ⟨ihΓ, unitValid⟩)
     (fun _ _ ihF ihG ↦ ⟨ihF.1, sigmaValid ihF.2 ihG.2⟩)
+    (fun _ _ _ ihA iht ihu ↦ fund_type_id ihA iht ihu)
     (fun _ ihΓ ↦ ⟨ihΓ, UValid, natTermValid⟩)
     (fun _ _ ihF ihG ↦ fund_term_pi ihF ihG)
     (fun _ hm ihΓ ↦ ⟨ihΓ, fundamentalVar hm ihΓ⟩)
@@ -1934,12 +2163,16 @@ theorem fundamentalTerm {eqrel : EqRelSet} {Γ : Context} {t A : Term} (d : HasT
     (fun _ _ _ ihF ihG iht ↦ fund_term_snd ihF ihG iht)
     (fun _ _ ihA ihe ↦ fund_term_emptyrec ihA ihe)
     (fun _ ihΓ ↦ ⟨ihΓ, unitValid, starValid⟩)
+    (fun _ _ _ ihA iht ihu ↦ fund_term_id ihA iht ihu)
+    (fun _ _ ihA iht ↦ fund_term_rfl ihA iht)
+    (fun _ _ _ _ _ _ ihA ihP ihr iht ihu ihh ↦ fund_term_idrec ihA ihP ihr iht ihu ihh)
     (fun _ ihEq ↦ fund_typeEq_fromUniv ihEq)
     (fun _ ihA ↦ fund_typeEq_refl ihA)
     (fun _ ihEq ↦ fund_typeEq_symm ihEq)
     (fun _ _ ih₁ ih₂ ↦ fund_typeEq_trans ih₁ ih₂)
     (fun _ _ _ _ ihFH ihGE ↦ fund_typeEq_pi ihFH ihGE)
     (fun _ _ _ _ ihFH ihGE ↦ fund_typeEq_sigma ihFH ihGE)
+    (fun _ _ _ ihAA' ihtt' ihuu' ↦ fund_typeEq_id ihAA' ihtt' ihuu')
     (fun _ iht ↦ fund_termEq_refl iht)
     (fun _ ihEq ↦ fund_termEq_symm ihEq)
     (fun _ _ ih₁ ih₂ ↦ fund_termEq_trans ih₁ ih₂)
@@ -1960,6 +2193,10 @@ theorem fundamentalTerm {eqrel : EqRelSet} {Γ : Context} {t A : Term} (d : HasT
     (fun _ _ _ _ _ _ ihF ihG ihp ihr ihFst ihSnd ↦ fund_termEq_sigmaEta ihF ihG ihp ihr ihFst ihSnd)
     (fun _ _ ihA ihe ↦ fund_termEq_emptyrec ihA ihe)
     (fun _ _ ihe ihe' ↦ fund_termEq_etaUnit ihe ihe')
+    (fun _ _ _ ihAA' ihtt' ihuu' ↦ fund_termEq_id ihAA' ihtt' ihuu')
+    (fun _ _ _ _ _ _ _ _ ihA ihAA' iht ihtt' ihPP' ihrr' ihuu' ihhh' ↦
+      fund_termEq_idrec ihA ihAA' iht ihtt' ihPP' ihrr' ihuu' ihhh')
+    (fun _ _ _ _ ihA ihP ihr iht ↦ fund_termEq_idrecBeta ihA ihP ihr iht)
     Γ t A d
 
 /-- Fundamental theorem for type equality (`fundamentalEq`, Theorem 3.21). -/
@@ -1980,6 +2217,7 @@ theorem fundamentalEq {eqrel : EqRelSet} {Γ : Context} {A B : Term} (d : TypeEq
     (fun _ ihΓ ↦ ⟨ihΓ, emptyValid⟩)
     (fun _ ihΓ ↦ ⟨ihΓ, unitValid⟩)
     (fun _ _ ihF ihG ↦ ⟨ihF.1, sigmaValid ihF.2 ihG.2⟩)
+    (fun _ _ _ ihA iht ihu ↦ fund_type_id ihA iht ihu)
     (fun _ ihΓ ↦ ⟨ihΓ, UValid, natTermValid⟩)
     (fun _ _ ihF ihG ↦ fund_term_pi ihF ihG)
     (fun _ hm ihΓ ↦ ⟨ihΓ, fundamentalVar hm ihΓ⟩)
@@ -1997,12 +2235,16 @@ theorem fundamentalEq {eqrel : EqRelSet} {Γ : Context} {A B : Term} (d : TypeEq
     (fun _ _ _ ihF ihG iht ↦ fund_term_snd ihF ihG iht)
     (fun _ _ ihA ihe ↦ fund_term_emptyrec ihA ihe)
     (fun _ ihΓ ↦ ⟨ihΓ, unitValid, starValid⟩)
+    (fun _ _ _ ihA iht ihu ↦ fund_term_id ihA iht ihu)
+    (fun _ _ ihA iht ↦ fund_term_rfl ihA iht)
+    (fun _ _ _ _ _ _ ihA ihP ihr iht ihu ihh ↦ fund_term_idrec ihA ihP ihr iht ihu ihh)
     (fun _ ihEq ↦ fund_typeEq_fromUniv ihEq)
     (fun _ ihA ↦ fund_typeEq_refl ihA)
     (fun _ ihEq ↦ fund_typeEq_symm ihEq)
     (fun _ _ ih₁ ih₂ ↦ fund_typeEq_trans ih₁ ih₂)
     (fun _ _ _ _ ihFH ihGE ↦ fund_typeEq_pi ihFH ihGE)
     (fun _ _ _ _ ihFH ihGE ↦ fund_typeEq_sigma ihFH ihGE)
+    (fun _ _ _ ihAA' ihtt' ihuu' ↦ fund_typeEq_id ihAA' ihtt' ihuu')
     (fun _ iht ↦ fund_termEq_refl iht)
     (fun _ ihEq ↦ fund_termEq_symm ihEq)
     (fun _ _ ih₁ ih₂ ↦ fund_termEq_trans ih₁ ih₂)
@@ -2023,6 +2265,10 @@ theorem fundamentalEq {eqrel : EqRelSet} {Γ : Context} {A B : Term} (d : TypeEq
     (fun _ _ _ _ _ _ ihF ihG ihp ihr ihFst ihSnd ↦ fund_termEq_sigmaEta ihF ihG ihp ihr ihFst ihSnd)
     (fun _ _ ihA ihe ↦ fund_termEq_emptyrec ihA ihe)
     (fun _ _ ihe ihe' ↦ fund_termEq_etaUnit ihe ihe')
+    (fun _ _ _ ihAA' ihtt' ihuu' ↦ fund_termEq_id ihAA' ihtt' ihuu')
+    (fun _ _ _ _ _ _ _ _ ihA ihAA' iht ihtt' ihPP' ihrr' ihuu' ihhh' ↦
+      fund_termEq_idrec ihA ihAA' iht ihtt' ihPP' ihrr' ihuu' ihhh')
+    (fun _ _ _ _ ihA ihP ihr iht ↦ fund_termEq_idrecBeta ihA ihP ihr iht)
     Γ A B d
 
 /-- Fundamental theorem for term equality (`fundamentalTermEq`, Theorem 3.21). -/
@@ -2043,6 +2289,7 @@ theorem fundamentalTermEq {eqrel : EqRelSet} {Γ : Context} {t u A : Term} (d : 
     (fun _ ihΓ ↦ ⟨ihΓ, emptyValid⟩)
     (fun _ ihΓ ↦ ⟨ihΓ, unitValid⟩)
     (fun _ _ ihF ihG ↦ ⟨ihF.1, sigmaValid ihF.2 ihG.2⟩)
+    (fun _ _ _ ihA iht ihu ↦ fund_type_id ihA iht ihu)
     (fun _ ihΓ ↦ ⟨ihΓ, UValid, natTermValid⟩)
     (fun _ _ ihF ihG ↦ fund_term_pi ihF ihG)
     (fun _ hm ihΓ ↦ ⟨ihΓ, fundamentalVar hm ihΓ⟩)
@@ -2060,12 +2307,16 @@ theorem fundamentalTermEq {eqrel : EqRelSet} {Γ : Context} {t u A : Term} (d : 
     (fun _ _ _ ihF ihG iht ↦ fund_term_snd ihF ihG iht)
     (fun _ _ ihA ihe ↦ fund_term_emptyrec ihA ihe)
     (fun _ ihΓ ↦ ⟨ihΓ, unitValid, starValid⟩)
+    (fun _ _ _ ihA iht ihu ↦ fund_term_id ihA iht ihu)
+    (fun _ _ ihA iht ↦ fund_term_rfl ihA iht)
+    (fun _ _ _ _ _ _ ihA ihP ihr iht ihu ihh ↦ fund_term_idrec ihA ihP ihr iht ihu ihh)
     (fun _ ihEq ↦ fund_typeEq_fromUniv ihEq)
     (fun _ ihA ↦ fund_typeEq_refl ihA)
     (fun _ ihEq ↦ fund_typeEq_symm ihEq)
     (fun _ _ ih₁ ih₂ ↦ fund_typeEq_trans ih₁ ih₂)
     (fun _ _ _ _ ihFH ihGE ↦ fund_typeEq_pi ihFH ihGE)
     (fun _ _ _ _ ihFH ihGE ↦ fund_typeEq_sigma ihFH ihGE)
+    (fun _ _ _ ihAA' ihtt' ihuu' ↦ fund_typeEq_id ihAA' ihtt' ihuu')
     (fun _ iht ↦ fund_termEq_refl iht)
     (fun _ ihEq ↦ fund_termEq_symm ihEq)
     (fun _ _ ih₁ ih₂ ↦ fund_termEq_trans ih₁ ih₂)
@@ -2086,6 +2337,10 @@ theorem fundamentalTermEq {eqrel : EqRelSet} {Γ : Context} {t u A : Term} (d : 
     (fun _ _ _ _ _ _ ihF ihG ihp ihr ihFst ihSnd ↦ fund_termEq_sigmaEta ihF ihG ihp ihr ihFst ihSnd)
     (fun _ _ ihA ihe ↦ fund_termEq_emptyrec ihA ihe)
     (fun _ _ ihe ihe' ↦ fund_termEq_etaUnit ihe ihe')
+    (fun _ _ _ ihAA' ihtt' ihuu' ↦ fund_termEq_id ihAA' ihtt' ihuu')
+    (fun _ _ _ _ _ _ _ _ ihA ihAA' iht ihtt' ihPP' ihrr' ihuu' ihhh' ↦
+      fund_termEq_idrec ihA ihAA' iht ihtt' ihPP' ihrr' ihuu' ihhh')
+    (fun _ _ _ _ ihA ihP ihr iht ↦ fund_termEq_idrecBeta ihA ihP ihr iht)
     Γ t u A d
 
 /-- Fundamental theorem for substitutions (`fundamentalSubst`, Theorem 3.23). -/

@@ -35,6 +35,12 @@ inductive Term where
   | empty : Term
   /-- `Emptyrec A e`. -/
   | emptyrec : Term → Term → Term
+  /-- Intensional identity type `Id A t u`. -/
+  | id : Term → Term → Term → Term
+  /-- Reflexivity constructor `rfl`. -/
+  | rfl : Term
+  /-- Paulin-Mohring identity eliminator `idrec A P r t u h`; `P` binds two variables (`y : A` and `p : Id A t y`). -/
+  | idrec : Term → Term → Term → Term → Term → Term → Term
   deriving DecidableEq, Repr
 
 /-- Newest-first representation of the source's snoc contexts: Γ ∙ A becomes A :: Γ. -/
@@ -64,6 +70,11 @@ def rename (ρ : Nat → Nat) : Term → Term
   | .star => .star
   | .empty => .empty
   | .emptyrec A e => .emptyrec (rename ρ A) (rename ρ e)
+  | .id A t u => .id (rename ρ A) (rename ρ t) (rename ρ u)
+  | .rfl => .rfl
+  | .idrec A P r t u h =>
+      .idrec (rename ρ A) (rename (liftRen (liftRen ρ)) P)
+        (rename ρ r) (rename ρ t) (rename ρ u) (rename ρ h)
 
 /-- Syntactic weakenings from the source, retaining its inductive presentation. -/
 inductive Wk where
@@ -97,6 +108,11 @@ def wk (ρ : Wk) : Term → Term
   | .star => .star
   | .empty => .empty
   | .emptyrec A e => .emptyrec (wk ρ A) (wk ρ e)
+  | .id A t u => .id (wk ρ A) (wk ρ t) (wk ρ u)
+  | .rfl => .rfl
+  | .idrec A P r t u h =>
+      .idrec (wk ρ A) (wk (.lift (.lift ρ)) P)
+        (wk ρ r) (wk ρ t) (wk ρ u) (wk ρ h)
 
 def wk1 : Term → Term := wk (.step .id)
 
@@ -132,6 +148,11 @@ def subst (σ : Subst) : Term → Term
   | .star => .star
   | .empty => .empty
   | .emptyrec A e => .emptyrec (subst σ A) (subst σ e)
+  | .id A t u => .id (subst σ A) (subst σ t) (subst σ u)
+  | .rfl => .rfl
+  | .idrec A P r t u h =>
+      .idrec (subst σ A) (subst (liftSubst (liftSubst σ)) P)
+        (subst σ r) (subst σ t) (subst σ u) (subst σ h)
 
 def consSubst (σ : Subst) (a : Term) : Subst
   | 0 => a
@@ -161,6 +182,13 @@ def subst0 (t a : Term) : Term := subst (consSubst idSubst a) t
 /-- Replace index zero while retaining the context, corresponding to source t [ a ]↑. -/
 def substKeep (t a : Term) : Term := subst (consSubst (wk1Subst idSubst) a) t
 
+/-- Replace index 0 with `v` and index 1 with `u`, removing both binders (`t [ u , v ]₁₀`). -/
+def subst2 (t u v : Term) : Term := subst (consSubst (sgSubst u) v) t
+
+/-- Extended context for the motive of `idrec`: `Γ ∙ A ∙ Id (wk1 A) (wk1 t) (var 0)`. -/
+def idMotiveCtx (Γ : Context) (A t : Term) : Context :=
+  .id (wk1 A) (wk1 t) (.var 0) :: A :: Γ
+
 /-- Nondependent arrow: source A ▹▹ B. -/
 def arr (A B : Term) : Term := .pi A (wk1 B)
 
@@ -175,6 +203,7 @@ inductive Neutral : Term → Prop where
   | fst {k} : Neutral k → Neutral (.fst k)
   | snd {k} : Neutral k → Neutral (.snd k)
   | emptyrec {A k} : Neutral k → Neutral (.emptyrec A k)
+  | idrec {A P r t u k} : Neutral k → Neutral (.idrec A P r t u k)
 
 inductive Whnf : Term → Prop where
   | univ : Whnf .univ
@@ -188,6 +217,8 @@ inductive Whnf : Term → Prop where
   | empty : Whnf .empty
   | prod {t u} : Whnf (.prod t u)
   | star : Whnf .star
+  | id {A t u} : Whnf (.id A t u)
+  | rfl : Whnf .rfl
   | neutral {n} : Neutral n → Whnf n
 
 /-- Source view Natural: the weak-head forms of natural-number terms. -/
@@ -203,6 +234,7 @@ inductive SmallTypeView : Term → Prop where
   | sigma {A B} : SmallTypeView (.sigma A B)
   | unit : SmallTypeView .unit
   | empty : SmallTypeView .empty
+  | id {A t u} : SmallTypeView (.id A t u)
   | neutral {n} : Neutral n → SmallTypeView n
 
 /-- Source view Function: weak-head forms of function terms. -/
@@ -215,6 +247,11 @@ inductive ProductView : Term → Prop where
   | prod {t u} : ProductView (.prod t u)
   | neutral {n} : Neutral n → ProductView n
 
+/-- Source view Identity: weak-head forms of identity proofs. -/
+inductive IdentityView : Term → Prop where
+  | rfl : IdentityView .rfl
+  | neutral {n} : Neutral n → IdentityView n
+
 theorem NaturalView.toWhnf {n : Term} : NaturalView n → Whnf n
   | .zero => .zero
   | .succ => .succ
@@ -226,6 +263,7 @@ theorem SmallTypeView.toWhnf {A : Term} : SmallTypeView A → Whnf A
   | .sigma => .sigma
   | .unit => .unit
   | .empty => .empty
+  | .id => .id
   | .neutral h => .neutral h
 
 theorem FunctionView.toWhnf {f : Term} : FunctionView f → Whnf f
@@ -236,6 +274,10 @@ theorem ProductView.toWhnf {p : Term} : ProductView p → Whnf p
   | .prod => .prod
   | .neutral h => .neutral h
 
+theorem IdentityView.toWhnf {h : Term} : IdentityView h → Whnf h
+  | .rfl => .rfl
+  | .neutral hn => .neutral hn
+
 theorem Neutral.rename {t : Term} (ρ : Nat → Nat) : Neutral t → Neutral (LogrelMLTT.rename ρ t)
   | .var n => .var (ρ n)
   | .app h => .app (h.rename ρ)
@@ -243,6 +285,7 @@ theorem Neutral.rename {t : Term} (ρ : Nat → Nat) : Neutral t → Neutral (Lo
   | .fst h => .fst (h.rename ρ)
   | .snd h => .snd (h.rename ρ)
   | .emptyrec h => .emptyrec (h.rename ρ)
+  | .idrec h => .idrec (h.rename ρ)
 
 theorem Neutral.wk {t : Term} (ρ : Wk) : Neutral t → Neutral (LogrelMLTT.wk ρ t)
   | .var n => .var (wkVar ρ n)
@@ -251,6 +294,7 @@ theorem Neutral.wk {t : Term} (ρ : Wk) : Neutral t → Neutral (LogrelMLTT.wk �
   | .fst h => .fst (h.wk ρ)
   | .snd h => .snd (h.wk ρ)
   | .emptyrec h => .emptyrec (h.wk ρ)
+  | .idrec h => .idrec (h.wk ρ)
 
 theorem Whnf.wk {t : Term} (ρ : Wk) : Whnf t → Whnf (LogrelMLTT.wk ρ t)
   | .univ => .univ
@@ -264,6 +308,8 @@ theorem Whnf.wk {t : Term} (ρ : Wk) : Whnf t → Whnf (LogrelMLTT.wk ρ t)
   | .empty => .empty
   | .prod => .prod
   | .star => .star
+  | .id => .id
+  | .rfl => .rfl
   | .neutral h => .neutral (h.wk ρ)
 
 theorem NaturalView.wk {t : Term} (ρ : Wk) : NaturalView t → NaturalView (LogrelMLTT.wk ρ t)
@@ -277,6 +323,7 @@ theorem SmallTypeView.wk {t : Term} (ρ : Wk) : SmallTypeView t → SmallTypeVie
   | .sigma => .sigma
   | .unit => .unit
   | .empty => .empty
+  | .id => .id
   | .neutral h => .neutral (h.wk ρ)
 
 theorem FunctionView.wk {t : Term} (ρ : Wk) : FunctionView t → FunctionView (LogrelMLTT.wk ρ t)
@@ -285,6 +332,10 @@ theorem FunctionView.wk {t : Term} (ρ : Wk) : FunctionView t → FunctionView (
 
 theorem ProductView.wk {t : Term} (ρ : Wk) : ProductView t → ProductView (LogrelMLTT.wk ρ t)
   | .prod => .prod
+  | .neutral h => .neutral (h.wk ρ)
+
+theorem IdentityView.wk {t : Term} (ρ : Wk) : IdentityView t → IdentityView (LogrelMLTT.wk ρ t)
+  | .rfl => .rfl
   | .neutral h => .neutral (h.wk ρ)
 
 end LogrelMLTT

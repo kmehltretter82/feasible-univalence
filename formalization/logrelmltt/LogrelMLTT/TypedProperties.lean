@@ -47,47 +47,78 @@ theorem HasType.indOnly
       motive Γ t (.sigma F G) ht → motive Γ (.snd t) (subst0 G (.fst t)) (.snd hF hG ht))
     (emptyrec : ∀ {Γ A e} (hA : TypeWf Γ A) (he : HasType Γ e .empty),
       motive Γ e .empty he → motive Γ (.emptyrec A e) A (.emptyrec hA he))
-    (star : ∀ {Γ} (hΓ : CtxWf Γ), motive Γ .star .unit (.star hΓ)) :
+    (star : ∀ {Γ} (hΓ : CtxWf Γ), motive Γ .star .unit (.star hΓ))
+    (id : ∀ {Γ A t u} (hA : HasType Γ A .univ) (ht : HasType Γ t A) (hu : HasType Γ u A),
+      motive Γ A .univ hA → motive Γ t A ht → motive Γ u A hu →
+      motive Γ (.id A t u) .univ (.id hA ht hu))
+    (rfl : ∀ {Γ A t} (hA : TypeWf Γ A) (ht : HasType Γ t A),
+      motive Γ t A ht → motive Γ .rfl (.id A t t) (.rfl hA ht))
+    (idrec : ∀ {Γ A P r t u h} (hA : TypeWf Γ A)
+      (hP : TypeWf (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P)
+      (hr : HasType Γ r (subst2 P t .rfl)) (ht : HasType Γ t A) (hu : HasType Γ u A)
+      (hh : HasType Γ h (.id A t u)),
+      motive Γ r (subst2 P t .rfl) hr → motive Γ t A ht → motive Γ u A hu →
+      motive Γ h (.id A t u) hh →
+      motive Γ (.idrec A P r t u h) (subst2 P u h) (.idrec hA hP hr ht hu hh)) :
     ∀ {Γ : Context} {t A : Term} (d : HasType Γ t A), motive Γ t A d
   | _, _, _, .nat hΓ => nat hΓ
   | _, _, _, .pi hF hG => pi hF hG (HasType.indOnly nat pi var lam app zero succ natrec conv sigma
-      empty unit prod fst snd emptyrec star hF) (HasType.indOnly nat pi var lam app zero succ
-      natrec conv sigma empty unit prod fst snd emptyrec star hG)
+      empty unit prod fst snd emptyrec star id rfl idrec hF) (HasType.indOnly nat pi var lam app
+      zero succ natrec conv sigma empty unit prod fst snd emptyrec star id rfl idrec hG)
   | _, _, _, .var hΓ hm => var hΓ hm
   | _, _, _, .lam hF ht => lam hF ht (HasType.indOnly nat pi var lam app zero succ natrec conv
-      sigma empty unit prod fst snd emptyrec star ht)
+      sigma empty unit prod fst snd emptyrec star id rfl idrec ht)
   | _, _, _, .app hg ha => app hg ha (HasType.indOnly nat pi var lam app zero succ natrec conv
-      sigma empty unit prod fst snd emptyrec star hg) (HasType.indOnly nat pi var lam app zero
-      succ natrec conv sigma empty unit prod fst snd emptyrec star ha)
+      sigma empty unit prod fst snd emptyrec star id rfl idrec hg) (HasType.indOnly nat pi var lam
+      app zero succ natrec conv sigma empty unit prod fst snd emptyrec star id rfl idrec ha)
   | _, _, _, .zero hΓ => zero hΓ
   | _, _, _, .succ hn => succ hn (HasType.indOnly nat pi var lam app zero succ natrec conv sigma
-      empty unit prod fst snd emptyrec star hn)
+      empty unit prod fst snd emptyrec star id rfl idrec hn)
   | _, _, _, .natrec hG hz hs hn => natrec hG hz hs hn
       (HasType.indOnly nat pi var lam app zero succ natrec conv sigma empty unit prod fst snd
-        emptyrec star hz)
+        emptyrec star id rfl idrec hz)
       (HasType.indOnly nat pi var lam app zero succ natrec conv sigma empty unit prod fst snd
-        emptyrec star hs)
+        emptyrec star id rfl idrec hs)
       (HasType.indOnly nat pi var lam app zero succ natrec conv sigma empty unit prod fst snd
-        emptyrec star hn)
+        emptyrec star id rfl idrec hn)
   | _, _, _, .conv ht hEq => conv ht hEq (HasType.indOnly nat pi var lam app zero succ natrec conv
-      sigma empty unit prod fst snd emptyrec star ht)
+      sigma empty unit prod fst snd emptyrec star id rfl idrec ht)
   | _, _, _, .sigma hF hG => sigma hF hG (HasType.indOnly nat pi var lam app zero succ natrec conv
-      sigma empty unit prod fst snd emptyrec star hF) (HasType.indOnly nat pi var lam app zero
-      succ natrec conv sigma empty unit prod fst snd emptyrec star hG)
+      sigma empty unit prod fst snd emptyrec star id rfl idrec hF) (HasType.indOnly nat pi var lam
+      app zero succ natrec conv sigma empty unit prod fst snd emptyrec star id rfl idrec hG)
   | _, _, _, .empty hΓ => empty hΓ
   | _, _, _, .unit hΓ => unit hΓ
   | _, _, _, .prod hF hG ht hu => prod hF hG ht hu
       (HasType.indOnly nat pi var lam app zero succ natrec conv sigma empty unit prod fst snd
-        emptyrec star ht)
+        emptyrec star id rfl idrec ht)
       (HasType.indOnly nat pi var lam app zero succ natrec conv sigma empty unit prod fst snd
-        emptyrec star hu)
+        emptyrec star id rfl idrec hu)
   | _, _, _, .fst hF hG ht => fst hF hG ht (HasType.indOnly nat pi var lam app zero succ natrec
-      conv sigma empty unit prod fst snd emptyrec star ht)
+      conv sigma empty unit prod fst snd emptyrec star id rfl idrec ht)
   | _, _, _, .snd hF hG ht => snd hF hG ht (HasType.indOnly nat pi var lam app zero succ natrec
-      conv sigma empty unit prod fst snd emptyrec star ht)
+      conv sigma empty unit prod fst snd emptyrec star id rfl idrec ht)
   | _, _, _, .emptyrec hA he => emptyrec hA he (HasType.indOnly nat pi var lam app zero succ
-      natrec conv sigma empty unit prod fst snd emptyrec star he)
+      natrec conv sigma empty unit prod fst snd emptyrec star id rfl idrec he)
   | _, _, _, .star hΓ => star hΓ
+  | _, _, _, .id hA ht hu => id hA ht hu
+      (HasType.indOnly nat pi var lam app zero succ natrec conv sigma empty unit prod fst snd
+        emptyrec star id rfl idrec hA)
+      (HasType.indOnly nat pi var lam app zero succ natrec conv sigma empty unit prod fst snd
+        emptyrec star id rfl idrec ht)
+      (HasType.indOnly nat pi var lam app zero succ natrec conv sigma empty unit prod fst snd
+        emptyrec star id rfl idrec hu)
+  | _, _, _, .rfl hA ht => rfl hA ht
+      (HasType.indOnly nat pi var lam app zero succ natrec conv sigma empty unit prod fst snd
+        emptyrec star id rfl idrec ht)
+  | _, _, _, .idrec hA hP hr ht hu hh => idrec hA hP hr ht hu hh
+      (HasType.indOnly nat pi var lam app zero succ natrec conv sigma empty unit prod fst snd
+        emptyrec star id rfl idrec hr)
+      (HasType.indOnly nat pi var lam app zero succ natrec conv sigma empty unit prod fst snd
+        emptyrec star id rfl idrec ht)
+      (HasType.indOnly nat pi var lam app zero succ natrec conv sigma empty unit prod fst snd
+        emptyrec star id rfl idrec hu)
+      (HasType.indOnly nat pi var lam app zero succ natrec conv sigma empty unit prod fst snd
+        emptyrec star id rfl idrec hh)
 
 theorem CtxWf.tail {Γ : Context} {A : Term} : CtxWf (A :: Γ) → CtxWf Γ
   | .cons hΓ _ => hΓ
@@ -105,6 +136,7 @@ theorem wfType : ∀ {Γ : Context} {A : Term}, TypeWf Γ A → CtxWf Γ
   | _, _, .empty hΓ => hΓ
   | _, _, .unit hΓ => hΓ
   | _, _, .sigma hF _ => wfType hF
+  | _, _, .id hA _ _ => wfType hA
 
 /-- Context well-formedness extracted from a term typing derivation (`wfTerm`). -/
 theorem wfTerm : ∀ {Γ : Context} {t A : Term}, HasType Γ t A → CtxWf Γ
@@ -125,6 +157,9 @@ theorem wfTerm : ∀ {Γ : Context} {t A : Term}, HasType Γ t A → CtxWf Γ
   | _, _, _, .snd hF _ _ => wfType hF
   | _, _, _, .emptyrec hA _ => wfType hA
   | _, _, _, .star hΓ => hΓ
+  | _, _, _, .id hA _ _ => wfTerm hA
+  | _, _, _, .rfl hA _ => wfType hA
+  | _, _, _, .idrec hA _ _ _ _ _ => wfType hA
 
 /-- Context well-formedness extracted from a type equality derivation (`wfEq`). -/
 theorem wfTypeEq : ∀ {Γ : Context} {A B : Term}, TypeEq Γ A B → CtxWf Γ
@@ -134,6 +169,7 @@ theorem wfTypeEq : ∀ {Γ : Context} {A B : Term}, TypeEq Γ A B → CtxWf Γ
   | _, _, _, .trans h _ => wfTypeEq h
   | _, _, _, .pi hF _ _ => wfType hF
   | _, _, _, .sigma hF _ _ => wfType hF
+  | _, _, _, .id hAA' _ _ => wfTypeEq hAA'
 
 /-- Context well-formedness extracted from a term equality derivation (`wfEqTerm`). -/
 theorem wfTermEq : ∀ {Γ : Context} {t u A : Term}, TermEq Γ t u A → CtxWf Γ
@@ -157,6 +193,9 @@ theorem wfTermEq : ∀ {Γ : Context} {t u A : Term}, TermEq Γ t u A → CtxWf 
   | _, _, _, _, .sigmaEta hF _ _ _ _ _ => wfType hF
   | _, _, _, _, .emptyrec h _ => wfTypeEq h
   | _, _, _, _, .etaUnit he _ => wfTerm he
+  | _, _, _, _, .id hAA' _ _ => wfTermEq hAA'
+  | _, _, _, _, .idrec hA _ _ _ _ _ _ _ => wfType hA
+  | _, _, _, _, .idrecBeta hA _ _ _ => wfType hA
 end
 
 /-- Single-step term reduction is included in judgmental equality (`subsetTerm`, Lemma 2.2). -/
@@ -174,6 +213,12 @@ theorem subsetTerm {Γ : Context} {t u A : Term} :
   | .sigmaBeta1 hF hG ht hu => .sigmaBeta1 hF hG ht hu
   | .sigmaBeta2 hF hG ht hu => .sigmaBeta2 hF hG ht hu
   | .emptyrec hA hStep => .emptyrec (.refl hA) (subsetTerm hStep)
+  | .idrec hA hP hr ht hu hStep =>
+      .idrec hA (.refl hA) ht (.refl ht) (.refl hP) (.refl hr) (.refl hu) (subsetTerm hStep)
+  | .idrecBeta hA hP hr ht _ htu _ =>
+      .trans
+        (.symm (.idrec hA (.refl hA) ht (.refl ht) (.refl hP) (.refl hr) htu (.refl (.rfl hA ht))))
+        (.idrecBeta hA hP hr ht)
 
 /-- Single-step type reduction is included in judgmental type equality (`subset`, Lemma 2.2). -/
 theorem subsetType {Γ : Context} {A B : Term} :
@@ -206,6 +251,11 @@ theorem redFirstTerm {Γ : Context} {t u A : Term} :
   | .sigmaBeta1 hF hG ht hu => .fst hF hG (.prod hF hG ht hu)
   | .sigmaBeta2 hF hG ht hu => .snd hF hG (.prod hF hG ht hu)
   | .emptyrec hA hStep => .emptyrec hA (redFirstTerm hStep)
+  | .idrec hA hP hr ht hu hStep => .idrec hA hP hr ht hu (redFirstTerm hStep)
+  | .idrecBeta hA hP hr ht hu htu hPP =>
+      .conv
+        (.idrec hA hP hr ht hu (.conv (.rfl hA ht) (.id (.refl hA) (.refl ht) htu)))
+        (.symm hPP)
 
 /-- Left-hand well-formedness extraction from single-step type reduction (`redFirst`, Lemma 2.3). -/
 theorem redFirstType {Γ : Context} {A B : Term} :
@@ -266,6 +316,12 @@ theorem noNe {t A : Term} (ht : HasType [] t A) (hn : Neutral t) : False := by
         cases hn with
         | emptyrec hn' => exact ihe hΓ hn'
     | star _ => intro _ hn; cases hn
+    | id _ _ _ _ _ _ => intro _ hn; cases hn
+    | rfl _ _ _ => intro _ hn; cases hn
+    | idrec _ _ _ _ _ _ _ _ _ ihh =>
+        intro hΓ hn
+        cases hn with
+        | idrec hn' => exact ihh hΓ hn'
   exact aux ht rfl hn
 
 /-- Neutral terms do not weak-head reduce (`neRedTerm`, Lemma 2.4). -/
@@ -302,6 +358,12 @@ theorem neRedTerm {Γ : Context} {t u A : Term} (d : Step Γ t u A) (hn : Neutra
   | emptyrec _ _ ih =>
       cases hn with
       | emptyrec hn' => exact ih hn'
+  | idrec _ _ _ _ _ _ ih =>
+      cases hn with
+      | idrec hn' => exact ih hn'
+  | idrecBeta _ _ _ _ _ _ _ =>
+      cases hn with
+      | idrec hn' => cases hn'
 
 /-- Neutral types do not weak-head reduce (`neRed`, Lemma 2.4). -/
 theorem neRedType {Γ : Context} {A B : Term} :
@@ -362,6 +424,16 @@ theorem whnfRedTerm {Γ : Context} {t u A : Term} (d : Step Γ t u A) (hw : Whnf
       | neutral hn =>
           cases hn with
           | emptyrec hn' => exact neRedTerm hStep hn'
+  | idrec _ _ _ _ _ hStep _ =>
+      cases hw with
+      | neutral hn =>
+          cases hn with
+          | idrec hn' => exact neRedTerm hStep hn'
+  | idrecBeta _ _ _ _ _ _ _ =>
+      cases hw with
+      | neutral hn =>
+          cases hn with
+          | idrec hn' => cases hn'
 
 /-- Weak-head normal types do not weak-head reduce (`whnfRed`, Lemma 2.4). -/
 theorem whnfRedType {Γ : Context} {A B : Term} :
@@ -392,6 +464,8 @@ inductive UStep : Term → Term → Prop where
   | sigmaBeta1 {t u} : UStep (.fst (.prod t u)) t
   | sigmaBeta2 {t u} : UStep (.snd (.prod t u)) u
   | emptyrec {A n n'} : UStep n n' → UStep (.emptyrec A n) (.emptyrec A n')
+  | idrec {A P r t u h h'} : UStep h h' → UStep (.idrec A P r t u h) (.idrec A P r t u h')
+  | idrecBeta {A P r t u} : UStep (.idrec A P r t u .rfl) r
 
 theorem Step.toU {Γ : Context} {t u A : Term} (d : Step Γ t u A) : UStep t u := by
   induction d with
@@ -406,6 +480,8 @@ theorem Step.toU {Γ : Context} {t u A : Term} (d : Step Γ t u A) : UStep t u :
   | sigmaBeta1 _ _ _ _ => exact .sigmaBeta1
   | sigmaBeta2 _ _ _ _ => exact .sigmaBeta2
   | emptyrec _ _ ih => exact .emptyrec ih
+  | idrec _ _ _ _ _ _ ih => exact .idrec ih
+  | idrecBeta _ _ _ _ _ _ _ => exact .idrecBeta
 
 theorem UStep.not_whnf {t u : Term} (d : UStep t u) (hw : Whnf t) : False := by
   induction d with
@@ -424,6 +500,9 @@ theorem UStep.not_whnf {t u : Term} (d : UStep t u) (hw : Whnf t) : False := by
   | sigmaBeta2 => cases hw with | neutral hn => cases hn with | snd hn' => cases hn'
   | emptyrec d ih =>
       cases hw with | neutral hn => cases hn with | emptyrec hn' => exact ih (.neutral hn')
+  | idrec d ih =>
+      cases hw with | neutral hn => cases hn with | idrec hn' => exact ih (.neutral hn')
+  | idrecBeta => cases hw with | neutral hn => cases hn with | idrec hn' => cases hn'
 
 theorem UStep.det {t u u' : Term} (d₁ : UStep t u) (d₂ : UStep t u') : u = u' := by
   induction d₁ generalizing u' with
@@ -467,6 +546,14 @@ theorem UStep.det {t u u' : Term} (d₁ : UStep t u) (d₂ : UStep t u') : u = u
   | emptyrec d ih =>
       cases d₂ with
       | emptyrec d₂ => rw [ih d₂]
+  | idrec d ih =>
+      cases d₂ with
+      | idrec d₂ => rw [ih d₂]
+      | idrecBeta => exact (d.not_whnf .rfl).elim
+  | idrecBeta =>
+      cases d₂ with
+      | idrec d₂ => exact (d₂.not_whnf .rfl).elim
+      | idrecBeta => rfl
 
 /-- Determinism of single-step term reduction (`whrDetTerm`, Lemma 2.5). -/
 theorem whrDetTerm {Γ : Context} {t u A u' A' : Term}
@@ -548,6 +635,9 @@ theorem UnotInA {Γ : Context} {A : Term} (h : HasType Γ .univ A) : False := by
     | snd _ _ _ _ => intro hu; cases hu
     | emptyrec _ _ _ => intro hu; cases hu
     | star _ => intro hu; cases hu
+    | id _ _ _ _ _ _ => intro hu; cases hu
+    | rfl _ _ _ => intro hu; cases hu
+    | idrec _ _ _ _ _ _ _ _ _ _ => intro hu; cases hu
   exact aux h rfl
 
 theorem UnotInA_subst {Γ : Context} {A B t a : Term}
@@ -580,6 +670,9 @@ theorem UnotInA_subst {Γ : Context} {A B t a : Term}
     | snd _ _ _ _ => intro h; cases h
     | emptyrec _ _ _ => intro h; cases h
     | star _ => intro h; cases h
+    | id _ _ _ _ _ _ => intro h; cases h
+    | rfl _ _ _ => intro h; cases h
+    | idrec _ _ _ _ _ _ _ _ _ _ => intro h; cases h
   exact aux ht heq
 
 theorem redUStarTerm' {Γ : Context} {A B U' : Term}
@@ -602,6 +695,10 @@ theorem redUStarTerm' {Γ : Context} {A B U' : Term}
       subst heq
       exact UnotInA hu
   | emptyrec _ _ _ => cases heq
+  | idrec _ _ _ _ _ _ _ => cases heq
+  | idrecBeta _ _ hr _ _ _ _ =>
+      subst heq
+      exact UnotInA hr
 
 theorem redUStarTerm {Γ : Context} {A B : Term} (d : Star Γ A .univ B) : False := by
   generalize hu : Term.univ = u at d
@@ -786,6 +883,17 @@ structure EqRelSet where
     NeEqRel Γ (.snd p) (.snd r) (subst0 G (.fst p))
   emptyrecCong : ∀ {Γ n n' F F'}, TypeEqRel Γ F F' → NeEqRel Γ n n' .empty →
     NeEqRel Γ (.emptyrec F n) (.emptyrec F' n') F
+  idCong : ∀ {Γ A A' t t' u u'}, TypeEqRel Γ A A' → TermEqRel Γ t t' A →
+    TermEqRel Γ u u' A → TypeEqRel Γ (.id A t u) (.id A' t' u')
+  idTermCong : ∀ {Γ A A' t t' u u'}, TermEqRel Γ A A' .univ → TermEqRel Γ t t' A →
+    TermEqRel Γ u u' A → TermEqRel Γ (.id A t u) (.id A' t' u') .univ
+  rflRefl : ∀ {Γ A t}, TypeWf Γ A → HasType Γ t A → TermEqRel Γ .rfl .rfl (.id A t t)
+  idrecCong : ∀ {Γ A A' P P' r r' t t' u u' h h'},
+    TypeWf Γ A → TypeEqRel Γ A A' → HasType Γ t A → TermEqRel Γ t t' A →
+    TypeEqRel (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P P' →
+    TermEqRel Γ r r' (subst2 P t .rfl) →
+    TermEqRel Γ u u' A → NeEqRel Γ h h' (.id A t u) →
+    NeEqRel Γ (.idrec A P r t u h) (.idrec A' P' r' t' u' h') (subst2 P u h)
 
 theorem EqRelSet.neToType (eqrel : EqRelSet) {Γ : Context} {k l : Term}
     (h : eqrel.NeEqRel Γ k l .univ) : eqrel.TypeEqRel Γ k l :=
@@ -835,5 +943,9 @@ def synEqRel : EqRelSet where
   fstCong := .fst
   sndCong := .snd
   emptyrecCong := .emptyrec
+  idCong := .id
+  idTermCong := .id
+  rflRefl hA ht := .refl (.rfl hA ht)
+  idrecCong := .idrec
 
 end LogrelMLTT

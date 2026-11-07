@@ -19,6 +19,1354 @@ import LogrelMLTT.LogicalRelation
 namespace LogrelMLTT
 
 /-!
+## Conversion of the Logical Relation (`Definition/LogicalRelation/Properties/Conversion.agda`)
+-/
+
+/-- Conversion of syntactic multi-step term reduction closures (`convRed:*:`). -/
+theorem convStarWf {Γ : Context} {t u A B : Term}
+    (d : StarWf Γ t u A) (hAB : TypeEq Γ A B) : StarWf Γ t u B :=
+  ⟨.conv d.source hAB, .conv d.target hAB, d.reduction.conv hAB⟩
+
+/-- Single-level conversion step for `LogRelAt`. -/
+theorem convLogRel_step {eqrel : EqRelSet} {l : TypeLevel}
+    (ihRec : ∀ (l' : TypeLevel) (hlt : TypeLevelLT l' l) {Γ A B relA relB},
+      logRelRec eqrel l l' hlt Γ A relA → LogRelShape eqrel Γ B relB → relA.eqType B →
+      (∀ {t}, (relA.hasTerm t ↔ relB.hasTerm t)) ∧
+      (∀ {t u}, (relA.eqTerm t u ↔ relB.eqTerm t u)))
+    {Γ : Context} {A : Term} {relA : RedRel}
+    (hA : LogRelAt eqrel l Γ A relA) :
+    ∀ {B : Term} {relB : RedRel},
+      LogRelShape eqrel Γ B relB →
+      relA.eqType B →
+      (∀ {t}, (relA.hasTerm t ↔ relB.hasTerm t)) ∧
+      (∀ {t u}, (relA.eqTerm t u ↔ relB.eqTerm t u)) := by
+  induction hA with
+  | @U Γ l₁ hU =>
+      intro B relB hB hAB
+      change B = .univ at hAB
+      subst hAB
+      cases hB with
+      | U hU₂ =>
+          rw [logRelRec_eq hU.lt hU₂.lt]
+          exact ⟨fun {_} ↦ Iff.rfl, fun {_ _} ↦ Iff.rfl⟩
+      | nat D =>
+          have h := whnfRedStar D.reduction .univ
+          cases h
+      | empty D =>
+          have h := whnfRedStar D.reduction .univ
+          cases h
+      | unit D =>
+          have h := whnfRedStar D.reduction .univ
+          cases h
+      | ne neB =>
+          have h := whnfRedStar neB.D.reduction .univ
+          subst h
+          cases neB.neK
+      | pi D =>
+          have h := whnfRedStar D.reduction .univ
+          cases h
+      | sigma D =>
+          have h := whnfRedStar D.reduction .univ
+          cases h
+      | id D =>
+          have h := whnfRedStar D.reduction .univ
+          cases h
+  | @nat Γ A D₁ =>
+      intro B relB hB hAB
+      change TypeStar Γ B .nat at hAB
+      cases hB with
+      | U _ =>
+          have h := whnfRedStar hAB .univ
+          cases h
+      | nat _ =>
+          exact ⟨fun {_} ↦ Iff.rfl, fun {_ _} ↦ Iff.rfl⟩
+      | empty D₂ =>
+          have h := whrDetStar ⟨hAB, .nat⟩ ⟨D₂.reduction, .empty⟩
+          cases h
+      | unit D₂ =>
+          have h := whrDetStar ⟨hAB, .nat⟩ ⟨D₂.reduction, .unit⟩
+          cases h
+      | ne neB =>
+          have h := whrDetStar ⟨hAB, .nat⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
+          subst h
+          cases neB.neK
+      | pi D₂ =>
+          have h := whrDetStar ⟨hAB, .nat⟩ ⟨D₂.reduction, .pi⟩
+          cases h
+      | sigma D₂ =>
+          have h := whrDetStar ⟨hAB, .nat⟩ ⟨D₂.reduction, .sigma⟩
+          cases h
+      | id D₂ =>
+          have h := whrDetStar ⟨hAB, .nat⟩ ⟨D₂.reduction, .id⟩
+          cases h
+  | @empty Γ A D₁ =>
+      intro B relB hB hAB
+      change TypeStar Γ B .empty at hAB
+      cases hB with
+      | U _ =>
+          have h := whnfRedStar hAB .univ
+          cases h
+      | nat D₂ =>
+          have h := whrDetStar ⟨hAB, .empty⟩ ⟨D₂.reduction, .nat⟩
+          cases h
+      | empty _ =>
+          exact ⟨fun {_} ↦ Iff.rfl, fun {_ _} ↦ Iff.rfl⟩
+      | unit D₂ =>
+          have h := whrDetStar ⟨hAB, .empty⟩ ⟨D₂.reduction, .unit⟩
+          cases h
+      | ne neB =>
+          have h := whrDetStar ⟨hAB, .empty⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
+          subst h
+          cases neB.neK
+      | pi D₂ =>
+          have h := whrDetStar ⟨hAB, .empty⟩ ⟨D₂.reduction, .pi⟩
+          cases h
+      | sigma D₂ =>
+          have h := whrDetStar ⟨hAB, .empty⟩ ⟨D₂.reduction, .sigma⟩
+          cases h
+      | id D₂ =>
+          have h := whrDetStar ⟨hAB, .empty⟩ ⟨D₂.reduction, .id⟩
+          cases h
+  | @unit Γ A D₁ =>
+      intro B relB hB hAB
+      change TypeStar Γ B .unit at hAB
+      cases hB with
+      | U _ =>
+          have h := whnfRedStar hAB .univ
+          cases h
+      | nat D₂ =>
+          have h := whrDetStar ⟨hAB, .unit⟩ ⟨D₂.reduction, .nat⟩
+          cases h
+      | empty D₂ =>
+          have h := whrDetStar ⟨hAB, .unit⟩ ⟨D₂.reduction, .empty⟩
+          cases h
+      | unit _ =>
+          exact ⟨fun {_} ↦ Iff.rfl, fun {_ _} ↦ Iff.rfl⟩
+      | ne neB =>
+          have h := whrDetStar ⟨hAB, .unit⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
+          subst h
+          cases neB.neK
+      | pi D₂ =>
+          have h := whrDetStar ⟨hAB, .unit⟩ ⟨D₂.reduction, .pi⟩
+          cases h
+      | sigma D₂ =>
+          have h := whrDetStar ⟨hAB, .unit⟩ ⟨D₂.reduction, .sigma⟩
+          cases h
+      | id D₂ =>
+          have h := whrDetStar ⟨hAB, .unit⟩ ⟨D₂.reduction, .id⟩
+          cases h
+  | @ne Γ A K₁ neA =>
+      intro B relB hB hAB
+      rcases hAB with ⟨M, D', neM, KeqM⟩
+      cases hB with
+      | U _ =>
+          have h := whnfRedStar D'.reduction .univ
+          subst h
+          cases neM
+      | nat D₂ =>
+          have h := whrDetStar ⟨D₂.reduction, .nat⟩ ⟨D'.reduction, .neutral neM⟩
+          subst h
+          cases neM
+      | empty D₂ =>
+          have h := whrDetStar ⟨D₂.reduction, .empty⟩ ⟨D'.reduction, .neutral neM⟩
+          subst h
+          cases neM
+      | unit D₂ =>
+          have h := whrDetStar ⟨D₂.reduction, .unit⟩ ⟨D'.reduction, .neutral neM⟩
+          subst h
+          cases neM
+      | @ne _ _ K₂ neB =>
+          have hMK₂ : M = K₂ :=
+            whrDetStar ⟨D'.reduction, .neutral neM⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
+          subst hMK₂
+          have hK₁K₂ : TypeEq Γ K₁ M := eqrel.typeToEq (eqrel.neToType KeqM)
+          refine ⟨?_, ?_⟩
+          · intro t
+            constructor
+            · rintro ⟨k, d, nf⟩
+              exact ⟨k, convStarWf d hK₁K₂,
+                ⟨nf.neK, .conv nf.hk hK₁K₂, eqrel.convNe nf.keqk hK₁K₂⟩⟩
+            · rintro ⟨k, d, nf⟩
+              exact ⟨k, convStarWf d (.symm hK₁K₂),
+                ⟨nf.neK, .conv nf.hk (.symm hK₁K₂), eqrel.convNe nf.keqk (.symm hK₁K₂)⟩⟩
+          · intro t u
+            constructor
+            · rintro ⟨k, m, d, d'', nf⟩
+              exact ⟨k, m, convStarWf d hK₁K₂, convStarWf d'' hK₁K₂,
+                ⟨nf.neK, nf.neM, eqrel.convNe nf.keqm hK₁K₂⟩⟩
+            · rintro ⟨k, m, d, d'', nf⟩
+              exact ⟨k, m, convStarWf d (.symm hK₁K₂), convStarWf d'' (.symm hK₁K₂),
+                ⟨nf.neK, nf.neM, eqrel.convNe nf.keqm (.symm hK₁K₂)⟩⟩
+      | pi D₂ =>
+          have h := whrDetStar ⟨D₂.reduction, .pi⟩ ⟨D'.reduction, .neutral neM⟩
+          subst h
+          cases neM
+      | sigma D₂ =>
+          have h := whrDetStar ⟨D₂.reduction, .sigma⟩ ⟨D'.reduction, .neutral neM⟩
+          subst h
+          cases neM
+      | id D₂ =>
+          have h := whrDetStar ⟨D₂.reduction, .id⟩ ⟨D'.reduction, .neutral neM⟩
+          subst h
+          cases neM
+  | @pi Γ A F₁ G₁ D₁ _hF₁ _hG₁ _AeqA₁ relF₁ relG₁ hF_ex₁ derivF₁ hG_ex₁ derivG₁ _Gext₁ ihF ihG =>
+      intro B relB hB hAB
+      rcases hAB with ⟨F', G', D', AeqB, FeqF', GeqG'⟩
+      cases hB with
+      | U _ =>
+          have h := whnfRedStar D' .univ
+          cases h
+      | nat D₂ =>
+          have h := whrDetStar ⟨D₂.reduction, .nat⟩ ⟨D', .pi⟩
+          cases h
+      | empty D₂ =>
+          have h := whrDetStar ⟨D₂.reduction, .empty⟩ ⟨D', .pi⟩
+          cases h
+      | unit D₂ =>
+          have h := whrDetStar ⟨D₂.reduction, .unit⟩ ⟨D', .pi⟩
+          cases h
+      | ne neB =>
+          have h := whrDetStar ⟨D', .pi⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
+          subst h
+          cases neB.neK
+      | sigma D₂ =>
+          have h := whrDetStar ⟨D₂.reduction, .sigma⟩ ⟨D', .pi⟩
+          cases h
+      | id D₂ =>
+          have h := whrDetStar ⟨D₂.reduction, .id⟩ ⟨D', .pi⟩
+          cases h
+      | @pi l₂ _ _ F₂ G₂ D₂ _ _ _ relF₂ relG₂ hF_ex₂ derivF₂ hG_ex₂ derivG₂ _ =>
+          have hPi : Term.pi F₂ G₂ = Term.pi F' G' :=
+            whrDetStar ⟨D₂.reduction, .pi⟩ ⟨D', .pi⟩
+          injection hPi with hF₂ hG₂
+          subst hF₂ hG₂
+          have hPiEq : TypeEq Γ (.pi F₁ G₁) (.pi F₂ G₂) := eqrel.typeToEq AeqB
+          have hF_conv : ∀ {ρ Δ} (hρ : WkCtx ρ Δ Γ) (hΔ : CtxWf Δ),
+              (∀ {a}, RelFHasTerm relF₁ ρ Δ a ↔ RelFHasTerm relF₂ ρ Δ a) ∧
+              (∀ {a b}, RelFEqTerm relF₁ ρ Δ a b ↔ RelFEqTerm relF₂ ρ Δ a b) := by
+            intro ρ Δ hρ hΔ
+            rcases FeqF' hρ hΔ with ⟨r₁, hr₁, hF₁₂⟩
+            rcases hF_ex₂ hρ hΔ with ⟨r₂, hr₂⟩
+            have hAt₁ := derivF₁ hρ hΔ r₁ hr₁
+            have hAt₂ := derivF₂ hρ hΔ r₂ hr₂
+            have hConv := ihF hρ hΔ r₁ hr₁ (logRelShape_of_LogRelAt hAt₂) hF₁₂
+            refine ⟨?_, ?_⟩
+            · intro a
+              constructor
+              · rintro ⟨r₁', hr₁', ha⟩
+                have ha₁ := (irrelLogRel (derivF₁ hρ hΔ r₁' hr₁') hAt₁).2.1.mp ha
+                exact ⟨r₂, hr₂, hConv.1.mp ha₁⟩
+              · rintro ⟨r₂', hr₂', ha⟩
+                have ha₂ := (irrelLogRel (derivF₂ hρ hΔ r₂' hr₂') hAt₂).2.1.mp ha
+                exact ⟨r₁, hr₁, hConv.1.mpr ha₂⟩
+            · intro a b
+              constructor
+              · rintro ⟨r₁', hr₁', hab⟩
+                have hab₁ := (irrelLogRel (derivF₁ hρ hΔ r₁' hr₁') hAt₁).2.2.mp hab
+                exact ⟨r₂, hr₂, hConv.2.mp hab₁⟩
+              · rintro ⟨r₂', hr₂', hab⟩
+                have hab₂ := (irrelLogRel (derivF₂ hρ hΔ r₂' hr₂') hAt₂).2.2.mp hab
+                exact ⟨r₁, hr₁, hConv.2.mpr hab₂⟩
+          have hG_conv : ∀ {ρ Δ a} (hρ : WkCtx ρ Δ Γ) (hΔ : CtxWf Δ)
+              (ha₁ : RelFHasTerm relF₁ ρ Δ a),
+              (∀ {t}, RelGHasTerm relG₁ ρ Δ a t ↔ RelGHasTerm relG₂ ρ Δ a t) ∧
+              (∀ {t u}, RelGEqTerm relG₁ ρ Δ a t u ↔ RelGEqTerm relG₂ ρ Δ a t u) := by
+            intro ρ Δ a hρ hΔ ha₁
+            have ha₂ : RelFHasTerm relF₂ ρ Δ a := (hF_conv hρ hΔ).1.mp ha₁
+            rcases GeqG' hρ hΔ ha₁ with ⟨s₁, hs₁, hG₁₂⟩
+            rcases hG_ex₂ hρ hΔ ha₂ with ⟨s₂, hs₂⟩
+            have hAt₁ := derivG₁ hρ hΔ ha₁ s₁ hs₁
+            have hAt₂ := derivG₂ hρ hΔ ha₂ s₂ hs₂
+            have hConv := ihG hρ hΔ ha₁ s₁ hs₁ (logRelShape_of_LogRelAt hAt₂) hG₁₂
+            refine ⟨?_, ?_⟩
+            · intro t
+              constructor
+              · rintro ⟨s₁', hs₁', ht⟩
+                have ht₁ := (irrelLogRel (derivG₁ hρ hΔ ha₁ s₁' hs₁') hAt₁).2.1.mp ht
+                exact ⟨s₂, hs₂, hConv.1.mp ht₁⟩
+              · rintro ⟨s₂', hs₂', ht⟩
+                have ht₂ := (irrelLogRel (derivG₂ hρ hΔ ha₂ s₂' hs₂') hAt₂).2.1.mp ht
+                exact ⟨s₁, hs₁, hConv.1.mpr ht₂⟩
+            · intro t u
+              constructor
+              · rintro ⟨s₁', hs₁', htu⟩
+                have htu₁ := (irrelLogRel (derivG₁ hρ hΔ ha₁ s₁' hs₁') hAt₁).2.2.mp htu
+                exact ⟨s₂, hs₂, hConv.2.mp htu₁⟩
+              · rintro ⟨s₂', hs₂', htu⟩
+                have htu₂ := (irrelLogRel (derivG₂ hρ hΔ ha₂ s₂' hs₂') hAt₂).2.2.mp htu
+                exact ⟨s₁, hs₁, hConv.2.mpr htu₂⟩
+          have hPiTermIff : ∀ {t},
+              RedPiTerm eqrel Γ F₁ G₁ relF₁ relG₁ t ↔ RedPiTerm eqrel Γ F₂ G₂ relF₂ relG₂ t := by
+            intro t
+            constructor
+            · rintro ⟨f, d, funcF, feqf, appEq, appTerm⟩
+              refine ⟨f, convStarWf d hPiEq, funcF, eqrel.convTerm feqf hPiEq,
+                fun {ρ Δ a b} hρ hΔ ha₂ hb₂ hab₂ ↦ ?_,
+                fun {ρ Δ a} hρ hΔ ha₂ ↦ ?_⟩
+              · have ha₁ := (hF_conv hρ hΔ).1.mpr ha₂
+                have hb₁ := (hF_conv hρ hΔ).1.mpr hb₂
+                have hab₁ := (hF_conv hρ hΔ).2.mpr hab₂
+                exact (hG_conv hρ hΔ ha₁).2.mp (appEq hρ hΔ ha₁ hb₁ hab₁)
+              · have ha₁ := (hF_conv hρ hΔ).1.mpr ha₂
+                exact (hG_conv hρ hΔ ha₁).1.mp (appTerm hρ hΔ ha₁)
+            · rintro ⟨f, d, funcF, feqf, appEq, appTerm⟩
+              refine ⟨f, convStarWf d (.symm hPiEq), funcF, eqrel.convTerm feqf (.symm hPiEq),
+                fun {ρ Δ a b} hρ hΔ ha₁ hb₁ hab₁ ↦ ?_,
+                fun {ρ Δ a} hρ hΔ ha₁ ↦ ?_⟩
+              · have ha₂ := (hF_conv hρ hΔ).1.mp ha₁
+                have hb₂ := (hF_conv hρ hΔ).1.mp hb₁
+                have hab₂ := (hF_conv hρ hΔ).2.mp hab₁
+                exact (hG_conv hρ hΔ ha₁).2.mpr (appEq hρ hΔ ha₂ hb₂ hab₂)
+              · have ha₂ := (hF_conv hρ hΔ).1.mp ha₁
+                exact (hG_conv hρ hΔ ha₁).1.mpr (appTerm hρ hΔ ha₂)
+          refine ⟨hPiTermIff, ?_⟩
+          intro t u
+          constructor
+          · rintro ⟨f, g, d, d'', funcF, funcG, feqg, ht, hu, appEq⟩
+            refine ⟨f, g, convStarWf d hPiEq, convStarWf d'' hPiEq, funcF, funcG,
+              eqrel.convTerm feqg hPiEq, hPiTermIff.mp ht, hPiTermIff.mp hu,
+              fun {ρ Δ a} hρ hΔ ha₂ ↦ ?_⟩
+            have ha₁ := (hF_conv hρ hΔ).1.mpr ha₂
+            exact (hG_conv hρ hΔ ha₁).2.mp (appEq hρ hΔ ha₁)
+          · rintro ⟨f, g, d, d'', funcF, funcG, feqg, ht, hu, appEq⟩
+            refine ⟨f, g, convStarWf d (.symm hPiEq), convStarWf d'' (.symm hPiEq), funcF, funcG,
+              eqrel.convTerm feqg (.symm hPiEq), hPiTermIff.mpr ht, hPiTermIff.mpr hu,
+              fun {ρ Δ a} hρ hΔ ha₁ ↦ ?_⟩
+            have ha₂ := (hF_conv hρ hΔ).1.mp ha₁
+            exact (hG_conv hρ hΔ ha₁).2.mpr (appEq hρ hΔ ha₂)
+  | @sigma Γ A F₁ G₁ D₁ hF₁ _hG₁ _AeqA₁ relF₁ relG₁ hF_ex₁ derivF₁ hG_ex₁ derivG₁ _Gext₁ ihF ihG =>
+      intro B relB hB hAB
+      rcases hAB with ⟨F', G', D', AeqB, FeqF', GeqG'⟩
+      cases hB with
+      | U _ =>
+          have h := whnfRedStar D' .univ
+          cases h
+      | nat D₂ =>
+          have h := whrDetStar ⟨D₂.reduction, .nat⟩ ⟨D', .sigma⟩
+          cases h
+      | empty D₂ =>
+          have h := whrDetStar ⟨D₂.reduction, .empty⟩ ⟨D', .sigma⟩
+          cases h
+      | unit D₂ =>
+          have h := whrDetStar ⟨D₂.reduction, .unit⟩ ⟨D', .sigma⟩
+          cases h
+      | ne neB =>
+          have h := whrDetStar ⟨D', .sigma⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
+          subst h
+          cases neB.neK
+      | pi D₂ =>
+          have h := whrDetStar ⟨D₂.reduction, .pi⟩ ⟨D', .sigma⟩
+          cases h
+      | id D₂ =>
+          have h := whrDetStar ⟨D₂.reduction, .id⟩ ⟨D', .sigma⟩
+          cases h
+      | @sigma l₂ _ _ F₂ G₂ D₂ _ _ _ relF₂ relG₂ hF_ex₂ derivF₂ hG_ex₂ derivG₂ _ =>
+          have hSigma : Term.sigma F₂ G₂ = Term.sigma F' G' :=
+            whrDetStar ⟨D₂.reduction, .sigma⟩ ⟨D', .sigma⟩
+          injection hSigma with hF₂ hG₂
+          subst hF₂ hG₂
+          have hΓ : CtxWf Γ := wfType hF₁
+          have hSigmaEq : TypeEq Γ (.sigma F₁ G₁) (.sigma F₂ G₂) := eqrel.typeToEq AeqB
+          have hF_conv : ∀ {ρ Δ} (hρ : WkCtx ρ Δ Γ) (hΔ : CtxWf Δ),
+              (∀ {a}, RelFHasTerm relF₁ ρ Δ a ↔ RelFHasTerm relF₂ ρ Δ a) ∧
+              (∀ {a b}, RelFEqTerm relF₁ ρ Δ a b ↔ RelFEqTerm relF₂ ρ Δ a b) := by
+            intro ρ Δ hρ hΔ
+            rcases FeqF' hρ hΔ with ⟨r₁, hr₁, hF₁₂⟩
+            rcases hF_ex₂ hρ hΔ with ⟨r₂, hr₂⟩
+            have hAt₁ := derivF₁ hρ hΔ r₁ hr₁
+            have hAt₂ := derivF₂ hρ hΔ r₂ hr₂
+            have hConv := ihF hρ hΔ r₁ hr₁ (logRelShape_of_LogRelAt hAt₂) hF₁₂
+            refine ⟨?_, ?_⟩
+            · intro a
+              constructor
+              · rintro ⟨r₁', hr₁', ha⟩
+                have ha₁ := (irrelLogRel (derivF₁ hρ hΔ r₁' hr₁') hAt₁).2.1.mp ha
+                exact ⟨r₂, hr₂, hConv.1.mp ha₁⟩
+              · rintro ⟨r₂', hr₂', ha⟩
+                have ha₂ := (irrelLogRel (derivF₂ hρ hΔ r₂' hr₂') hAt₂).2.1.mp ha
+                exact ⟨r₁, hr₁, hConv.1.mpr ha₂⟩
+            · intro a b
+              constructor
+              · rintro ⟨r₁', hr₁', hab⟩
+                have hab₁ := (irrelLogRel (derivF₁ hρ hΔ r₁' hr₁') hAt₁).2.2.mp hab
+                exact ⟨r₂, hr₂, hConv.2.mp hab₁⟩
+              · rintro ⟨r₂', hr₂', hab⟩
+                have hab₂ := (irrelLogRel (derivF₂ hρ hΔ r₂' hr₂') hAt₂).2.2.mp hab
+                exact ⟨r₁, hr₁, hConv.2.mpr hab₂⟩
+          have hG_conv : ∀ {ρ Δ a} (hρ : WkCtx ρ Δ Γ) (hΔ : CtxWf Δ)
+              (ha₁ : RelFHasTerm relF₁ ρ Δ a),
+              (∀ {t}, RelGHasTerm relG₁ ρ Δ a t ↔ RelGHasTerm relG₂ ρ Δ a t) ∧
+              (∀ {t u}, RelGEqTerm relG₁ ρ Δ a t u ↔ RelGEqTerm relG₂ ρ Δ a t u) := by
+            intro ρ Δ a hρ hΔ ha₁
+            have ha₂ : RelFHasTerm relF₂ ρ Δ a := (hF_conv hρ hΔ).1.mp ha₁
+            rcases GeqG' hρ hΔ ha₁ with ⟨s₁, hs₁, hG₁₂⟩
+            rcases hG_ex₂ hρ hΔ ha₂ with ⟨s₂, hs₂⟩
+            have hAt₁ := derivG₁ hρ hΔ ha₁ s₁ hs₁
+            have hAt₂ := derivG₂ hρ hΔ ha₂ s₂ hs₂
+            have hConv := ihG hρ hΔ ha₁ s₁ hs₁ (logRelShape_of_LogRelAt hAt₂) hG₁₂
+            refine ⟨?_, ?_⟩
+            · intro t
+              constructor
+              · rintro ⟨s₁', hs₁', ht⟩
+                have ht₁ := (irrelLogRel (derivG₁ hρ hΔ ha₁ s₁' hs₁') hAt₁).2.1.mp ht
+                exact ⟨s₂, hs₂, hConv.1.mp ht₁⟩
+              · rintro ⟨s₂', hs₂', ht⟩
+                have ht₂ := (irrelLogRel (derivG₂ hρ hΔ ha₂ s₂' hs₂') hAt₂).2.1.mp ht
+                exact ⟨s₁, hs₁, hConv.1.mpr ht₂⟩
+            · intro t u
+              constructor
+              · rintro ⟨s₁', hs₁', htu⟩
+                have htu₁ := (irrelLogRel (derivG₁ hρ hΔ ha₁ s₁' hs₁') hAt₁).2.2.mp htu
+                exact ⟨s₂, hs₂, hConv.2.mp htu₁⟩
+              · rintro ⟨s₂', hs₂', htu⟩
+                have htu₂ := (irrelLogRel (derivG₂ hρ hΔ ha₂ s₂' hs₂') hAt₂).2.2.mp htu
+                exact ⟨s₁, hs₁, hConv.2.mpr htu₂⟩
+          have hSigmaTermIff : ∀ {t},
+              RedSigmaTerm eqrel Γ F₁ G₁ relF₁ relG₁ t ↔ RedSigmaTerm eqrel Γ F₂ G₂ relF₂ relG₂ t := by
+            intro t
+            constructor
+            · rintro ⟨p, d, prodP, peqp, fstTerm, sndTerm⟩
+              have fstTerm₂ := (hF_conv .id hΓ).1.mp fstTerm
+              have sndTerm₂ := (hG_conv .id hΓ fstTerm).1.mp sndTerm
+              exact ⟨p, convStarWf d hSigmaEq, prodP, eqrel.convTerm peqp hSigmaEq,
+                fstTerm₂, sndTerm₂⟩
+            · rintro ⟨p, d, prodP, peqp, fstTerm₂, sndTerm₂⟩
+              have fstTerm₁ := (hF_conv .id hΓ).1.mpr fstTerm₂
+              have sndTerm₁ := (hG_conv .id hΓ fstTerm₁).1.mpr sndTerm₂
+              exact ⟨p, convStarWf d (.symm hSigmaEq), prodP, eqrel.convTerm peqp (.symm hSigmaEq),
+                fstTerm₁, sndTerm₁⟩
+          refine ⟨hSigmaTermIff, ?_⟩
+          intro t u
+          constructor
+          · rintro ⟨p, r, d, d'', prodP, prodR, peqr, ht, hu, fstP, fstR, fstEq, sndEq⟩
+            exact ⟨p, r, convStarWf d hSigmaEq, convStarWf d'' hSigmaEq, prodP, prodR,
+              eqrel.convTerm peqr hSigmaEq, hSigmaTermIff.mp ht, hSigmaTermIff.mp hu,
+              (hF_conv .id hΓ).1.mp fstP, (hF_conv .id hΓ).1.mp fstR,
+              (hF_conv .id hΓ).2.mp fstEq, (hG_conv .id hΓ fstP).2.mp sndEq⟩
+          · rintro ⟨p, r, d, d'', prodP, prodR, peqr, ht, hu, fstP₂, fstR₂, fstEq₂, sndEq₂⟩
+            have fstP₁ := (hF_conv .id hΓ).1.mpr fstP₂
+            exact ⟨p, r, convStarWf d (.symm hSigmaEq), convStarWf d'' (.symm hSigmaEq),
+              prodP, prodR, eqrel.convTerm peqr (.symm hSigmaEq),
+              hSigmaTermIff.mpr ht, hSigmaTermIff.mpr hu,
+              fstP₁, (hF_conv .id hΓ).1.mpr fstR₂,
+              (hF_conv .id hΓ).2.mpr fstEq₂, (hG_conv .id hΓ fstP₁).2.mpr sndEq₂⟩
+  | @id Γ A Ty₁ lhs₁ rhs₁ relTy₁ D₁ _AeqA₁ _derivTy₁ _hasLhs₁ _hasRhs₁ _lhsEqLhs₁ _rhsEqRhs₁ ihTy =>
+      intro B relB hB hAB
+      rcases hAB with ⟨Ty', lhs', rhs', D', AeqB, TyeqTy', _lhseqlhs', _rhseqrhs', lhsEqRhs_iff⟩
+      cases hB with
+      | U _ =>
+          have h := whnfRedStar D' .univ
+          cases h
+      | nat D₂ =>
+          have h := whrDetStar ⟨D₂.reduction, .nat⟩ ⟨D', .id⟩
+          cases h
+      | empty D₂ =>
+          have h := whrDetStar ⟨D₂.reduction, .empty⟩ ⟨D', .id⟩
+          cases h
+      | unit D₂ =>
+          have h := whrDetStar ⟨D₂.reduction, .unit⟩ ⟨D', .id⟩
+          cases h
+      | ne neB =>
+          have h := whrDetStar ⟨D', .id⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
+          subst h
+          cases neB.neK
+      | pi D₂ =>
+          have h := whrDetStar ⟨D₂.reduction, .pi⟩ ⟨D', .id⟩
+          cases h
+      | sigma D₂ =>
+          have h := whrDetStar ⟨D₂.reduction, .sigma⟩ ⟨D', .id⟩
+          cases h
+      | @id l₂ _ _ Ty₂ lhs₂ rhs₂ relTy₂ D₂ _ derivTy₂ _ _ _ _ =>
+          have hId : Term.id Ty₂ lhs₂ rhs₂ = Term.id Ty' lhs' rhs' :=
+            whrDetStar ⟨D₂.reduction, .id⟩ ⟨D', .id⟩
+          injection hId with hTy₂ hLhs₂ hRhs₂
+          subst hTy₂ hLhs₂ hRhs₂
+          have hIdEq : TypeEq Γ (.id Ty₁ lhs₁ rhs₁) (.id Ty₂ lhs₂ rhs₂) := eqrel.typeToEq AeqB
+          have hConvTy := ihTy (logRelShape_of_LogRelAt derivTy₂) TyeqTy'
+          have hLhsEqRhs : relTy₁.eqTerm lhs₁ rhs₁ ↔ relTy₂.eqTerm lhs₂ rhs₂ :=
+            lhsEqRhs_iff.trans hConvTy.2
+          refine ⟨?_, ?_⟩
+          · intro t
+            constructor
+            · rintro ⟨u, d, uequ, prop⟩
+              refine ⟨u, convStarWf d hIdEq, eqrel.convTerm uequ hIdEq, ?_⟩
+              cases prop with
+              | rfl h => exact .rfl (hLhsEqRhs.mp h)
+              | ne nf => exact .ne ⟨nf.neK, .conv nf.hk hIdEq, eqrel.convNe nf.keqk hIdEq⟩
+            · rintro ⟨u, d, uequ, prop⟩
+              refine ⟨u, convStarWf d (.symm hIdEq), eqrel.convTerm uequ (.symm hIdEq), ?_⟩
+              cases prop with
+              | rfl h => exact .rfl (hLhsEqRhs.mpr h)
+              | ne nf =>
+                  exact .ne ⟨nf.neK, .conv nf.hk (.symm hIdEq), eqrel.convNe nf.keqk (.symm hIdEq)⟩
+          · intro t u
+            constructor
+            · rintro ⟨t', u', d, d'', t'equ', prop⟩
+              refine ⟨t', u', convStarWf d hIdEq, convStarWf d'' hIdEq,
+                eqrel.convTerm t'equ' hIdEq, ?_⟩
+              cases prop with
+              | rfl h => exact .rfl (hLhsEqRhs.mp h)
+              | ne nf => exact .ne ⟨nf.neK, nf.neM, eqrel.convNe nf.keqm hIdEq⟩
+            · rintro ⟨t', u', d, d'', t'equ', prop⟩
+              refine ⟨t', u', convStarWf d (.symm hIdEq), convStarWf d'' (.symm hIdEq),
+                eqrel.convTerm t'equ' (.symm hIdEq), ?_⟩
+              cases prop with
+              | rfl h => exact .rfl (hLhsEqRhs.mpr h)
+              | ne nf => exact .ne ⟨nf.neK, nf.neM, eqrel.convNe nf.keqm (.symm hIdEq)⟩
+  | @emb Γ A l' relA hlt hA =>
+      intro B relB hB hAB
+      exact ihRec l' hlt hA hB hAB
+
+theorem convLogRelAt {eqrel : EqRelSet} {l₁ l₂ : TypeLevel} {Γ : Context} {A B : Term}
+    {relA relB : RedRel}
+    (hA : LogRelAt eqrel l₁ Γ A relA)
+    (hB : LogRelAt eqrel l₂ Γ B relB)
+    (hAB : relA.eqType B) :
+    (∀ {t}, (relA.hasTerm t ↔ relB.hasTerm t)) ∧
+    (∀ {t u}, (relA.eqTerm t u ↔ relB.eqTerm t u)) := by
+  have h0 : ∀ {Γ A B relA relB},
+      LogRelAt eqrel .zero Γ A relA → LogRelShape eqrel Γ B relB → relA.eqType B →
+      (∀ {t}, (relA.hasTerm t ↔ relB.hasTerm t)) ∧
+      (∀ {t u}, (relA.eqTerm t u ↔ relB.eqTerm t u)) :=
+    fun hA₀ hBs hAB₀ ↦
+      convLogRel_step (l := .zero) (fun _ hlt ↦ nomatch hlt) hA₀ hBs hAB₀
+  cases l₁ with
+  | zero => exact h0 hA (logRelShape_of_LogRelAt hB) hAB
+  | one =>
+      exact convLogRel_step (l := .one)
+        (fun _ hlt _ _ _ _ _ hA₀ hBs hAB₀ ↦ by cases hlt; exact h0 hA₀ hBs hAB₀)
+        hA (logRelShape_of_LogRelAt hB) hAB
+
+/-- Left-to-right term conversion (`convTerm₁`). -/
+theorem convTerm₁ {eqrel : EqRelSet} {l l' : TypeLevel} {Γ : Context} {A B t : Term}
+    (pA : RedType eqrel l Γ A) (pB : RedType eqrel l' Γ B)
+    (hAB : RedEq pA B) (ht : RedTerm pA t) : RedTerm pB t := by
+  rcases hAB with ⟨relA, hA, hEqB⟩
+  rcases pB with ⟨relB, hB⟩
+  rcases ht with ⟨relA', hA', ht⟩
+  have htA : relA.hasTerm t := (irrelLogRel hA' hA).2.1.mp ht
+  exact ⟨relB, hB, (convLogRelAt hA hB hEqB).1.mp htA⟩
+
+/-- Right-to-left term conversion (`convTerm₂`). -/
+theorem convTerm₂ {eqrel : EqRelSet} {l l' : TypeLevel} {Γ : Context} {A B t : Term}
+    (pA : RedType eqrel l Γ A) (pB : RedType eqrel l' Γ B)
+    (hAB : RedEq pA B) (ht : RedTerm pB t) : RedTerm pA t := by
+  rcases hAB with ⟨relA, hA, hEqB⟩
+  rcases ht with ⟨relB, hB, ht⟩
+  exact ⟨relA, hA, (convLogRelAt hA hB hEqB).1.mpr ht⟩
+
+/-- Right-to-left term conversion with propositionally equal right types (`convTerm₂′`). -/
+theorem convTerm₂' {eqrel : EqRelSet} {l l' : TypeLevel} {Γ : Context} {A B B' t : Term}
+    (hBB' : B = B') (pA : RedType eqrel l Γ A) (pB : RedType eqrel l' Γ B)
+    (hAB' : RedEq pA B') (ht : RedTerm pB t) : RedTerm pA t := by
+  subst hBB'
+  exact convTerm₂ pA pB hAB' ht
+
+/-- Left-to-right term equality conversion (`convEqTerm₁`). -/
+theorem convEqTerm₁ {eqrel : EqRelSet} {l l' : TypeLevel} {Γ : Context} {A B t u : Term}
+    (pA : RedType eqrel l Γ A) (pB : RedType eqrel l' Γ B)
+    (hAB : RedEq pA B) (htu : RedTermEq pA t u) : RedTermEq pB t u := by
+  rcases hAB with ⟨relA, hA, hEqB⟩
+  rcases pB with ⟨relB, hB⟩
+  rcases htu with ⟨relA', hA', htu⟩
+  have htuA : relA.eqTerm t u := (irrelLogRel hA' hA).2.2.mp htu
+  exact ⟨relB, hB, (convLogRelAt hA hB hEqB).2.mp htuA⟩
+
+/-- Right-to-left term equality conversion (`convEqTerm₂`). -/
+theorem convEqTerm₂ {eqrel : EqRelSet} {l l' : TypeLevel} {Γ : Context} {A B t u : Term}
+    (pA : RedType eqrel l Γ A) (pB : RedType eqrel l' Γ B)
+    (hAB : RedEq pA B) (htu : RedTermEq pB t u) : RedTermEq pA t u := by
+  rcases hAB with ⟨relA, hA, hEqB⟩
+  rcases htu with ⟨relB, hB, htu⟩
+  exact ⟨relA, hA, (convLogRelAt hA hB hEqB).2.mpr htu⟩
+
+/-!
+## Symmetry of the Logical Relation (`Definition/LogicalRelation/Properties/Symmetry.agda`)
+-/
+
+theorem symNeutralTerm {eqrel : EqRelSet} {Γ : Context} {k m A : Term}
+    (nf : RedNeNfEq eqrel Γ k m A) : RedNeNfEq eqrel Γ m k A :=
+  ⟨nf.neM, nf.neK, eqrel.symmNe nf.keqm⟩
+
+theorem symEqTermNat {eqrel : EqRelSet} {Γ : Context} {t u : Term}
+    (htu : RedNatTermEq eqrel Γ t u) : RedNatTermEq eqrel Γ u t :=
+  @RedNatTermEq.rec eqrel Γ
+    (fun t u _ ↦ RedNatTermEq eqrel Γ u t)
+    (fun k k' _ ↦ NaturalEqProp eqrel Γ k' k)
+    (fun t u k k' d d' keqk' _ ih ↦
+      .mk u t k' k d' d (eqrel.symmTerm keqk') ih)
+    (fun _ ih ↦ .suc ih)
+    .zero
+    (fun nf ↦ .ne (symNeutralTerm nf))
+    t u htu
+
+theorem symNaturalProp {eqrel : EqRelSet} {Γ : Context} {k k' : Term}
+    (hk : NaturalEqProp eqrel Γ k k') : NaturalEqProp eqrel Γ k' k :=
+  @NaturalEqProp.rec eqrel Γ
+    (fun t u _ ↦ RedNatTermEq eqrel Γ u t)
+    (fun k k' _ ↦ NaturalEqProp eqrel Γ k' k)
+    (fun t u k k' d d' keqk' _ ih ↦
+      .mk u t k' k d' d (eqrel.symmTerm keqk') ih)
+    (fun _ ih ↦ .suc ih)
+    .zero
+    (fun nf ↦ .ne (symNeutralTerm nf))
+    k k' hk
+
+theorem symEqTermEmpty {eqrel : EqRelSet} {Γ : Context} {t u : Term}
+    (htu : RedEmptyTermEq eqrel Γ t u) : RedEmptyTermEq eqrel Γ u t := by
+  rcases htu with ⟨k, k', d, d', keqk', nf⟩
+  exact .mk k' k d' d (eqrel.symmTerm keqk') (symNeutralTerm nf)
+
+theorem symEqTermUnit {Γ : Context} {t u : Term}
+    (htu : RedUnitTermEq Γ t u) : RedUnitTermEq Γ u t := by
+  rcases htu with ⟨ht, hu⟩
+  exact ⟨hu, ht⟩
+
+theorem symEqTermId {eqrel : EqRelSet} {Γ : Context} {Ty lhs rhs t u : Term} {relTy : RedRel}
+    (htu : RedIdTermEq eqrel Γ Ty lhs rhs relTy t u) :
+    RedIdTermEq eqrel Γ Ty lhs rhs relTy u t := by
+  rcases htu with ⟨t', u', d, d', t'equ', prop⟩
+  cases prop with
+  | rfl h => exact .mk .rfl .rfl d' d (eqrel.symmTerm t'equ') (.rfl h)
+  | ne nf => exact .mk u' t' d' d (eqrel.symmTerm t'equ') (.ne (symNeutralTerm nf))
+
+/-- Single-level symmetry step for `LogRelAt` type and term equality. -/
+theorem symLogRel_step {eqrel : EqRelSet} {l : TypeLevel}
+    (ihRec : ∀ (l' : TypeLevel) (hlt : TypeLevelLT l' l) {Γ A relA},
+      logRelRec eqrel l l' hlt Γ A relA →
+      (∀ {B relB}, LogRelShape eqrel Γ B relB → relA.eqType B → relB.eqType A) ∧
+      (∀ {t u}, relA.eqTerm t u → relA.eqTerm u t))
+    {Γ : Context} {A : Term} {relA : RedRel}
+    (hA : LogRelAt eqrel l Γ A relA) :
+    (∀ {B : Term} {relB : RedRel},
+      LogRelShape eqrel Γ B relB → relA.eqType B → relB.eqType A) ∧
+    (∀ {t u : Term}, relA.eqTerm t u → relA.eqTerm u t) := by
+  induction hA with
+  | @U Γ l₁ hU =>
+      refine ⟨?_, ?_⟩
+      · intro B relB hB hAB
+        change B = .univ at hAB
+        subst hAB
+        cases hB with
+        | U _ => rfl
+        | nat D => cases whnfRedStar D.reduction .univ
+        | empty D => cases whnfRedStar D.reduction .univ
+        | unit D => cases whnfRedStar D.reduction .univ
+        | ne neB =>
+            have h := whnfRedStar neB.D.reduction .univ
+            subst h
+            cases neB.neK
+        | pi D => cases whnfRedStar D.reduction .univ
+        | sigma D => cases whnfRedStar D.reduction .univ
+        | id D => cases whnfRedStar D.reduction .univ
+      · rintro t u ⟨A₀, B₀, d, d', typeA, typeB, AeqB, relt, ht, ⟨relu, hu⟩, tequ⟩
+        have hUs : LogRelShape eqrel Γ u relu := by
+          cases hU.lt
+          exact logRelShape_of_LogRelAt hu
+        exact ⟨B₀, A₀, d', d, typeB, typeA, eqrel.symmTerm AeqB, relu, hu, ⟨relt, ht⟩,
+          (ihRec l₁ hU.lt ht).1 hUs tequ⟩
+  | @nat Γ A D₁ =>
+      refine ⟨?_, fun {_ _} htu ↦ symEqTermNat htu⟩
+      intro B relB hB hAB
+      change TypeStar Γ B .nat at hAB
+      cases hB with
+      | U _ => cases whnfRedStar hAB .univ
+      | nat _ => exact D₁.reduction
+      | empty D₂ => cases whrDetStar ⟨hAB, .nat⟩ ⟨D₂.reduction, .empty⟩
+      | unit D₂ => cases whrDetStar ⟨hAB, .nat⟩ ⟨D₂.reduction, .unit⟩
+      | ne neB =>
+          have h := whrDetStar ⟨hAB, .nat⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
+          subst h
+          cases neB.neK
+      | pi D₂ => cases whrDetStar ⟨hAB, .nat⟩ ⟨D₂.reduction, .pi⟩
+      | sigma D₂ => cases whrDetStar ⟨hAB, .nat⟩ ⟨D₂.reduction, .sigma⟩
+      | id D₂ => cases whrDetStar ⟨hAB, .nat⟩ ⟨D₂.reduction, .id⟩
+  | @empty Γ A D₁ =>
+      refine ⟨?_, fun {_ _} htu ↦ symEqTermEmpty htu⟩
+      intro B relB hB hAB
+      change TypeStar Γ B .empty at hAB
+      cases hB with
+      | U _ => cases whnfRedStar hAB .univ
+      | nat D₂ => cases whrDetStar ⟨hAB, .empty⟩ ⟨D₂.reduction, .nat⟩
+      | empty _ => exact D₁.reduction
+      | unit D₂ => cases whrDetStar ⟨hAB, .empty⟩ ⟨D₂.reduction, .unit⟩
+      | ne neB =>
+          have h := whrDetStar ⟨hAB, .empty⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
+          subst h
+          cases neB.neK
+      | pi D₂ => cases whrDetStar ⟨hAB, .empty⟩ ⟨D₂.reduction, .pi⟩
+      | sigma D₂ => cases whrDetStar ⟨hAB, .empty⟩ ⟨D₂.reduction, .sigma⟩
+      | id D₂ => cases whrDetStar ⟨hAB, .empty⟩ ⟨D₂.reduction, .id⟩
+  | @unit Γ A D₁ =>
+      refine ⟨?_, fun {_ _} htu ↦ symEqTermUnit htu⟩
+      intro B relB hB hAB
+      change TypeStar Γ B .unit at hAB
+      cases hB with
+      | U _ => cases whnfRedStar hAB .univ
+      | nat D₂ => cases whrDetStar ⟨hAB, .unit⟩ ⟨D₂.reduction, .nat⟩
+      | empty D₂ => cases whrDetStar ⟨hAB, .unit⟩ ⟨D₂.reduction, .empty⟩
+      | unit _ => exact D₁.reduction
+      | ne neB =>
+          have h := whrDetStar ⟨hAB, .unit⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
+          subst h
+          cases neB.neK
+      | pi D₂ => cases whrDetStar ⟨hAB, .unit⟩ ⟨D₂.reduction, .pi⟩
+      | sigma D₂ => cases whrDetStar ⟨hAB, .unit⟩ ⟨D₂.reduction, .sigma⟩
+      | id D₂ => cases whrDetStar ⟨hAB, .unit⟩ ⟨D₂.reduction, .id⟩
+  | @ne Γ A K₁ neA =>
+      refine ⟨?_, ?_⟩
+      · intro B relB hB hAB
+        rcases hAB with ⟨M, D', neM, KeqM⟩
+        cases hB with
+        | U _ =>
+            have h := whnfRedStar D'.reduction .univ
+            subst h
+            cases neM
+        | nat D₂ =>
+            have h := whrDetStar ⟨D₂.reduction, .nat⟩ ⟨D'.reduction, .neutral neM⟩
+            subst h
+            cases neM
+        | empty D₂ =>
+            have h := whrDetStar ⟨D₂.reduction, .empty⟩ ⟨D'.reduction, .neutral neM⟩
+            subst h
+            cases neM
+        | unit D₂ =>
+            have h := whrDetStar ⟨D₂.reduction, .unit⟩ ⟨D'.reduction, .neutral neM⟩
+            subst h
+            cases neM
+        | @ne _ _ K₂ neB =>
+            have hMK₂ : M = K₂ :=
+              whrDetStar ⟨D'.reduction, .neutral neM⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
+            subst hMK₂
+            exact ⟨K₁, neA.D, neA.neK, eqrel.symmNe KeqM⟩
+        | pi D₂ =>
+            have h := whrDetStar ⟨D₂.reduction, .pi⟩ ⟨D'.reduction, .neutral neM⟩
+            subst h
+            cases neM
+        | sigma D₂ =>
+            have h := whrDetStar ⟨D₂.reduction, .sigma⟩ ⟨D'.reduction, .neutral neM⟩
+            subst h
+            cases neM
+        | id D₂ =>
+            have h := whrDetStar ⟨D₂.reduction, .id⟩ ⟨D'.reduction, .neutral neM⟩
+            subst h
+            cases neM
+      · rintro t u ⟨k, m, d, d', nf⟩
+        exact ⟨m, k, d', d, symNeutralTerm nf⟩
+  | @pi Γ A F₁ G₁ D₁ _hF₁ _hG₁ _AeqA₁ relF₁ relG₁ _hF_ex₁ derivF₁ _hG_ex₁ _derivG₁ _Gext₁ ihF ihG =>
+      refine ⟨?_, ?_⟩
+      · intro B relB hB hAB
+        rcases hAB with ⟨F', G', D', AeqB, FeqF', GeqG'⟩
+        cases hB with
+        | U _ => cases whnfRedStar D' .univ
+        | nat D₂ => cases whrDetStar ⟨D₂.reduction, .nat⟩ ⟨D', .pi⟩
+        | empty D₂ => cases whrDetStar ⟨D₂.reduction, .empty⟩ ⟨D', .pi⟩
+        | unit D₂ => cases whrDetStar ⟨D₂.reduction, .unit⟩ ⟨D', .pi⟩
+        | ne neB =>
+            have h := whrDetStar ⟨D', .pi⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
+            subst h
+            cases neB.neK
+        | sigma D₂ => cases whrDetStar ⟨D₂.reduction, .sigma⟩ ⟨D', .pi⟩
+        | id D₂ => cases whrDetStar ⟨D₂.reduction, .id⟩ ⟨D', .pi⟩
+        | @pi l₂ _ _ F₂ G₂ D₂ _ _ _ relF₂ relG₂ hF_ex₂ derivF₂ hG_ex₂ derivG₂ _ =>
+            have hPi : Term.pi F₂ G₂ = Term.pi F' G' :=
+              whrDetStar ⟨D₂.reduction, .pi⟩ ⟨D', .pi⟩
+            injection hPi with hF₂ hG₂
+            subst hF₂ hG₂
+            refine ⟨F₁, G₁, D₁.reduction, eqrel.symmType AeqB,
+              fun {ρ Δ} hρ hΔ ↦ ?_,
+              fun {ρ Δ a} hρ hΔ ha₂ ↦ ?_⟩
+            · rcases FeqF' hρ hΔ with ⟨r₁, hr₁, hF₁₂⟩
+              rcases hF_ex₂ hρ hΔ with ⟨r₂, hr₂⟩
+              have hAt₂ := derivF₂ hρ hΔ r₂ hr₂
+              exact ⟨r₂, hr₂, (ihF hρ hΔ r₁ hr₁).1 (logRelShape_of_LogRelAt hAt₂) hF₁₂⟩
+            · rcases FeqF' hρ hΔ with ⟨r₁, hr₁, hF₁₂⟩
+              rcases ha₂ with ⟨r₂, hr₂, ha₂'⟩
+              have hAt₁ := derivF₁ hρ hΔ r₁ hr₁
+              have hAt₂ := derivF₂ hρ hΔ r₂ hr₂
+              have ha₁ : RelFHasTerm relF₁ ρ Δ a :=
+                ⟨r₁, hr₁, (convLogRelAt hAt₁ hAt₂ hF₁₂).1.mpr ha₂'⟩
+              rcases GeqG' hρ hΔ ha₁ with ⟨s₁, hs₁, hG₁₂⟩
+              rcases hG_ex₂ hρ hΔ ⟨r₂, hr₂, ha₂'⟩ with ⟨s₂, hs₂⟩
+              have hGAt₂ := derivG₂ hρ hΔ ⟨r₂, hr₂, ha₂'⟩ s₂ hs₂
+              exact ⟨s₂, hs₂, (ihG hρ hΔ ha₁ s₁ hs₁).1 (logRelShape_of_LogRelAt hGAt₂) hG₁₂⟩
+      · rintro t u ⟨f, g, d, d', funcF, funcG, feqg, ht, hu, appEq⟩
+        refine ⟨g, f, d', d, funcG, funcF, eqrel.symmTerm feqg, hu, ht,
+          fun {ρ Δ a} hρ hΔ ha ↦ ?_⟩
+        rcases appEq hρ hΔ ha with ⟨s, hs, hfg⟩
+        exact ⟨s, hs, (ihG hρ hΔ ha s hs).2 hfg⟩
+  | @sigma Γ A F₁ G₁ D₁ hF₁ _hG₁ _AeqA₁ relF₁ relG₁ _hF_ex₁ derivF₁ hG_ex₁ derivG₁ Gext₁ ihF ihG =>
+      refine ⟨?_, ?_⟩
+      · intro B relB hB hAB
+        rcases hAB with ⟨F', G', D', AeqB, FeqF', GeqG'⟩
+        cases hB with
+        | U _ => cases whnfRedStar D' .univ
+        | nat D₂ => cases whrDetStar ⟨D₂.reduction, .nat⟩ ⟨D', .sigma⟩
+        | empty D₂ => cases whrDetStar ⟨D₂.reduction, .empty⟩ ⟨D', .sigma⟩
+        | unit D₂ => cases whrDetStar ⟨D₂.reduction, .unit⟩ ⟨D', .sigma⟩
+        | ne neB =>
+            have h := whrDetStar ⟨D', .sigma⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
+            subst h
+            cases neB.neK
+        | pi D₂ => cases whrDetStar ⟨D₂.reduction, .pi⟩ ⟨D', .sigma⟩
+        | id D₂ => cases whrDetStar ⟨D₂.reduction, .id⟩ ⟨D', .sigma⟩
+        | @sigma l₂ _ _ F₂ G₂ D₂ _ _ _ relF₂ relG₂ hF_ex₂ derivF₂ hG_ex₂ derivG₂ _ =>
+            have hSigma : Term.sigma F₂ G₂ = Term.sigma F' G' :=
+              whrDetStar ⟨D₂.reduction, .sigma⟩ ⟨D', .sigma⟩
+            injection hSigma with hF₂ hG₂
+            subst hF₂ hG₂
+            refine ⟨F₁, G₁, D₁.reduction, eqrel.symmType AeqB,
+              fun {ρ Δ} hρ hΔ ↦ ?_,
+              fun {ρ Δ a} hρ hΔ ha₂ ↦ ?_⟩
+            · rcases FeqF' hρ hΔ with ⟨r₁, hr₁, hF₁₂⟩
+              rcases hF_ex₂ hρ hΔ with ⟨r₂, hr₂⟩
+              have hAt₂ := derivF₂ hρ hΔ r₂ hr₂
+              exact ⟨r₂, hr₂, (ihF hρ hΔ r₁ hr₁).1 (logRelShape_of_LogRelAt hAt₂) hF₁₂⟩
+            · rcases FeqF' hρ hΔ with ⟨r₁, hr₁, hF₁₂⟩
+              rcases ha₂ with ⟨r₂, hr₂, ha₂'⟩
+              have hAt₁ := derivF₁ hρ hΔ r₁ hr₁
+              have hAt₂ := derivF₂ hρ hΔ r₂ hr₂
+              have ha₁ : RelFHasTerm relF₁ ρ Δ a :=
+                ⟨r₁, hr₁, (convLogRelAt hAt₁ hAt₂ hF₁₂).1.mpr ha₂'⟩
+              rcases GeqG' hρ hΔ ha₁ with ⟨s₁, hs₁, hG₁₂⟩
+              rcases hG_ex₂ hρ hΔ ⟨r₂, hr₂, ha₂'⟩ with ⟨s₂, hs₂⟩
+              have hGAt₂ := derivG₂ hρ hΔ ⟨r₂, hr₂, ha₂'⟩ s₂ hs₂
+              exact ⟨s₂, hs₂, (ihG hρ hΔ ha₁ s₁ hs₁).1 (logRelShape_of_LogRelAt hGAt₂) hG₁₂⟩
+      · rintro t u ⟨p, r, d, d', prodP, prodR, peqr, ht, hu, fstP, fstR, fstEq, sndEq⟩
+        have hΓ : CtxWf Γ := wfType hF₁
+        rcases fstEq with ⟨rF, hrF, hFstEq⟩
+        have hFstSym : RelFEqTerm relF₁ .id Γ (.fst r) (.fst p) :=
+          ⟨rF, hrF, (ihF .id hΓ rF hrF).2 hFstEq⟩
+        rcases sndEq with ⟨sG_p, hsG_p, hSndEq_p⟩
+        have hSndSym_p : sG_p.eqTerm (.snd r) (.snd p) :=
+          (ihG .id hΓ fstP sG_p hsG_p).2 hSndEq_p
+        rcases Gext₁ .id hΓ fstP fstR ⟨rF, hrF, hFstEq⟩ with ⟨sG_ext, hsG_ext, hG_pr⟩
+        rcases hG_ex₁ .id hΓ fstR with ⟨sG_r, hsG_r⟩
+        have hGAt_p := derivG₁ .id hΓ fstP sG_p hsG_p
+        have hGAt_ext := derivG₁ .id hΓ fstP sG_ext hsG_ext
+        have hGAt_r := derivG₁ .id hΓ fstR sG_r hsG_r
+        have hSndSym_ext : sG_ext.eqTerm (.snd r) (.snd p) :=
+          (irrelLogRel hGAt_p hGAt_ext).2.2.mp hSndSym_p
+        have hSndSym_r : sG_r.eqTerm (.snd r) (.snd p) :=
+          (convLogRelAt hGAt_ext hGAt_r hG_pr).2.mp hSndSym_ext
+        exact ⟨r, p, d', d, prodR, prodP, eqrel.symmTerm peqr, hu, ht,
+          fstR, fstP, hFstSym, ⟨sG_r, hsG_r, hSndSym_r⟩⟩
+  | @id Γ A Ty₁ lhs₁ rhs₁ relTy₁ D₁ _AeqA₁ derivTy₁ _hasLhs₁ _hasRhs₁ _lhsEqLhs₁ _rhsEqRhs₁ ihTy =>
+      refine ⟨?_, fun {_ _} htu ↦ symEqTermId htu⟩
+      intro B relB hB hAB
+      rcases hAB with ⟨Ty', lhs', rhs', D', AeqB, TyeqTy', lhseqlhs', rhseqrhs', lhsEqRhs_iff⟩
+      cases hB with
+      | U _ => cases whnfRedStar D' .univ
+      | nat D₂ => cases whrDetStar ⟨D₂.reduction, .nat⟩ ⟨D', .id⟩
+      | empty D₂ => cases whrDetStar ⟨D₂.reduction, .empty⟩ ⟨D', .id⟩
+      | unit D₂ => cases whrDetStar ⟨D₂.reduction, .unit⟩ ⟨D', .id⟩
+      | ne neB =>
+          have h := whrDetStar ⟨D', .id⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
+          subst h
+          cases neB.neK
+      | pi D₂ => cases whrDetStar ⟨D₂.reduction, .pi⟩ ⟨D', .id⟩
+      | sigma D₂ => cases whrDetStar ⟨D₂.reduction, .sigma⟩ ⟨D', .id⟩
+      | @id l₂ _ _ Ty₂ lhs₂ rhs₂ relTy₂ D₂ _ derivTy₂ _ _ _ _ =>
+          have hId : Term.id Ty₂ lhs₂ rhs₂ = Term.id Ty' lhs' rhs' :=
+            whrDetStar ⟨D₂.reduction, .id⟩ ⟨D', .id⟩
+          injection hId with hTy₂ hLhs₂ hRhs₂
+          subst hTy₂ hLhs₂ hRhs₂
+          have hConvTy := convLogRelAt derivTy₁ derivTy₂ TyeqTy'
+          exact ⟨Ty₁, lhs₁, rhs₁, D₁.reduction, eqrel.symmType AeqB,
+            ihTy.1 (logRelShape_of_LogRelAt derivTy₂) TyeqTy',
+            hConvTy.2.mp (ihTy.2 lhseqlhs'),
+            hConvTy.2.mp (ihTy.2 rhseqrhs'),
+            hConvTy.2.symm.trans (lhsEqRhs_iff.symm.trans hConvTy.2)⟩
+  | @emb Γ A l' relA hlt hA =>
+      exact ihRec l' hlt hA
+
+theorem symLogRelAt_both {eqrel : EqRelSet} {l₁ : TypeLevel} {Γ : Context} {A : Term}
+    {relA : RedRel} (hA : LogRelAt eqrel l₁ Γ A relA) :
+    (∀ {B relB}, LogRelShape eqrel Γ B relB → relA.eqType B → relB.eqType A) ∧
+    (∀ {t u}, relA.eqTerm t u → relA.eqTerm u t) := by
+  have h0 : ∀ {Γ A relA},
+      LogRelAt eqrel .zero Γ A relA →
+      (∀ {B relB}, LogRelShape eqrel Γ B relB → relA.eqType B → relB.eqType A) ∧
+      (∀ {t u}, relA.eqTerm t u → relA.eqTerm u t) :=
+    fun hA₀ ↦ symLogRel_step (l := .zero) (fun _ hlt ↦ nomatch hlt) hA₀
+  cases l₁ with
+  | zero => exact h0 hA
+  | one =>
+      exact symLogRel_step (l := .one)
+        (fun _ hlt _ _ _ hA₀ ↦ by cases hlt; exact h0 hA₀) hA
+
+theorem symLogRelAt {eqrel : EqRelSet} {l₁ l₂ : TypeLevel} {Γ : Context} {A B : Term}
+    {relA relB : RedRel}
+    (hA : LogRelAt eqrel l₁ Γ A relA)
+    (hB : LogRelAt eqrel l₂ Γ B relB)
+    (hAB : relA.eqType B) : relB.eqType A :=
+  (symLogRelAt_both hA).1 (logRelShape_of_LogRelAt hB) hAB
+
+theorem symEqTermAt {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A t u : Term}
+    {relA : RedRel} (hA : LogRelAt eqrel l Γ A relA)
+    (htu : relA.eqTerm t u) : relA.eqTerm u t :=
+  (symLogRelAt_both hA).2 htu
+
+/-- Symmetry of reducible type equality (`symEq`). -/
+theorem symEq {eqrel : EqRelSet} {l l' : TypeLevel} {Γ : Context} {A B : Term}
+    (pA : RedType eqrel l Γ A) (pB : RedType eqrel l' Γ B)
+    (hAB : RedEq pA B) : RedEq pB A := by
+  rcases hAB with ⟨relA, hA, hEqB⟩
+  rcases pB with ⟨relB, hB⟩
+  exact ⟨relB, hB, symLogRelAt hA hB hEqB⟩
+
+/-- Symmetry of reducible term equality (`symEqTerm`). -/
+theorem symEqTerm {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A t u : Term}
+    (pA : RedType eqrel l Γ A) (htu : RedTermEq pA t u) : RedTermEq pA u t := by
+  rcases htu with ⟨rel, hA, htu⟩
+  exact ⟨rel, hA, symEqTermAt hA htu⟩
+
+/-!
+## Transitivity of the Logical Relation (`Definition/LogicalRelation/Properties/Transitivity.agda`)
+-/
+
+theorem transEqTermNe {eqrel : EqRelSet} {Γ : Context} {n n' n'' A : Term}
+    (nf₁ : RedNeNfEq eqrel Γ n n' A) (nf₂ : RedNeNfEq eqrel Γ n' n'' A) :
+    RedNeNfEq eqrel Γ n n'' A :=
+  ⟨nf₁.neK, nf₂.neM, eqrel.transNe nf₁.keqm nf₂.keqm⟩
+
+theorem transEqTermNat {eqrel : EqRelSet} {Γ : Context} {n n' n'' : Term}
+    (h₁ : RedNatTermEq eqrel Γ n n') (h₂ : RedNatTermEq eqrel Γ n' n'') :
+    RedNatTermEq eqrel Γ n n'' :=
+  @RedNatTermEq.rec eqrel Γ
+    (fun n n' _ ↦ ∀ {n''}, RedNatTermEq eqrel Γ n' n'' → RedNatTermEq eqrel Γ n n'')
+    (fun k k' _ ↦ ∀ {k''}, NaturalEqProp eqrel Γ k' k'' → NaturalEqProp eqrel Γ k k'')
+    (fun t u k k' d d' keqk' prop ih {n''} h₂ ↦ by
+      cases h₂ with
+      | mk _ _ k₁ k'' d₁ d'' k₁eqk'' prop₁ =>
+          have ⟨_, natK'⟩ := split_of_NaturalEqProp prop
+          have ⟨natK₁, _⟩ := split_of_NaturalEqProp prop₁
+          have hk₁ : k₁ = k' :=
+            whrDetStarTerm ⟨d₁.reduction, natK₁.toWhnf⟩ ⟨d'.reduction, natK'.toWhnf⟩
+          subst hk₁
+          exact .mk t n'' k k'' d d'' (eqrel.transTerm keqk' k₁eqk'') (ih prop₁))
+    (fun {a b} _ ih {k''} hk₂ ↦ by
+      cases hk₂ with
+      | suc h₂' => exact .suc (ih h₂')
+      | ne nf => cases nf.neK)
+    (fun {k''} hk₂ ↦ hk₂)
+    (fun {a b} nf₁ {k''} hk₂ ↦ by
+      cases hk₂ with
+      | suc _ => cases nf₁.neM
+      | zero => exact .ne nf₁
+      | ne nf₂ => exact .ne (transEqTermNe nf₁ nf₂))
+    n n' h₁ (n'' := n'') h₂
+
+theorem transNaturalProp {eqrel : EqRelSet} {Γ : Context} {k k' k'' : Term}
+    (h₁ : NaturalEqProp eqrel Γ k k') (h₂ : NaturalEqProp eqrel Γ k' k'') :
+    NaturalEqProp eqrel Γ k k'' := by
+  cases h₁ with
+  | suc h₁' =>
+      cases h₂ with
+      | suc h₂' => exact .suc (transEqTermNat h₁' h₂')
+      | ne nf => cases nf.neK
+  | zero => exact h₂
+  | ne nf₁ =>
+      cases h₂ with
+      | suc _ => cases nf₁.neM
+      | zero => exact .ne nf₁
+      | ne nf₂ => exact .ne (transEqTermNe nf₁ nf₂)
+
+theorem transEqTermEmpty {eqrel : EqRelSet} {Γ : Context} {n n' n'' : Term}
+    (h₁ : RedEmptyTermEq eqrel Γ n n') (h₂ : RedEmptyTermEq eqrel Γ n' n'') :
+    RedEmptyTermEq eqrel Γ n n'' := by
+  rcases h₁ with ⟨k, k', d, d', keqk', nf₁⟩
+  rcases h₂ with ⟨k₁, k'', d₁, d'', k₁eqk'', nf₂⟩
+  have hk₁ : k₁ = k' :=
+    whrDetStarTerm ⟨d₁.reduction, .neutral nf₂.neK⟩ ⟨d'.reduction, .neutral nf₁.neM⟩
+  subst hk₁
+  exact .mk k k'' d d'' (eqrel.transTerm keqk' k₁eqk'') (transEqTermNe nf₁ nf₂)
+
+theorem transEqTermUnit {Γ : Context} {t u v : Term}
+    (h₁ : RedUnitTermEq Γ t u) (h₂ : RedUnitTermEq Γ u v) :
+    RedUnitTermEq Γ t v :=
+  ⟨h₁.ht, h₂.hu⟩
+
+theorem transEqTermId {eqrel : EqRelSet} {Γ : Context} {Ty lhs rhs t u v : Term} {relTy : RedRel}
+    (h₁ : RedIdTermEq eqrel Γ Ty lhs rhs relTy t u)
+    (h₂ : RedIdTermEq eqrel Γ Ty lhs rhs relTy u v) :
+    RedIdTermEq eqrel Γ Ty lhs rhs relTy t v := by
+  rcases h₁ with ⟨t', u', d₁, d₁', t'equ', prop₁⟩
+  rcases h₂ with ⟨u₁, v', d₂, d₂', u₁eqv', prop₂⟩
+  have ⟨_, idU'⟩ := split_of_RedIdTermEqProp prop₁
+  have ⟨idU₁, _⟩ := split_of_RedIdTermEqProp prop₂
+  have hu₁ : u₁ = u' :=
+    whrDetStarTerm ⟨d₂.reduction, idU₁.toWhnf⟩ ⟨d₁'.reduction, idU'.toWhnf⟩
+  subst hu₁
+  have t'eqv' := eqrel.transTerm t'equ' u₁eqv'
+  cases prop₁ with
+  | rfl h =>
+      cases prop₂ with
+      | rfl _ => exact .mk .rfl .rfl d₁ d₂' t'eqv' (.rfl h)
+      | ne nf₂ => cases nf₂.neK
+  | ne nf₁ =>
+      cases prop₂ with
+      | rfl _ => cases nf₁.neM
+      | ne nf₂ => exact .mk t' v' d₁ d₂' t'eqv' (.ne (transEqTermNe nf₁ nf₂))
+
+/-- Single-level transitivity step for `LogRelAt` type and term equality. -/
+theorem transLogRel_step {eqrel : EqRelSet} {l : TypeLevel}
+    (ihRec : ∀ (l' : TypeLevel) (hlt : TypeLevelLT l' l) {Γ A relA},
+      logRelRec eqrel l l' hlt Γ A relA →
+      (∀ {B C relB}, LogRelShape eqrel Γ B relB → relA.eqType B → relB.eqType C → relA.eqType C) ∧
+      (∀ {t u v}, relA.eqTerm t u → relA.eqTerm u v → relA.eqTerm t v))
+    {Γ : Context} {A : Term} {relA : RedRel}
+    (hA : LogRelAt eqrel l Γ A relA) :
+    (∀ {B C : Term} {relB : RedRel},
+      LogRelShape eqrel Γ B relB → relA.eqType B → relB.eqType C → relA.eqType C) ∧
+    (∀ {t u v : Term}, relA.eqTerm t u → relA.eqTerm u v → relA.eqTerm t v) := by
+  induction hA with
+  | @U Γ l₁ hU =>
+      refine ⟨?_, ?_⟩
+      · intro B C relB hB hAB hBC
+        change B = .univ at hAB
+        subst hAB
+        cases hB with
+        | U _ => exact hBC
+        | nat D => cases whnfRedStar D.reduction .univ
+        | empty D => cases whnfRedStar D.reduction .univ
+        | unit D => cases whnfRedStar D.reduction .univ
+        | ne neB =>
+            have h := whnfRedStar neB.D.reduction .univ
+            subst h
+            cases neB.neK
+        | pi D => cases whnfRedStar D.reduction .univ
+        | sigma D => cases whnfRedStar D.reduction .univ
+        | id D => cases whnfRedStar D.reduction .univ
+      · rintro t u v
+          ⟨A₀, B₀, d, d', typeA, typeB, AeqB, relt, ht, ⟨relu, hu⟩, tequ⟩
+          ⟨A₁, B₁, d₁, d₁', typeA₁, typeB₁, A₁eqB₁, relu', hu', ⟨relv, hv⟩, ueqv⟩
+        have hBA₁ : B₀ = A₁ :=
+          whrDetStarTerm ⟨d'.reduction, typeB.toWhnf⟩ ⟨d₁.reduction, typeA₁.toWhnf⟩
+        subst hBA₁
+        have hTrans : relt.eqType v := by
+          cases hU.lt
+          have ueqv' : relu.eqType v :=
+            (irrelLogRel (l₁ := .zero) (l₂ := .zero) hu' hu).1.mp ueqv
+          exact (ihRec .zero .zeroLT ht).1 (logRelShape_of_LogRelAt hu) tequ ueqv'
+        exact ⟨A₀, B₁, d, d₁', typeA, typeB₁, eqrel.transTerm AeqB A₁eqB₁,
+          relt, ht, ⟨relv, hv⟩, hTrans⟩
+  | @nat Γ A _ =>
+      refine ⟨?_, fun {_ _ _} htu huv ↦ transEqTermNat htu huv⟩
+      intro B C relB hB hAB hBC
+      change TypeStar Γ B .nat at hAB
+      cases hB with
+      | U _ => cases whnfRedStar hAB .univ
+      | nat _ => exact hBC
+      | empty D₂ => cases whrDetStar ⟨hAB, .nat⟩ ⟨D₂.reduction, .empty⟩
+      | unit D₂ => cases whrDetStar ⟨hAB, .nat⟩ ⟨D₂.reduction, .unit⟩
+      | ne neB =>
+          have h := whrDetStar ⟨hAB, .nat⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
+          subst h
+          cases neB.neK
+      | pi D₂ => cases whrDetStar ⟨hAB, .nat⟩ ⟨D₂.reduction, .pi⟩
+      | sigma D₂ => cases whrDetStar ⟨hAB, .nat⟩ ⟨D₂.reduction, .sigma⟩
+      | id D₂ => cases whrDetStar ⟨hAB, .nat⟩ ⟨D₂.reduction, .id⟩
+  | @empty Γ A _ =>
+      refine ⟨?_, fun {_ _ _} htu huv ↦ transEqTermEmpty htu huv⟩
+      intro B C relB hB hAB hBC
+      change TypeStar Γ B .empty at hAB
+      cases hB with
+      | U _ => cases whnfRedStar hAB .univ
+      | nat D₂ => cases whrDetStar ⟨hAB, .empty⟩ ⟨D₂.reduction, .nat⟩
+      | empty _ => exact hBC
+      | unit D₂ => cases whrDetStar ⟨hAB, .empty⟩ ⟨D₂.reduction, .unit⟩
+      | ne neB =>
+          have h := whrDetStar ⟨hAB, .empty⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
+          subst h
+          cases neB.neK
+      | pi D₂ => cases whrDetStar ⟨hAB, .empty⟩ ⟨D₂.reduction, .pi⟩
+      | sigma D₂ => cases whrDetStar ⟨hAB, .empty⟩ ⟨D₂.reduction, .sigma⟩
+      | id D₂ => cases whrDetStar ⟨hAB, .empty⟩ ⟨D₂.reduction, .id⟩
+  | @unit Γ A _ =>
+      refine ⟨?_, fun {_ _ _} htu huv ↦ transEqTermUnit htu huv⟩
+      intro B C relB hB hAB hBC
+      change TypeStar Γ B .unit at hAB
+      cases hB with
+      | U _ => cases whnfRedStar hAB .univ
+      | nat D₂ => cases whrDetStar ⟨hAB, .unit⟩ ⟨D₂.reduction, .nat⟩
+      | empty D₂ => cases whrDetStar ⟨hAB, .unit⟩ ⟨D₂.reduction, .empty⟩
+      | unit _ => exact hBC
+      | ne neB =>
+          have h := whrDetStar ⟨hAB, .unit⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
+          subst h
+          cases neB.neK
+      | pi D₂ => cases whrDetStar ⟨hAB, .unit⟩ ⟨D₂.reduction, .pi⟩
+      | sigma D₂ => cases whrDetStar ⟨hAB, .unit⟩ ⟨D₂.reduction, .sigma⟩
+      | id D₂ => cases whrDetStar ⟨hAB, .unit⟩ ⟨D₂.reduction, .id⟩
+  | @ne Γ A K₁ _ =>
+      refine ⟨?_, ?_⟩
+      · intro B C relB hB hAB hBC
+        rcases hAB with ⟨M, D', neM, KeqM⟩
+        cases hB with
+        | U _ =>
+            have h := whnfRedStar D'.reduction .univ
+            subst h
+            cases neM
+        | nat D₂ =>
+            have h := whrDetStar ⟨D₂.reduction, .nat⟩ ⟨D'.reduction, .neutral neM⟩
+            subst h
+            cases neM
+        | empty D₂ =>
+            have h := whrDetStar ⟨D₂.reduction, .empty⟩ ⟨D'.reduction, .neutral neM⟩
+            subst h
+            cases neM
+        | unit D₂ =>
+            have h := whrDetStar ⟨D₂.reduction, .unit⟩ ⟨D'.reduction, .neutral neM⟩
+            subst h
+            cases neM
+        | @ne _ _ K₂ neB =>
+            have hMK₂ : M = K₂ :=
+              whrDetStar ⟨D'.reduction, .neutral neM⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
+            subst hMK₂
+            rcases hBC with ⟨M₁, D'', neM₁, K₂eqM₁⟩
+            exact ⟨M₁, D'', neM₁, eqrel.transNe KeqM K₂eqM₁⟩
+        | pi D₂ =>
+            have h := whrDetStar ⟨D₂.reduction, .pi⟩ ⟨D'.reduction, .neutral neM⟩
+            subst h
+            cases neM
+        | sigma D₂ =>
+            have h := whrDetStar ⟨D₂.reduction, .sigma⟩ ⟨D'.reduction, .neutral neM⟩
+            subst h
+            cases neM
+        | id D₂ =>
+            have h := whrDetStar ⟨D₂.reduction, .id⟩ ⟨D'.reduction, .neutral neM⟩
+            subst h
+            cases neM
+      · rintro t u v ⟨k, m, d, d', nf₁⟩ ⟨k₁, m₁, d₁, d'', nf₂⟩
+        have hk₁m : k₁ = m :=
+          whrDetStarTerm ⟨d₁.reduction, .neutral nf₂.neK⟩ ⟨d'.reduction, .neutral nf₁.neM⟩
+        subst hk₁m
+        exact ⟨k, m₁, d, d'', transEqTermNe nf₁ nf₂⟩
+  | @pi Γ A F₁ G₁ _ _hF₁ _hG₁ _AeqA₁ relF₁ relG₁ _hF_ex₁ derivF₁ _hG_ex₁ derivG₁ _Gext₁ ihF ihG =>
+      refine ⟨?_, ?_⟩
+      · intro B C relB hB hAB hBC
+        rcases hAB with ⟨F', G', D', AeqB, FeqF', GeqG'⟩
+        cases hB with
+        | U _ => cases whnfRedStar D' .univ
+        | nat D₂ => cases whrDetStar ⟨D₂.reduction, .nat⟩ ⟨D', .pi⟩
+        | empty D₂ => cases whrDetStar ⟨D₂.reduction, .empty⟩ ⟨D', .pi⟩
+        | unit D₂ => cases whrDetStar ⟨D₂.reduction, .unit⟩ ⟨D', .pi⟩
+        | ne neB =>
+            have h := whrDetStar ⟨D', .pi⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
+            subst h
+            cases neB.neK
+        | sigma D₂ => cases whrDetStar ⟨D₂.reduction, .sigma⟩ ⟨D', .pi⟩
+        | id D₂ => cases whrDetStar ⟨D₂.reduction, .id⟩ ⟨D', .pi⟩
+        | @pi l₂ _ _ F₂ G₂ D₂ _ _ _ relF₂ relG₂ _hF_ex₂ derivF₂ _hG_ex₂ derivG₂ _ =>
+            have hPi : Term.pi F₂ G₂ = Term.pi F' G' :=
+              whrDetStar ⟨D₂.reduction, .pi⟩ ⟨D', .pi⟩
+            injection hPi with hF₂ hG₂
+            subst hF₂ hG₂
+            rcases hBC with ⟨F'', G'', D'', BeqC, FeqF'', GeqG''⟩
+            refine ⟨F'', G'', D'', eqrel.transType AeqB BeqC,
+              fun {ρ Δ} hρ hΔ ↦ ?_,
+              fun {ρ Δ a} hρ hΔ ha₁ ↦ ?_⟩
+            · rcases FeqF' hρ hΔ with ⟨r₁, hr₁, hF₁₂⟩
+              rcases FeqF'' hρ hΔ with ⟨r₂, hr₂, hF₂₃⟩
+              have hAt₂ := derivF₂ hρ hΔ r₂ hr₂
+              exact ⟨r₁, hr₁, (ihF hρ hΔ r₁ hr₁).1 (logRelShape_of_LogRelAt hAt₂) hF₁₂ hF₂₃⟩
+            · rcases FeqF' hρ hΔ with ⟨r₁, hr₁, hF₁₂⟩
+              rcases FeqF'' hρ hΔ with ⟨r₂, hr₂, _⟩
+              rcases ha₁ with ⟨r₁', hr₁', ha₁'⟩
+              have hAt₁ := derivF₁ hρ hΔ r₁ hr₁
+              have hAt₁' := derivF₁ hρ hΔ r₁' hr₁'
+              have hAt₂ := derivF₂ hρ hΔ r₂ hr₂
+              have ha₁_r₁ : r₁.hasTerm a := (irrelLogRel hAt₁' hAt₁).2.1.mp ha₁'
+              have ha₂ : RelFHasTerm relF₂ ρ Δ a :=
+                ⟨r₂, hr₂, (convLogRelAt hAt₁ hAt₂ hF₁₂).1.mp ha₁_r₁⟩
+              rcases GeqG' hρ hΔ ⟨r₁', hr₁', ha₁'⟩ with ⟨s₁, hs₁, hG₁₂⟩
+              rcases GeqG'' hρ hΔ ha₂ with ⟨s₂, hs₂, hG₂₃⟩
+              have hGAt₂ := derivG₂ hρ hΔ ha₂ s₂ hs₂
+              exact ⟨s₁, hs₁, (ihG hρ hΔ ⟨r₁', hr₁', ha₁'⟩ s₁ hs₁).1 (logRelShape_of_LogRelAt hGAt₂) hG₁₂ hG₂₃⟩
+      · rintro t u v
+          ⟨f, g, d, d', funcF, funcG, feqg, ht, _hu, appEq₁⟩
+          ⟨f₁, g₁, d₁, d₁', funcF₁, funcG₁, f₁eqg₁, _hu', hv, appEq₂⟩
+        have hf₁g : f₁ = g :=
+          whrDetStarTerm ⟨d₁.reduction, funcF₁.toWhnf⟩ ⟨d'.reduction, funcG.toWhnf⟩
+        subst hf₁g
+        refine ⟨f, g₁, d, d₁', funcF, funcG₁, eqrel.transTerm feqg f₁eqg₁, ht, hv,
+          fun {ρ Δ a} hρ hΔ ha ↦ ?_⟩
+        rcases appEq₁ hρ hΔ ha with ⟨s₁, hs₁, hfg⟩
+        rcases appEq₂ hρ hΔ ha with ⟨s₂, hs₂, hgg₁⟩
+        have hGAt₁ := derivG₁ hρ hΔ ha s₁ hs₁
+        have hGAt₂ := derivG₁ hρ hΔ ha s₂ hs₂
+        have hgg₁' : s₁.eqTerm (.app (wk ρ f₁) a) (.app (wk ρ g₁) a) :=
+          (irrelLogRel hGAt₂ hGAt₁).2.2.mp hgg₁
+        exact ⟨s₁, hs₁, (ihG hρ hΔ ha s₁ hs₁).2 hfg hgg₁'⟩
+  | @sigma Γ A F₁ G₁ _ hF₁ _hG₁ _AeqA₁ relF₁ relG₁ _hF_ex₁ derivF₁ _hG_ex₁ derivG₁ Gext₁ ihF ihG =>
+      refine ⟨?_, ?_⟩
+      · intro B C relB hB hAB hBC
+        rcases hAB with ⟨F', G', D', AeqB, FeqF', GeqG'⟩
+        cases hB with
+        | U _ => cases whnfRedStar D' .univ
+        | nat D₂ => cases whrDetStar ⟨D₂.reduction, .nat⟩ ⟨D', .sigma⟩
+        | empty D₂ => cases whrDetStar ⟨D₂.reduction, .empty⟩ ⟨D', .sigma⟩
+        | unit D₂ => cases whrDetStar ⟨D₂.reduction, .unit⟩ ⟨D', .sigma⟩
+        | ne neB =>
+            have h := whrDetStar ⟨D', .sigma⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
+            subst h
+            cases neB.neK
+        | pi D₂ => cases whrDetStar ⟨D₂.reduction, .pi⟩ ⟨D', .sigma⟩
+        | id D₂ => cases whrDetStar ⟨D₂.reduction, .id⟩ ⟨D', .sigma⟩
+        | @sigma l₂ _ _ F₂ G₂ D₂ _ _ _ relF₂ relG₂ _hF_ex₂ derivF₂ _hG_ex₂ derivG₂ _ =>
+            have hSigma : Term.sigma F₂ G₂ = Term.sigma F' G' :=
+              whrDetStar ⟨D₂.reduction, .sigma⟩ ⟨D', .sigma⟩
+            injection hSigma with hF₂ hG₂
+            subst hF₂ hG₂
+            rcases hBC with ⟨F'', G'', D'', BeqC, FeqF'', GeqG''⟩
+            refine ⟨F'', G'', D'', eqrel.transType AeqB BeqC,
+              fun {ρ Δ} hρ hΔ ↦ ?_,
+              fun {ρ Δ a} hρ hΔ ha₁ ↦ ?_⟩
+            · rcases FeqF' hρ hΔ with ⟨r₁, hr₁, hF₁₂⟩
+              rcases FeqF'' hρ hΔ with ⟨r₂, hr₂, hF₂₃⟩
+              have hAt₂ := derivF₂ hρ hΔ r₂ hr₂
+              exact ⟨r₁, hr₁, (ihF hρ hΔ r₁ hr₁).1 (logRelShape_of_LogRelAt hAt₂) hF₁₂ hF₂₃⟩
+            · rcases FeqF' hρ hΔ with ⟨r₁, hr₁, hF₁₂⟩
+              rcases FeqF'' hρ hΔ with ⟨r₂, hr₂, _⟩
+              rcases ha₁ with ⟨r₁', hr₁', ha₁'⟩
+              have hAt₁ := derivF₁ hρ hΔ r₁ hr₁
+              have hAt₁' := derivF₁ hρ hΔ r₁' hr₁'
+              have hAt₂ := derivF₂ hρ hΔ r₂ hr₂
+              have ha₁_r₁ : r₁.hasTerm a := (irrelLogRel hAt₁' hAt₁).2.1.mp ha₁'
+              have ha₂ : RelFHasTerm relF₂ ρ Δ a :=
+                ⟨r₂, hr₂, (convLogRelAt hAt₁ hAt₂ hF₁₂).1.mp ha₁_r₁⟩
+              rcases GeqG' hρ hΔ ⟨r₁', hr₁', ha₁'⟩ with ⟨s₁, hs₁, hG₁₂⟩
+              rcases GeqG'' hρ hΔ ha₂ with ⟨s₂, hs₂, hG₂₃⟩
+              have hGAt₂ := derivG₂ hρ hΔ ha₂ s₂ hs₂
+              exact ⟨s₁, hs₁, (ihG hρ hΔ ⟨r₁', hr₁', ha₁'⟩ s₁ hs₁).1 (logRelShape_of_LogRelAt hGAt₂) hG₁₂ hG₂₃⟩
+      · rintro t u v
+          ⟨p, r, d, d', prodP, prodR, peqr, ht, _hu, fstP, fstR, fstEq₁, sndEq₁⟩
+          ⟨p₁, r₁, d₁, d₁', prodP₁, prodR₁, p₁eqr₁, _hu', hv, fstP₁, _fstR₁, fstEq₂, sndEq₂⟩
+        have hp₁r : p₁ = r :=
+          whrDetStarTerm ⟨d₁.reduction, prodP₁.toWhnf⟩ ⟨d'.reduction, prodR.toWhnf⟩
+        subst hp₁r
+        have hΓ : CtxWf Γ := wfType hF₁
+        rcases fstEq₁ with ⟨rF₁, hrF₁, hFstEq₁⟩
+        rcases fstEq₂ with ⟨rF₂, hrF₂, hFstEq₂⟩
+        have hFAt₁ := derivF₁ .id hΓ rF₁ hrF₁
+        have hFAt₂ := derivF₁ .id hΓ rF₂ hrF₂
+        have hFstEq₂' : rF₁.eqTerm (.fst p₁) (.fst r₁) :=
+          (irrelLogRel hFAt₂ hFAt₁).2.2.mp hFstEq₂
+        have hFstTrans : RelFEqTerm relF₁ .id Γ (.fst p) (.fst r₁) :=
+          ⟨rF₁, hrF₁, (ihF .id hΓ rF₁ hrF₁).2 hFstEq₁ hFstEq₂'⟩
+        rcases sndEq₁ with ⟨sG₁, hsG₁, hSndEq₁⟩
+        rcases sndEq₂ with ⟨sG₂, hsG₂, hSndEq₂⟩
+        rcases Gext₁ .id hΓ fstP fstR ⟨rF₁, hrF₁, hFstEq₁⟩ with ⟨sG_ext, hsG_ext, hG_pr⟩
+        have hGAt₁ := derivG₁ .id hΓ fstP sG₁ hsG₁
+        have hGAt_ext := derivG₁ .id hΓ fstP sG_ext hsG_ext
+        have hGAt₂ := derivG₁ .id hΓ fstP₁ sG₂ hsG₂
+        have hSndEq₂_ext : sG_ext.eqTerm (.snd p₁) (.snd r₁) :=
+          (convLogRelAt hGAt_ext hGAt₂ hG_pr).2.mpr hSndEq₂
+        have hSndEq₂_p : sG₁.eqTerm (.snd p₁) (.snd r₁) :=
+          (irrelLogRel hGAt_ext hGAt₁).2.2.mp hSndEq₂_ext
+        have hSndTrans : RelGEqTerm relG₁ .id Γ (.fst p) (.snd p) (.snd r₁) :=
+          ⟨sG₁, hsG₁, (ihG .id hΓ fstP sG₁ hsG₁).2 hSndEq₁ hSndEq₂_p⟩
+        exact ⟨p, r₁, d, d₁', prodP, prodR₁, eqrel.transTerm peqr p₁eqr₁, ht, hv,
+          fstP, _fstR₁, hFstTrans, hSndTrans⟩
+  | @id Γ A Ty₁ lhs₁ rhs₁ relTy₁ _D₁ _AeqA₁ derivTy₁ _hasLhs₁ _hasRhs₁ _lhsEqLhs₁ _rhsEqRhs₁ ihTy =>
+      refine ⟨?_, fun {_ _ _} htu huv ↦ transEqTermId htu huv⟩
+      intro B C relB hB hAB hBC
+      rcases hAB with ⟨Ty', lhs', rhs', D', AeqB, TyeqTy', lhseqlhs', rhseqrhs', lhsEqRhs_iff⟩
+      cases hB with
+      | U _ => cases whnfRedStar D' .univ
+      | nat D₂ => cases whrDetStar ⟨D₂.reduction, .nat⟩ ⟨D', .id⟩
+      | empty D₂ => cases whrDetStar ⟨D₂.reduction, .empty⟩ ⟨D', .id⟩
+      | unit D₂ => cases whrDetStar ⟨D₂.reduction, .unit⟩ ⟨D', .id⟩
+      | ne neB =>
+          have h := whrDetStar ⟨D', .id⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
+          subst h
+          cases neB.neK
+      | pi D₂ => cases whrDetStar ⟨D₂.reduction, .pi⟩ ⟨D', .id⟩
+      | sigma D₂ => cases whrDetStar ⟨D₂.reduction, .sigma⟩ ⟨D', .id⟩
+      | @id l₂ _ _ Ty₂ lhs₂ rhs₂ relTy₂ D₂ _ derivTy₂ _ _ _ _ =>
+          have hId : Term.id Ty₂ lhs₂ rhs₂ = Term.id Ty' lhs' rhs' :=
+            whrDetStar ⟨D₂.reduction, .id⟩ ⟨D', .id⟩
+          injection hId with hTy₂ hLhs₂ hRhs₂
+          subst hTy₂ hLhs₂ hRhs₂
+          rcases hBC with ⟨Ty'', lhs'', rhs'', D'', BeqC, Ty₂eqTy'', lhs₂eqlhs'', rhs₂eqrhs'', lhsEqRhs_iff₂⟩
+          have hConvTy := convLogRelAt derivTy₁ derivTy₂ TyeqTy'
+          exact ⟨Ty'', lhs'', rhs'', D'', eqrel.transType AeqB BeqC,
+            ihTy.1 (logRelShape_of_LogRelAt derivTy₂) TyeqTy' Ty₂eqTy'',
+            ihTy.2 lhseqlhs' (hConvTy.2.mpr lhs₂eqlhs''),
+            ihTy.2 rhseqrhs' (hConvTy.2.mpr rhs₂eqrhs''),
+            lhsEqRhs_iff.trans (hConvTy.2.trans (lhsEqRhs_iff₂.trans hConvTy.2.symm))⟩
+  | @emb Γ A l' relA hlt hA =>
+      exact ihRec l' hlt hA
+
+theorem transLogRelAt_both {eqrel : EqRelSet} {l₁ : TypeLevel} {Γ : Context} {A : Term}
+    {relA : RedRel} (hA : LogRelAt eqrel l₁ Γ A relA) :
+    (∀ {B C relB}, LogRelShape eqrel Γ B relB → relA.eqType B → relB.eqType C → relA.eqType C) ∧
+    (∀ {t u v}, relA.eqTerm t u → relA.eqTerm u v → relA.eqTerm t v) := by
+  have h0 : ∀ {Γ A relA},
+      LogRelAt eqrel .zero Γ A relA →
+      (∀ {B C relB}, LogRelShape eqrel Γ B relB → relA.eqType B → relB.eqType C → relA.eqType C) ∧
+      (∀ {t u v}, relA.eqTerm t u → relA.eqTerm u v → relA.eqTerm t v) :=
+    fun hA₀ ↦ transLogRel_step (l := .zero) (fun _ hlt ↦ nomatch hlt) hA₀
+  cases l₁ with
+  | zero => exact h0 hA
+  | one =>
+      exact transLogRel_step (l := .one)
+        (fun _ hlt _ _ _ hA₀ ↦ by cases hlt; exact h0 hA₀) hA
+
+theorem transLogRelAt {eqrel : EqRelSet} {l₁ l₂ : TypeLevel} {Γ : Context} {A B C : Term}
+    {relA relB : RedRel}
+    (hA : LogRelAt eqrel l₁ Γ A relA)
+    (hB : LogRelAt eqrel l₂ Γ B relB)
+    (hAB : relA.eqType B)
+    (hBC : relB.eqType C) : relA.eqType C :=
+  (transLogRelAt_both hA).1 (logRelShape_of_LogRelAt hB) hAB hBC
+
+theorem transEqTermAt {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A t u v : Term}
+    {relA : RedRel} (hA : LogRelAt eqrel l Γ A relA)
+    (htu : relA.eqTerm t u) (huv : relA.eqTerm u v) : relA.eqTerm t v :=
+  (transLogRelAt_both hA).2 htu huv
+
+/-- Transitivity of reducible type equality (`transEq`). -/
+theorem transEq {eqrel : EqRelSet} {l l' l'' : TypeLevel} {Γ : Context} {A B C : Term}
+    (pA : RedType eqrel l Γ A) (pB : RedType eqrel l' Γ B) (_pC : RedType eqrel l'' Γ C)
+    (hAB : RedEq pA B) (hBC : RedEq pB C) : RedEq pA C := by
+  rcases hAB with ⟨relA, hA, hEqB⟩
+  rcases hBC with ⟨relB, hB, hEqC⟩
+  exact ⟨relA, hA, transLogRelAt hA hB hEqB hEqC⟩
+
+/-- Transitivity of reducible type equality with propositionally equal types (`transEq′`). -/
+theorem transEq' {eqrel : EqRelSet} {l l' l'' : TypeLevel} {Γ : Context} {A B B' C C' : Term}
+    (hBB' : B = B') (hCC' : C = C')
+    (pA : RedType eqrel l Γ A) (pB : RedType eqrel l' Γ B) (pC : RedType eqrel l'' Γ C)
+    (hAB' : RedEq pA B') (hBC' : RedEq pB C') : RedEq pA C := by
+  subst hBB' hCC'
+  exact transEq pA pB pC hAB' hBC'
+
+/-- Transitivity of reducible term equality (`transEqTerm`). -/
+theorem transEqTerm {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A t u v : Term}
+    (pA : RedType eqrel l Γ A)
+    (htu : RedTermEq pA t u) (huv : RedTermEq pA u v) : RedTermEq pA t v := by
+  rcases htu with ⟨rel, hA, htu⟩
+  rcases huv with ⟨rel', hA', huv⟩
+  have huv_rel : rel.eqTerm u v := (irrelLogRel hA' hA).2.2.mp huv
+  exact ⟨rel, hA, transEqTermAt hA htu huv_rel⟩
+
+/-- Smart constructor for `RedIdEq` deriving `lhsEqRhs_iff` from symmetry and transitivity (`Id₌′`). -/
+theorem RedIdEq.ofTermEq {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context}
+    {Ty lhs rhs B Ty' lhs' rhs' : Term} {relTy : RedRel}
+    (hTy : LogRelAt eqrel l Γ Ty relTy)
+    (D' : TypeStar Γ B (.id Ty' lhs' rhs'))
+    (AeqB : eqrel.TypeEqRel Γ (.id Ty lhs rhs) (.id Ty' lhs' rhs'))
+    (TyeqTy' : relTy.eqType Ty')
+    (lhseqlhs' : relTy.eqTerm lhs lhs')
+    (rhseqrhs' : relTy.eqTerm rhs rhs') :
+    RedIdEq eqrel Γ Ty lhs rhs relTy B :=
+  ⟨Ty', lhs', rhs', D', AeqB, TyeqTy', lhseqlhs', rhseqrhs',
+    ⟨fun h ↦ transEqTermAt hTy (transEqTermAt hTy (symEqTermAt hTy lhseqlhs') h) rhseqrhs',
+     fun h' ↦ transEqTermAt hTy lhseqlhs' (transEqTermAt hTy h' (symEqTermAt hTy rhseqrhs'))⟩⟩
+
+/-!
 ## Weakening of the Logical Relation (`Definition/LogicalRelation/Weakening.agda`)
 -/
 
@@ -328,6 +1676,27 @@ theorem wkLogRel_step {eqrel : EqRelSet} {l : TypeLevel}
           hSigmaTerm ht, hSigmaTerm hu,
           hF_wk_hasTerm fstP, hF_wk_hasTerm fstR,
           hF_wk_eqTerm fstEq, hG_wk_eqTerm fstP sndEq⟩
+  | @id Γ A Ty lhs rhs relTy D AeqA _derivTy hasLhs hasRhs lhsEqLhs rhsEqRhs ihTy =>
+      intro ρ Δ hρ hΔ
+      rcases ihTy hρ hΔ with ⟨relTy', hTy', hEqTy, hTermTy, hEqTermTy⟩
+      refine ⟨RedIdRel eqrel Δ (wk ρ Ty) (wk ρ lhs) (wk ρ rhs) relTy',
+        .id (wkTypeStarWf hρ hΔ D) (eqrel.wkType hρ hΔ AeqA) hTy'
+          (hTermTy hasLhs) (hTermTy hasRhs) (hEqTermTy lhsEqLhs) (hEqTermTy rhsEqRhs),
+        ?_, ?_, ?_⟩
+      · rintro B ⟨Ty', lhs', rhs', D', AeqB, TyeqTy', lhseqlhs', rhseqrhs', _lhsEqRhs_iff⟩
+        exact RedIdEq.ofTermEq hTy' (wkTypeStar hρ hΔ D') (eqrel.wkType hρ hΔ AeqB)
+          (hEqTy TyeqTy') (hEqTermTy lhseqlhs') (hEqTermTy rhseqrhs')
+      · rintro t ⟨u, d, uequ, prop⟩
+        refine ⟨wk ρ u, wkStarWf hρ hΔ d, eqrel.wkTerm hρ hΔ uequ, ?_⟩
+        cases prop with
+        | rfl h => exact .rfl (hEqTermTy h)
+        | ne nf => exact .ne (wkTermNe hρ hΔ nf)
+      · rintro t u ⟨t', u', d, d', t'equ', prop⟩
+        refine ⟨wk ρ t', wk ρ u', wkStarWf hρ hΔ d, wkStarWf hρ hΔ d',
+          eqrel.wkTerm hρ hΔ t'equ', ?_⟩
+        cases prop with
+        | rfl h => exact .rfl (hEqTermTy h)
+        | ne nf => exact .ne (wkEqTermNe hρ hΔ nf)
   | @emb Γ A l' rel hlt hA =>
       intro ρ Δ hρ hΔ
       rcases ihRec l' hlt hρ hΔ hA with ⟨rel', hA', hEq, hTerm, hEqTerm⟩
@@ -390,1192 +1759,6 @@ theorem wkRedTermEq {eqrel : EqRelSet} {l : TypeLevel} {ρ : Wk} {Γ Δ : Contex
   exact ⟨rel', hA', hEqTerm htu⟩
 
 /-!
-## Conversion of the Logical Relation (`Definition/LogicalRelation/Properties/Conversion.agda`)
--/
-
-/-- Conversion of syntactic multi-step term reduction closures (`convRed:*:`). -/
-theorem convStarWf {Γ : Context} {t u A B : Term}
-    (d : StarWf Γ t u A) (hAB : TypeEq Γ A B) : StarWf Γ t u B :=
-  ⟨.conv d.source hAB, .conv d.target hAB, d.reduction.conv hAB⟩
-
-/-- Single-level conversion step for `LogRelAt`. -/
-theorem convLogRel_step {eqrel : EqRelSet} {l : TypeLevel}
-    (ihRec : ∀ (l' : TypeLevel) (hlt : TypeLevelLT l' l) {Γ A B relA relB},
-      logRelRec eqrel l l' hlt Γ A relA → LogRelShape eqrel Γ B relB → relA.eqType B →
-      (∀ {t}, (relA.hasTerm t ↔ relB.hasTerm t)) ∧
-      (∀ {t u}, (relA.eqTerm t u ↔ relB.eqTerm t u)))
-    {Γ : Context} {A : Term} {relA : RedRel}
-    (hA : LogRelAt eqrel l Γ A relA) :
-    ∀ {B : Term} {relB : RedRel},
-      LogRelShape eqrel Γ B relB →
-      relA.eqType B →
-      (∀ {t}, (relA.hasTerm t ↔ relB.hasTerm t)) ∧
-      (∀ {t u}, (relA.eqTerm t u ↔ relB.eqTerm t u)) := by
-  induction hA with
-  | @U Γ l₁ hU =>
-      intro B relB hB hAB
-      change B = .univ at hAB
-      subst hAB
-      cases hB with
-      | U hU₂ =>
-          rw [logRelRec_eq hU.lt hU₂.lt]
-          exact ⟨fun {_} ↦ Iff.rfl, fun {_ _} ↦ Iff.rfl⟩
-      | nat D =>
-          have h := whnfRedStar D.reduction .univ
-          cases h
-      | empty D =>
-          have h := whnfRedStar D.reduction .univ
-          cases h
-      | unit D =>
-          have h := whnfRedStar D.reduction .univ
-          cases h
-      | ne neB =>
-          have h := whnfRedStar neB.D.reduction .univ
-          subst h
-          cases neB.neK
-      | pi D =>
-          have h := whnfRedStar D.reduction .univ
-          cases h
-      | sigma D =>
-          have h := whnfRedStar D.reduction .univ
-          cases h
-  | @nat Γ A D₁ =>
-      intro B relB hB hAB
-      change TypeStar Γ B .nat at hAB
-      cases hB with
-      | U _ =>
-          have h := whnfRedStar hAB .univ
-          cases h
-      | nat _ =>
-          exact ⟨fun {_} ↦ Iff.rfl, fun {_ _} ↦ Iff.rfl⟩
-      | empty D₂ =>
-          have h := whrDetStar ⟨hAB, .nat⟩ ⟨D₂.reduction, .empty⟩
-          cases h
-      | unit D₂ =>
-          have h := whrDetStar ⟨hAB, .nat⟩ ⟨D₂.reduction, .unit⟩
-          cases h
-      | ne neB =>
-          have h := whrDetStar ⟨hAB, .nat⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
-          subst h
-          cases neB.neK
-      | pi D₂ =>
-          have h := whrDetStar ⟨hAB, .nat⟩ ⟨D₂.reduction, .pi⟩
-          cases h
-      | sigma D₂ =>
-          have h := whrDetStar ⟨hAB, .nat⟩ ⟨D₂.reduction, .sigma⟩
-          cases h
-  | @empty Γ A D₁ =>
-      intro B relB hB hAB
-      change TypeStar Γ B .empty at hAB
-      cases hB with
-      | U _ =>
-          have h := whnfRedStar hAB .univ
-          cases h
-      | nat D₂ =>
-          have h := whrDetStar ⟨hAB, .empty⟩ ⟨D₂.reduction, .nat⟩
-          cases h
-      | empty _ =>
-          exact ⟨fun {_} ↦ Iff.rfl, fun {_ _} ↦ Iff.rfl⟩
-      | unit D₂ =>
-          have h := whrDetStar ⟨hAB, .empty⟩ ⟨D₂.reduction, .unit⟩
-          cases h
-      | ne neB =>
-          have h := whrDetStar ⟨hAB, .empty⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
-          subst h
-          cases neB.neK
-      | pi D₂ =>
-          have h := whrDetStar ⟨hAB, .empty⟩ ⟨D₂.reduction, .pi⟩
-          cases h
-      | sigma D₂ =>
-          have h := whrDetStar ⟨hAB, .empty⟩ ⟨D₂.reduction, .sigma⟩
-          cases h
-  | @unit Γ A D₁ =>
-      intro B relB hB hAB
-      change TypeStar Γ B .unit at hAB
-      cases hB with
-      | U _ =>
-          have h := whnfRedStar hAB .univ
-          cases h
-      | nat D₂ =>
-          have h := whrDetStar ⟨hAB, .unit⟩ ⟨D₂.reduction, .nat⟩
-          cases h
-      | empty D₂ =>
-          have h := whrDetStar ⟨hAB, .unit⟩ ⟨D₂.reduction, .empty⟩
-          cases h
-      | unit _ =>
-          exact ⟨fun {_} ↦ Iff.rfl, fun {_ _} ↦ Iff.rfl⟩
-      | ne neB =>
-          have h := whrDetStar ⟨hAB, .unit⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
-          subst h
-          cases neB.neK
-      | pi D₂ =>
-          have h := whrDetStar ⟨hAB, .unit⟩ ⟨D₂.reduction, .pi⟩
-          cases h
-      | sigma D₂ =>
-          have h := whrDetStar ⟨hAB, .unit⟩ ⟨D₂.reduction, .sigma⟩
-          cases h
-  | @ne Γ A K₁ neA =>
-      intro B relB hB hAB
-      rcases hAB with ⟨M, D', neM, KeqM⟩
-      cases hB with
-      | U _ =>
-          have h := whnfRedStar D'.reduction .univ
-          subst h
-          cases neM
-      | nat D₂ =>
-          have h := whrDetStar ⟨D₂.reduction, .nat⟩ ⟨D'.reduction, .neutral neM⟩
-          subst h
-          cases neM
-      | empty D₂ =>
-          have h := whrDetStar ⟨D₂.reduction, .empty⟩ ⟨D'.reduction, .neutral neM⟩
-          subst h
-          cases neM
-      | unit D₂ =>
-          have h := whrDetStar ⟨D₂.reduction, .unit⟩ ⟨D'.reduction, .neutral neM⟩
-          subst h
-          cases neM
-      | @ne _ _ K₂ neB =>
-          have hMK₂ : M = K₂ :=
-            whrDetStar ⟨D'.reduction, .neutral neM⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
-          subst hMK₂
-          have hK₁K₂ : TypeEq Γ K₁ M := eqrel.typeToEq (eqrel.neToType KeqM)
-          refine ⟨?_, ?_⟩
-          · intro t
-            constructor
-            · rintro ⟨k, d, nf⟩
-              exact ⟨k, convStarWf d hK₁K₂,
-                ⟨nf.neK, .conv nf.hk hK₁K₂, eqrel.convNe nf.keqk hK₁K₂⟩⟩
-            · rintro ⟨k, d, nf⟩
-              exact ⟨k, convStarWf d (.symm hK₁K₂),
-                ⟨nf.neK, .conv nf.hk (.symm hK₁K₂), eqrel.convNe nf.keqk (.symm hK₁K₂)⟩⟩
-          · intro t u
-            constructor
-            · rintro ⟨k, m, d, d'', nf⟩
-              exact ⟨k, m, convStarWf d hK₁K₂, convStarWf d'' hK₁K₂,
-                ⟨nf.neK, nf.neM, eqrel.convNe nf.keqm hK₁K₂⟩⟩
-            · rintro ⟨k, m, d, d'', nf⟩
-              exact ⟨k, m, convStarWf d (.symm hK₁K₂), convStarWf d'' (.symm hK₁K₂),
-                ⟨nf.neK, nf.neM, eqrel.convNe nf.keqm (.symm hK₁K₂)⟩⟩
-      | pi D₂ =>
-          have h := whrDetStar ⟨D₂.reduction, .pi⟩ ⟨D'.reduction, .neutral neM⟩
-          subst h
-          cases neM
-      | sigma D₂ =>
-          have h := whrDetStar ⟨D₂.reduction, .sigma⟩ ⟨D'.reduction, .neutral neM⟩
-          subst h
-          cases neM
-  | @pi Γ A F₁ G₁ D₁ _hF₁ _hG₁ _AeqA₁ relF₁ relG₁ hF_ex₁ derivF₁ hG_ex₁ derivG₁ _Gext₁ ihF ihG =>
-      intro B relB hB hAB
-      rcases hAB with ⟨F', G', D', AeqB, FeqF', GeqG'⟩
-      cases hB with
-      | U _ =>
-          have h := whnfRedStar D' .univ
-          cases h
-      | nat D₂ =>
-          have h := whrDetStar ⟨D₂.reduction, .nat⟩ ⟨D', .pi⟩
-          cases h
-      | empty D₂ =>
-          have h := whrDetStar ⟨D₂.reduction, .empty⟩ ⟨D', .pi⟩
-          cases h
-      | unit D₂ =>
-          have h := whrDetStar ⟨D₂.reduction, .unit⟩ ⟨D', .pi⟩
-          cases h
-      | ne neB =>
-          have h := whrDetStar ⟨D', .pi⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
-          subst h
-          cases neB.neK
-      | sigma D₂ =>
-          have h := whrDetStar ⟨D₂.reduction, .sigma⟩ ⟨D', .pi⟩
-          cases h
-      | @pi l₂ _ _ F₂ G₂ D₂ _ _ _ relF₂ relG₂ hF_ex₂ derivF₂ hG_ex₂ derivG₂ _ =>
-          have hPi : Term.pi F₂ G₂ = Term.pi F' G' :=
-            whrDetStar ⟨D₂.reduction, .pi⟩ ⟨D', .pi⟩
-          injection hPi with hF₂ hG₂
-          subst hF₂ hG₂
-          have hPiEq : TypeEq Γ (.pi F₁ G₁) (.pi F₂ G₂) := eqrel.typeToEq AeqB
-          have hF_conv : ∀ {ρ Δ} (hρ : WkCtx ρ Δ Γ) (hΔ : CtxWf Δ),
-              (∀ {a}, RelFHasTerm relF₁ ρ Δ a ↔ RelFHasTerm relF₂ ρ Δ a) ∧
-              (∀ {a b}, RelFEqTerm relF₁ ρ Δ a b ↔ RelFEqTerm relF₂ ρ Δ a b) := by
-            intro ρ Δ hρ hΔ
-            rcases FeqF' hρ hΔ with ⟨r₁, hr₁, hF₁₂⟩
-            rcases hF_ex₂ hρ hΔ with ⟨r₂, hr₂⟩
-            have hAt₁ := derivF₁ hρ hΔ r₁ hr₁
-            have hAt₂ := derivF₂ hρ hΔ r₂ hr₂
-            have hConv := ihF hρ hΔ r₁ hr₁ (logRelShape_of_LogRelAt hAt₂) hF₁₂
-            refine ⟨?_, ?_⟩
-            · intro a
-              constructor
-              · rintro ⟨r₁', hr₁', ha⟩
-                have ha₁ := (irrelLogRel (derivF₁ hρ hΔ r₁' hr₁') hAt₁).2.1.mp ha
-                exact ⟨r₂, hr₂, hConv.1.mp ha₁⟩
-              · rintro ⟨r₂', hr₂', ha⟩
-                have ha₂ := (irrelLogRel (derivF₂ hρ hΔ r₂' hr₂') hAt₂).2.1.mp ha
-                exact ⟨r₁, hr₁, hConv.1.mpr ha₂⟩
-            · intro a b
-              constructor
-              · rintro ⟨r₁', hr₁', hab⟩
-                have hab₁ := (irrelLogRel (derivF₁ hρ hΔ r₁' hr₁') hAt₁).2.2.mp hab
-                exact ⟨r₂, hr₂, hConv.2.mp hab₁⟩
-              · rintro ⟨r₂', hr₂', hab⟩
-                have hab₂ := (irrelLogRel (derivF₂ hρ hΔ r₂' hr₂') hAt₂).2.2.mp hab
-                exact ⟨r₁, hr₁, hConv.2.mpr hab₂⟩
-          have hG_conv : ∀ {ρ Δ a} (hρ : WkCtx ρ Δ Γ) (hΔ : CtxWf Δ)
-              (ha₁ : RelFHasTerm relF₁ ρ Δ a),
-              (∀ {t}, RelGHasTerm relG₁ ρ Δ a t ↔ RelGHasTerm relG₂ ρ Δ a t) ∧
-              (∀ {t u}, RelGEqTerm relG₁ ρ Δ a t u ↔ RelGEqTerm relG₂ ρ Δ a t u) := by
-            intro ρ Δ a hρ hΔ ha₁
-            have ha₂ : RelFHasTerm relF₂ ρ Δ a := (hF_conv hρ hΔ).1.mp ha₁
-            rcases GeqG' hρ hΔ ha₁ with ⟨s₁, hs₁, hG₁₂⟩
-            rcases hG_ex₂ hρ hΔ ha₂ with ⟨s₂, hs₂⟩
-            have hAt₁ := derivG₁ hρ hΔ ha₁ s₁ hs₁
-            have hAt₂ := derivG₂ hρ hΔ ha₂ s₂ hs₂
-            have hConv := ihG hρ hΔ ha₁ s₁ hs₁ (logRelShape_of_LogRelAt hAt₂) hG₁₂
-            refine ⟨?_, ?_⟩
-            · intro t
-              constructor
-              · rintro ⟨s₁', hs₁', ht⟩
-                have ht₁ := (irrelLogRel (derivG₁ hρ hΔ ha₁ s₁' hs₁') hAt₁).2.1.mp ht
-                exact ⟨s₂, hs₂, hConv.1.mp ht₁⟩
-              · rintro ⟨s₂', hs₂', ht⟩
-                have ht₂ := (irrelLogRel (derivG₂ hρ hΔ ha₂ s₂' hs₂') hAt₂).2.1.mp ht
-                exact ⟨s₁, hs₁, hConv.1.mpr ht₂⟩
-            · intro t u
-              constructor
-              · rintro ⟨s₁', hs₁', htu⟩
-                have htu₁ := (irrelLogRel (derivG₁ hρ hΔ ha₁ s₁' hs₁') hAt₁).2.2.mp htu
-                exact ⟨s₂, hs₂, hConv.2.mp htu₁⟩
-              · rintro ⟨s₂', hs₂', htu⟩
-                have htu₂ := (irrelLogRel (derivG₂ hρ hΔ ha₂ s₂' hs₂') hAt₂).2.2.mp htu
-                exact ⟨s₁, hs₁, hConv.2.mpr htu₂⟩
-          have hPiTermIff : ∀ {t},
-              RedPiTerm eqrel Γ F₁ G₁ relF₁ relG₁ t ↔ RedPiTerm eqrel Γ F₂ G₂ relF₂ relG₂ t := by
-            intro t
-            constructor
-            · rintro ⟨f, d, funcF, feqf, appEq, appTerm⟩
-              refine ⟨f, convStarWf d hPiEq, funcF, eqrel.convTerm feqf hPiEq,
-                fun {ρ Δ a b} hρ hΔ ha₂ hb₂ hab₂ ↦ ?_,
-                fun {ρ Δ a} hρ hΔ ha₂ ↦ ?_⟩
-              · have ha₁ := (hF_conv hρ hΔ).1.mpr ha₂
-                have hb₁ := (hF_conv hρ hΔ).1.mpr hb₂
-                have hab₁ := (hF_conv hρ hΔ).2.mpr hab₂
-                exact (hG_conv hρ hΔ ha₁).2.mp (appEq hρ hΔ ha₁ hb₁ hab₁)
-              · have ha₁ := (hF_conv hρ hΔ).1.mpr ha₂
-                exact (hG_conv hρ hΔ ha₁).1.mp (appTerm hρ hΔ ha₁)
-            · rintro ⟨f, d, funcF, feqf, appEq, appTerm⟩
-              refine ⟨f, convStarWf d (.symm hPiEq), funcF, eqrel.convTerm feqf (.symm hPiEq),
-                fun {ρ Δ a b} hρ hΔ ha₁ hb₁ hab₁ ↦ ?_,
-                fun {ρ Δ a} hρ hΔ ha₁ ↦ ?_⟩
-              · have ha₂ := (hF_conv hρ hΔ).1.mp ha₁
-                have hb₂ := (hF_conv hρ hΔ).1.mp hb₁
-                have hab₂ := (hF_conv hρ hΔ).2.mp hab₁
-                exact (hG_conv hρ hΔ ha₁).2.mpr (appEq hρ hΔ ha₂ hb₂ hab₂)
-              · have ha₂ := (hF_conv hρ hΔ).1.mp ha₁
-                exact (hG_conv hρ hΔ ha₁).1.mpr (appTerm hρ hΔ ha₂)
-          refine ⟨hPiTermIff, ?_⟩
-          intro t u
-          constructor
-          · rintro ⟨f, g, d, d'', funcF, funcG, feqg, ht, hu, appEq⟩
-            refine ⟨f, g, convStarWf d hPiEq, convStarWf d'' hPiEq, funcF, funcG,
-              eqrel.convTerm feqg hPiEq, hPiTermIff.mp ht, hPiTermIff.mp hu,
-              fun {ρ Δ a} hρ hΔ ha₂ ↦ ?_⟩
-            have ha₁ := (hF_conv hρ hΔ).1.mpr ha₂
-            exact (hG_conv hρ hΔ ha₁).2.mp (appEq hρ hΔ ha₁)
-          · rintro ⟨f, g, d, d'', funcF, funcG, feqg, ht, hu, appEq⟩
-            refine ⟨f, g, convStarWf d (.symm hPiEq), convStarWf d'' (.symm hPiEq), funcF, funcG,
-              eqrel.convTerm feqg (.symm hPiEq), hPiTermIff.mpr ht, hPiTermIff.mpr hu,
-              fun {ρ Δ a} hρ hΔ ha₁ ↦ ?_⟩
-            have ha₂ := (hF_conv hρ hΔ).1.mp ha₁
-            exact (hG_conv hρ hΔ ha₁).2.mpr (appEq hρ hΔ ha₂)
-  | @sigma Γ A F₁ G₁ D₁ hF₁ _hG₁ _AeqA₁ relF₁ relG₁ hF_ex₁ derivF₁ hG_ex₁ derivG₁ _Gext₁ ihF ihG =>
-      intro B relB hB hAB
-      rcases hAB with ⟨F', G', D', AeqB, FeqF', GeqG'⟩
-      cases hB with
-      | U _ =>
-          have h := whnfRedStar D' .univ
-          cases h
-      | nat D₂ =>
-          have h := whrDetStar ⟨D₂.reduction, .nat⟩ ⟨D', .sigma⟩
-          cases h
-      | empty D₂ =>
-          have h := whrDetStar ⟨D₂.reduction, .empty⟩ ⟨D', .sigma⟩
-          cases h
-      | unit D₂ =>
-          have h := whrDetStar ⟨D₂.reduction, .unit⟩ ⟨D', .sigma⟩
-          cases h
-      | ne neB =>
-          have h := whrDetStar ⟨D', .sigma⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
-          subst h
-          cases neB.neK
-      | pi D₂ =>
-          have h := whrDetStar ⟨D₂.reduction, .pi⟩ ⟨D', .sigma⟩
-          cases h
-      | @sigma l₂ _ _ F₂ G₂ D₂ _ _ _ relF₂ relG₂ hF_ex₂ derivF₂ hG_ex₂ derivG₂ _ =>
-          have hSigma : Term.sigma F₂ G₂ = Term.sigma F' G' :=
-            whrDetStar ⟨D₂.reduction, .sigma⟩ ⟨D', .sigma⟩
-          injection hSigma with hF₂ hG₂
-          subst hF₂ hG₂
-          have hΓ : CtxWf Γ := wfType hF₁
-          have hSigmaEq : TypeEq Γ (.sigma F₁ G₁) (.sigma F₂ G₂) := eqrel.typeToEq AeqB
-          have hF_conv : ∀ {ρ Δ} (hρ : WkCtx ρ Δ Γ) (hΔ : CtxWf Δ),
-              (∀ {a}, RelFHasTerm relF₁ ρ Δ a ↔ RelFHasTerm relF₂ ρ Δ a) ∧
-              (∀ {a b}, RelFEqTerm relF₁ ρ Δ a b ↔ RelFEqTerm relF₂ ρ Δ a b) := by
-            intro ρ Δ hρ hΔ
-            rcases FeqF' hρ hΔ with ⟨r₁, hr₁, hF₁₂⟩
-            rcases hF_ex₂ hρ hΔ with ⟨r₂, hr₂⟩
-            have hAt₁ := derivF₁ hρ hΔ r₁ hr₁
-            have hAt₂ := derivF₂ hρ hΔ r₂ hr₂
-            have hConv := ihF hρ hΔ r₁ hr₁ (logRelShape_of_LogRelAt hAt₂) hF₁₂
-            refine ⟨?_, ?_⟩
-            · intro a
-              constructor
-              · rintro ⟨r₁', hr₁', ha⟩
-                have ha₁ := (irrelLogRel (derivF₁ hρ hΔ r₁' hr₁') hAt₁).2.1.mp ha
-                exact ⟨r₂, hr₂, hConv.1.mp ha₁⟩
-              · rintro ⟨r₂', hr₂', ha⟩
-                have ha₂ := (irrelLogRel (derivF₂ hρ hΔ r₂' hr₂') hAt₂).2.1.mp ha
-                exact ⟨r₁, hr₁, hConv.1.mpr ha₂⟩
-            · intro a b
-              constructor
-              · rintro ⟨r₁', hr₁', hab⟩
-                have hab₁ := (irrelLogRel (derivF₁ hρ hΔ r₁' hr₁') hAt₁).2.2.mp hab
-                exact ⟨r₂, hr₂, hConv.2.mp hab₁⟩
-              · rintro ⟨r₂', hr₂', hab⟩
-                have hab₂ := (irrelLogRel (derivF₂ hρ hΔ r₂' hr₂') hAt₂).2.2.mp hab
-                exact ⟨r₁, hr₁, hConv.2.mpr hab₂⟩
-          have hG_conv : ∀ {ρ Δ a} (hρ : WkCtx ρ Δ Γ) (hΔ : CtxWf Δ)
-              (ha₁ : RelFHasTerm relF₁ ρ Δ a),
-              (∀ {t}, RelGHasTerm relG₁ ρ Δ a t ↔ RelGHasTerm relG₂ ρ Δ a t) ∧
-              (∀ {t u}, RelGEqTerm relG₁ ρ Δ a t u ↔ RelGEqTerm relG₂ ρ Δ a t u) := by
-            intro ρ Δ a hρ hΔ ha₁
-            have ha₂ : RelFHasTerm relF₂ ρ Δ a := (hF_conv hρ hΔ).1.mp ha₁
-            rcases GeqG' hρ hΔ ha₁ with ⟨s₁, hs₁, hG₁₂⟩
-            rcases hG_ex₂ hρ hΔ ha₂ with ⟨s₂, hs₂⟩
-            have hAt₁ := derivG₁ hρ hΔ ha₁ s₁ hs₁
-            have hAt₂ := derivG₂ hρ hΔ ha₂ s₂ hs₂
-            have hConv := ihG hρ hΔ ha₁ s₁ hs₁ (logRelShape_of_LogRelAt hAt₂) hG₁₂
-            refine ⟨?_, ?_⟩
-            · intro t
-              constructor
-              · rintro ⟨s₁', hs₁', ht⟩
-                have ht₁ := (irrelLogRel (derivG₁ hρ hΔ ha₁ s₁' hs₁') hAt₁).2.1.mp ht
-                exact ⟨s₂, hs₂, hConv.1.mp ht₁⟩
-              · rintro ⟨s₂', hs₂', ht⟩
-                have ht₂ := (irrelLogRel (derivG₂ hρ hΔ ha₂ s₂' hs₂') hAt₂).2.1.mp ht
-                exact ⟨s₁, hs₁, hConv.1.mpr ht₂⟩
-            · intro t u
-              constructor
-              · rintro ⟨s₁', hs₁', htu⟩
-                have htu₁ := (irrelLogRel (derivG₁ hρ hΔ ha₁ s₁' hs₁') hAt₁).2.2.mp htu
-                exact ⟨s₂, hs₂, hConv.2.mp htu₁⟩
-              · rintro ⟨s₂', hs₂', htu⟩
-                have htu₂ := (irrelLogRel (derivG₂ hρ hΔ ha₂ s₂' hs₂') hAt₂).2.2.mp htu
-                exact ⟨s₁, hs₁, hConv.2.mpr htu₂⟩
-          have hSigmaTermIff : ∀ {t},
-              RedSigmaTerm eqrel Γ F₁ G₁ relF₁ relG₁ t ↔ RedSigmaTerm eqrel Γ F₂ G₂ relF₂ relG₂ t := by
-            intro t
-            constructor
-            · rintro ⟨p, d, prodP, peqp, fstTerm, sndTerm⟩
-              have fstTerm₂ := (hF_conv .id hΓ).1.mp fstTerm
-              have sndTerm₂ := (hG_conv .id hΓ fstTerm).1.mp sndTerm
-              exact ⟨p, convStarWf d hSigmaEq, prodP, eqrel.convTerm peqp hSigmaEq,
-                fstTerm₂, sndTerm₂⟩
-            · rintro ⟨p, d, prodP, peqp, fstTerm₂, sndTerm₂⟩
-              have fstTerm₁ := (hF_conv .id hΓ).1.mpr fstTerm₂
-              have sndTerm₁ := (hG_conv .id hΓ fstTerm₁).1.mpr sndTerm₂
-              exact ⟨p, convStarWf d (.symm hSigmaEq), prodP, eqrel.convTerm peqp (.symm hSigmaEq),
-                fstTerm₁, sndTerm₁⟩
-          refine ⟨hSigmaTermIff, ?_⟩
-          intro t u
-          constructor
-          · rintro ⟨p, r, d, d'', prodP, prodR, peqr, ht, hu, fstP, fstR, fstEq, sndEq⟩
-            exact ⟨p, r, convStarWf d hSigmaEq, convStarWf d'' hSigmaEq, prodP, prodR,
-              eqrel.convTerm peqr hSigmaEq, hSigmaTermIff.mp ht, hSigmaTermIff.mp hu,
-              (hF_conv .id hΓ).1.mp fstP, (hF_conv .id hΓ).1.mp fstR,
-              (hF_conv .id hΓ).2.mp fstEq, (hG_conv .id hΓ fstP).2.mp sndEq⟩
-          · rintro ⟨p, r, d, d'', prodP, prodR, peqr, ht, hu, fstP₂, fstR₂, fstEq₂, sndEq₂⟩
-            have fstP₁ := (hF_conv .id hΓ).1.mpr fstP₂
-            exact ⟨p, r, convStarWf d (.symm hSigmaEq), convStarWf d'' (.symm hSigmaEq),
-              prodP, prodR, eqrel.convTerm peqr (.symm hSigmaEq),
-              hSigmaTermIff.mpr ht, hSigmaTermIff.mpr hu,
-              fstP₁, (hF_conv .id hΓ).1.mpr fstR₂,
-              (hF_conv .id hΓ).2.mpr fstEq₂, (hG_conv .id hΓ fstP₁).2.mpr sndEq₂⟩
-  | @emb Γ A l' relA hlt hA =>
-      intro B relB hB hAB
-      exact ihRec l' hlt hA hB hAB
-
-theorem convLogRelAt {eqrel : EqRelSet} {l₁ l₂ : TypeLevel} {Γ : Context} {A B : Term}
-    {relA relB : RedRel}
-    (hA : LogRelAt eqrel l₁ Γ A relA)
-    (hB : LogRelAt eqrel l₂ Γ B relB)
-    (hAB : relA.eqType B) :
-    (∀ {t}, (relA.hasTerm t ↔ relB.hasTerm t)) ∧
-    (∀ {t u}, (relA.eqTerm t u ↔ relB.eqTerm t u)) := by
-  have h0 : ∀ {Γ A B relA relB},
-      LogRelAt eqrel .zero Γ A relA → LogRelShape eqrel Γ B relB → relA.eqType B →
-      (∀ {t}, (relA.hasTerm t ↔ relB.hasTerm t)) ∧
-      (∀ {t u}, (relA.eqTerm t u ↔ relB.eqTerm t u)) :=
-    fun hA₀ hBs hAB₀ ↦
-      convLogRel_step (l := .zero) (fun _ hlt ↦ nomatch hlt) hA₀ hBs hAB₀
-  cases l₁ with
-  | zero => exact h0 hA (logRelShape_of_LogRelAt hB) hAB
-  | one =>
-      exact convLogRel_step (l := .one)
-        (fun _ hlt _ _ _ _ _ hA₀ hBs hAB₀ ↦ by cases hlt; exact h0 hA₀ hBs hAB₀)
-        hA (logRelShape_of_LogRelAt hB) hAB
-
-/-- Left-to-right term conversion (`convTerm₁`). -/
-theorem convTerm₁ {eqrel : EqRelSet} {l l' : TypeLevel} {Γ : Context} {A B t : Term}
-    (pA : RedType eqrel l Γ A) (pB : RedType eqrel l' Γ B)
-    (hAB : RedEq pA B) (ht : RedTerm pA t) : RedTerm pB t := by
-  rcases hAB with ⟨relA, hA, hEqB⟩
-  rcases pB with ⟨relB, hB⟩
-  rcases ht with ⟨relA', hA', ht⟩
-  have htA : relA.hasTerm t := (irrelLogRel hA' hA).2.1.mp ht
-  exact ⟨relB, hB, (convLogRelAt hA hB hEqB).1.mp htA⟩
-
-/-- Right-to-left term conversion (`convTerm₂`). -/
-theorem convTerm₂ {eqrel : EqRelSet} {l l' : TypeLevel} {Γ : Context} {A B t : Term}
-    (pA : RedType eqrel l Γ A) (pB : RedType eqrel l' Γ B)
-    (hAB : RedEq pA B) (ht : RedTerm pB t) : RedTerm pA t := by
-  rcases hAB with ⟨relA, hA, hEqB⟩
-  rcases ht with ⟨relB, hB, ht⟩
-  exact ⟨relA, hA, (convLogRelAt hA hB hEqB).1.mpr ht⟩
-
-/-- Right-to-left term conversion with propositionally equal right types (`convTerm₂′`). -/
-theorem convTerm₂' {eqrel : EqRelSet} {l l' : TypeLevel} {Γ : Context} {A B B' t : Term}
-    (hBB' : B = B') (pA : RedType eqrel l Γ A) (pB : RedType eqrel l' Γ B)
-    (hAB' : RedEq pA B') (ht : RedTerm pB t) : RedTerm pA t := by
-  subst hBB'
-  exact convTerm₂ pA pB hAB' ht
-
-/-- Left-to-right term equality conversion (`convEqTerm₁`). -/
-theorem convEqTerm₁ {eqrel : EqRelSet} {l l' : TypeLevel} {Γ : Context} {A B t u : Term}
-    (pA : RedType eqrel l Γ A) (pB : RedType eqrel l' Γ B)
-    (hAB : RedEq pA B) (htu : RedTermEq pA t u) : RedTermEq pB t u := by
-  rcases hAB with ⟨relA, hA, hEqB⟩
-  rcases pB with ⟨relB, hB⟩
-  rcases htu with ⟨relA', hA', htu⟩
-  have htuA : relA.eqTerm t u := (irrelLogRel hA' hA).2.2.mp htu
-  exact ⟨relB, hB, (convLogRelAt hA hB hEqB).2.mp htuA⟩
-
-/-- Right-to-left term equality conversion (`convEqTerm₂`). -/
-theorem convEqTerm₂ {eqrel : EqRelSet} {l l' : TypeLevel} {Γ : Context} {A B t u : Term}
-    (pA : RedType eqrel l Γ A) (pB : RedType eqrel l' Γ B)
-    (hAB : RedEq pA B) (htu : RedTermEq pB t u) : RedTermEq pA t u := by
-  rcases hAB with ⟨relA, hA, hEqB⟩
-  rcases htu with ⟨relB, hB, htu⟩
-  exact ⟨relA, hA, (convLogRelAt hA hB hEqB).2.mpr htu⟩
-
-/-!
-## Symmetry of the Logical Relation (`Definition/LogicalRelation/Properties/Symmetry.agda`)
--/
-
-/-- Single-level symmetry step for `LogRelAt` type equality. -/
-theorem symLogRel_step {eqrel : EqRelSet} {l : TypeLevel}
-    (ihRec : ∀ (l' : TypeLevel) (hlt : TypeLevelLT l' l) {Γ A B relA relB},
-      logRelRec eqrel l l' hlt Γ A relA → LogRelShape eqrel Γ B relB →
-      relA.eqType B → relB.eqType A)
-    {Γ : Context} {A : Term} {relA : RedRel}
-    (hA : LogRelAt eqrel l Γ A relA) :
-    ∀ {B : Term} {relB : RedRel},
-      LogRelShape eqrel Γ B relB → relA.eqType B → relB.eqType A := by
-  induction hA with
-  | @U Γ l₁ hU =>
-      intro B relB hB hAB
-      change B = .univ at hAB
-      subst hAB
-      cases hB with
-      | U _ => rfl
-      | nat D => cases whnfRedStar D.reduction .univ
-      | empty D => cases whnfRedStar D.reduction .univ
-      | unit D => cases whnfRedStar D.reduction .univ
-      | ne neB =>
-          have h := whnfRedStar neB.D.reduction .univ
-          subst h
-          cases neB.neK
-      | pi D => cases whnfRedStar D.reduction .univ
-      | sigma D => cases whnfRedStar D.reduction .univ
-  | @nat Γ A D₁ =>
-      intro B relB hB hAB
-      change TypeStar Γ B .nat at hAB
-      cases hB with
-      | U _ => cases whnfRedStar hAB .univ
-      | nat _ => exact D₁.reduction
-      | empty D₂ => cases whrDetStar ⟨hAB, .nat⟩ ⟨D₂.reduction, .empty⟩
-      | unit D₂ => cases whrDetStar ⟨hAB, .nat⟩ ⟨D₂.reduction, .unit⟩
-      | ne neB =>
-          have h := whrDetStar ⟨hAB, .nat⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
-          subst h
-          cases neB.neK
-      | pi D₂ => cases whrDetStar ⟨hAB, .nat⟩ ⟨D₂.reduction, .pi⟩
-      | sigma D₂ => cases whrDetStar ⟨hAB, .nat⟩ ⟨D₂.reduction, .sigma⟩
-  | @empty Γ A D₁ =>
-      intro B relB hB hAB
-      change TypeStar Γ B .empty at hAB
-      cases hB with
-      | U _ => cases whnfRedStar hAB .univ
-      | nat D₂ => cases whrDetStar ⟨hAB, .empty⟩ ⟨D₂.reduction, .nat⟩
-      | empty _ => exact D₁.reduction
-      | unit D₂ => cases whrDetStar ⟨hAB, .empty⟩ ⟨D₂.reduction, .unit⟩
-      | ne neB =>
-          have h := whrDetStar ⟨hAB, .empty⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
-          subst h
-          cases neB.neK
-      | pi D₂ => cases whrDetStar ⟨hAB, .empty⟩ ⟨D₂.reduction, .pi⟩
-      | sigma D₂ => cases whrDetStar ⟨hAB, .empty⟩ ⟨D₂.reduction, .sigma⟩
-  | @unit Γ A D₁ =>
-      intro B relB hB hAB
-      change TypeStar Γ B .unit at hAB
-      cases hB with
-      | U _ => cases whnfRedStar hAB .univ
-      | nat D₂ => cases whrDetStar ⟨hAB, .unit⟩ ⟨D₂.reduction, .nat⟩
-      | empty D₂ => cases whrDetStar ⟨hAB, .unit⟩ ⟨D₂.reduction, .empty⟩
-      | unit _ => exact D₁.reduction
-      | ne neB =>
-          have h := whrDetStar ⟨hAB, .unit⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
-          subst h
-          cases neB.neK
-      | pi D₂ => cases whrDetStar ⟨hAB, .unit⟩ ⟨D₂.reduction, .pi⟩
-      | sigma D₂ => cases whrDetStar ⟨hAB, .unit⟩ ⟨D₂.reduction, .sigma⟩
-  | @ne Γ A K₁ neA =>
-      intro B relB hB hAB
-      rcases hAB with ⟨M, D', neM, KeqM⟩
-      cases hB with
-      | U _ =>
-          have h := whnfRedStar D'.reduction .univ
-          subst h
-          cases neM
-      | nat D₂ =>
-          have h := whrDetStar ⟨D₂.reduction, .nat⟩ ⟨D'.reduction, .neutral neM⟩
-          subst h
-          cases neM
-      | empty D₂ =>
-          have h := whrDetStar ⟨D₂.reduction, .empty⟩ ⟨D'.reduction, .neutral neM⟩
-          subst h
-          cases neM
-      | unit D₂ =>
-          have h := whrDetStar ⟨D₂.reduction, .unit⟩ ⟨D'.reduction, .neutral neM⟩
-          subst h
-          cases neM
-      | @ne _ _ K₂ neB =>
-          have hMK₂ : M = K₂ :=
-            whrDetStar ⟨D'.reduction, .neutral neM⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
-          subst hMK₂
-          exact ⟨K₁, neA.D, neA.neK, eqrel.symmNe KeqM⟩
-      | pi D₂ =>
-          have h := whrDetStar ⟨D₂.reduction, .pi⟩ ⟨D'.reduction, .neutral neM⟩
-          subst h
-          cases neM
-      | sigma D₂ =>
-          have h := whrDetStar ⟨D₂.reduction, .sigma⟩ ⟨D'.reduction, .neutral neM⟩
-          subst h
-          cases neM
-  | @pi Γ A F₁ G₁ D₁ _hF₁ _hG₁ _AeqA₁ relF₁ relG₁ _hF_ex₁ derivF₁ _hG_ex₁ _derivG₁ _Gext₁ ihF ihG =>
-      intro B relB hB hAB
-      rcases hAB with ⟨F', G', D', AeqB, FeqF', GeqG'⟩
-      cases hB with
-      | U _ => cases whnfRedStar D' .univ
-      | nat D₂ => cases whrDetStar ⟨D₂.reduction, .nat⟩ ⟨D', .pi⟩
-      | empty D₂ => cases whrDetStar ⟨D₂.reduction, .empty⟩ ⟨D', .pi⟩
-      | unit D₂ => cases whrDetStar ⟨D₂.reduction, .unit⟩ ⟨D', .pi⟩
-      | ne neB =>
-          have h := whrDetStar ⟨D', .pi⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
-          subst h
-          cases neB.neK
-      | sigma D₂ => cases whrDetStar ⟨D₂.reduction, .sigma⟩ ⟨D', .pi⟩
-      | @pi l₂ _ _ F₂ G₂ D₂ _ _ _ relF₂ relG₂ hF_ex₂ derivF₂ hG_ex₂ derivG₂ _ =>
-          have hPi : Term.pi F₂ G₂ = Term.pi F' G' :=
-            whrDetStar ⟨D₂.reduction, .pi⟩ ⟨D', .pi⟩
-          injection hPi with hF₂ hG₂
-          subst hF₂ hG₂
-          refine ⟨F₁, G₁, D₁.reduction, eqrel.symmType AeqB,
-            fun {ρ Δ} hρ hΔ ↦ ?_,
-            fun {ρ Δ a} hρ hΔ ha₂ ↦ ?_⟩
-          · rcases FeqF' hρ hΔ with ⟨r₁, hr₁, hF₁₂⟩
-            rcases hF_ex₂ hρ hΔ with ⟨r₂, hr₂⟩
-            have hAt₂ := derivF₂ hρ hΔ r₂ hr₂
-            exact ⟨r₂, hr₂, ihF hρ hΔ r₁ hr₁ (logRelShape_of_LogRelAt hAt₂) hF₁₂⟩
-          · rcases FeqF' hρ hΔ with ⟨r₁, hr₁, hF₁₂⟩
-            rcases ha₂ with ⟨r₂, hr₂, ha₂'⟩
-            have hAt₁ := derivF₁ hρ hΔ r₁ hr₁
-            have hAt₂ := derivF₂ hρ hΔ r₂ hr₂
-            have ha₁ : RelFHasTerm relF₁ ρ Δ a :=
-              ⟨r₁, hr₁, (convLogRelAt hAt₁ hAt₂ hF₁₂).1.mpr ha₂'⟩
-            rcases GeqG' hρ hΔ ha₁ with ⟨s₁, hs₁, hG₁₂⟩
-            rcases hG_ex₂ hρ hΔ ⟨r₂, hr₂, ha₂'⟩ with ⟨s₂, hs₂⟩
-            have hGAt₂ := derivG₂ hρ hΔ ⟨r₂, hr₂, ha₂'⟩ s₂ hs₂
-            exact ⟨s₂, hs₂, ihG hρ hΔ ha₁ s₁ hs₁ (logRelShape_of_LogRelAt hGAt₂) hG₁₂⟩
-  | @sigma Γ A F₁ G₁ D₁ _hF₁ _hG₁ _AeqA₁ relF₁ relG₁ _hF_ex₁ derivF₁ _hG_ex₁ _derivG₁ _Gext₁ ihF ihG =>
-      intro B relB hB hAB
-      rcases hAB with ⟨F', G', D', AeqB, FeqF', GeqG'⟩
-      cases hB with
-      | U _ => cases whnfRedStar D' .univ
-      | nat D₂ => cases whrDetStar ⟨D₂.reduction, .nat⟩ ⟨D', .sigma⟩
-      | empty D₂ => cases whrDetStar ⟨D₂.reduction, .empty⟩ ⟨D', .sigma⟩
-      | unit D₂ => cases whrDetStar ⟨D₂.reduction, .unit⟩ ⟨D', .sigma⟩
-      | ne neB =>
-          have h := whrDetStar ⟨D', .sigma⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
-          subst h
-          cases neB.neK
-      | pi D₂ => cases whrDetStar ⟨D₂.reduction, .pi⟩ ⟨D', .sigma⟩
-      | @sigma l₂ _ _ F₂ G₂ D₂ _ _ _ relF₂ relG₂ hF_ex₂ derivF₂ hG_ex₂ derivG₂ _ =>
-          have hSigma : Term.sigma F₂ G₂ = Term.sigma F' G' :=
-            whrDetStar ⟨D₂.reduction, .sigma⟩ ⟨D', .sigma⟩
-          injection hSigma with hF₂ hG₂
-          subst hF₂ hG₂
-          refine ⟨F₁, G₁, D₁.reduction, eqrel.symmType AeqB,
-            fun {ρ Δ} hρ hΔ ↦ ?_,
-            fun {ρ Δ a} hρ hΔ ha₂ ↦ ?_⟩
-          · rcases FeqF' hρ hΔ with ⟨r₁, hr₁, hF₁₂⟩
-            rcases hF_ex₂ hρ hΔ with ⟨r₂, hr₂⟩
-            have hAt₂ := derivF₂ hρ hΔ r₂ hr₂
-            exact ⟨r₂, hr₂, ihF hρ hΔ r₁ hr₁ (logRelShape_of_LogRelAt hAt₂) hF₁₂⟩
-          · rcases FeqF' hρ hΔ with ⟨r₁, hr₁, hF₁₂⟩
-            rcases ha₂ with ⟨r₂, hr₂, ha₂'⟩
-            have hAt₁ := derivF₁ hρ hΔ r₁ hr₁
-            have hAt₂ := derivF₂ hρ hΔ r₂ hr₂
-            have ha₁ : RelFHasTerm relF₁ ρ Δ a :=
-              ⟨r₁, hr₁, (convLogRelAt hAt₁ hAt₂ hF₁₂).1.mpr ha₂'⟩
-            rcases GeqG' hρ hΔ ha₁ with ⟨s₁, hs₁, hG₁₂⟩
-            rcases hG_ex₂ hρ hΔ ⟨r₂, hr₂, ha₂'⟩ with ⟨s₂, hs₂⟩
-            have hGAt₂ := derivG₂ hρ hΔ ⟨r₂, hr₂, ha₂'⟩ s₂ hs₂
-            exact ⟨s₂, hs₂, ihG hρ hΔ ha₁ s₁ hs₁ (logRelShape_of_LogRelAt hGAt₂) hG₁₂⟩
-  | @emb Γ A l' relA hlt hA =>
-      intro B relB hB hAB
-      exact ihRec l' hlt hA hB hAB
-
-theorem symLogRelAt {eqrel : EqRelSet} {l₁ l₂ : TypeLevel} {Γ : Context} {A B : Term}
-    {relA relB : RedRel}
-    (hA : LogRelAt eqrel l₁ Γ A relA)
-    (hB : LogRelAt eqrel l₂ Γ B relB)
-    (hAB : relA.eqType B) : relB.eqType A := by
-  have h0 : ∀ {Γ A B relA relB},
-      LogRelAt eqrel .zero Γ A relA → LogRelShape eqrel Γ B relB →
-      relA.eqType B → relB.eqType A :=
-    fun hA₀ hBs hAB₀ ↦
-      symLogRel_step (l := .zero) (fun _ hlt ↦ nomatch hlt) hA₀ hBs hAB₀
-  cases l₁ with
-  | zero => exact h0 hA (logRelShape_of_LogRelAt hB) hAB
-  | one =>
-      exact symLogRel_step (l := .one)
-        (fun _ hlt _ _ _ _ _ hA₀ hBs hAB₀ ↦ by cases hlt; exact h0 hA₀ hBs hAB₀)
-        hA (logRelShape_of_LogRelAt hB) hAB
-
-/-- Symmetry of reducible type equality (`symEq`). -/
-theorem symEq {eqrel : EqRelSet} {l l' : TypeLevel} {Γ : Context} {A B : Term}
-    (pA : RedType eqrel l Γ A) (pB : RedType eqrel l' Γ B)
-    (hAB : RedEq pA B) : RedEq pB A := by
-  rcases hAB with ⟨relA, hA, hEqB⟩
-  rcases pB with ⟨relB, hB⟩
-  exact ⟨relB, hB, symLogRelAt hA hB hEqB⟩
-
-theorem symNeutralTerm {eqrel : EqRelSet} {Γ : Context} {k m A : Term}
-    (nf : RedNeNfEq eqrel Γ k m A) : RedNeNfEq eqrel Γ m k A :=
-  ⟨nf.neM, nf.neK, eqrel.symmNe nf.keqm⟩
-
-theorem symEqTermNat {eqrel : EqRelSet} {Γ : Context} {t u : Term}
-    (htu : RedNatTermEq eqrel Γ t u) : RedNatTermEq eqrel Γ u t :=
-  @RedNatTermEq.rec eqrel Γ
-    (fun t u _ ↦ RedNatTermEq eqrel Γ u t)
-    (fun k k' _ ↦ NaturalEqProp eqrel Γ k' k)
-    (fun t u k k' d d' keqk' _ ih ↦
-      .mk u t k' k d' d (eqrel.symmTerm keqk') ih)
-    (fun _ ih ↦ .suc ih)
-    .zero
-    (fun nf ↦ .ne (symNeutralTerm nf))
-    t u htu
-
-theorem symNaturalProp {eqrel : EqRelSet} {Γ : Context} {k k' : Term}
-    (hk : NaturalEqProp eqrel Γ k k') : NaturalEqProp eqrel Γ k' k :=
-  @NaturalEqProp.rec eqrel Γ
-    (fun t u _ ↦ RedNatTermEq eqrel Γ u t)
-    (fun k k' _ ↦ NaturalEqProp eqrel Γ k' k)
-    (fun t u k k' d d' keqk' _ ih ↦
-      .mk u t k' k d' d (eqrel.symmTerm keqk') ih)
-    (fun _ ih ↦ .suc ih)
-    .zero
-    (fun nf ↦ .ne (symNeutralTerm nf))
-    k k' hk
-
-theorem symEqTermEmpty {eqrel : EqRelSet} {Γ : Context} {t u : Term}
-    (htu : RedEmptyTermEq eqrel Γ t u) : RedEmptyTermEq eqrel Γ u t := by
-  rcases htu with ⟨k, k', d, d', keqk', nf⟩
-  exact .mk k' k d' d (eqrel.symmTerm keqk') (symNeutralTerm nf)
-
-theorem symEqTermUnit {Γ : Context} {t u : Term}
-    (htu : RedUnitTermEq Γ t u) : RedUnitTermEq Γ u t := by
-  rcases htu with ⟨ht, hu⟩
-  exact ⟨hu, ht⟩
-
-theorem symEqTerm_step {eqrel : EqRelSet} {l : TypeLevel}
-    (ihRec : ∀ (l' : TypeLevel) (hlt : TypeLevelLT l' l) {Γ A rel t u},
-      logRelRec eqrel l l' hlt Γ A rel → rel.eqTerm t u → rel.eqTerm u t)
-    (hSymType : ∀ (l' : TypeLevel) (hlt : TypeLevelLT l' l) {Γ A B relA relB},
-      logRelRec eqrel l l' hlt Γ A relA → logRelRec eqrel l l' hlt Γ B relB →
-      relA.eqType B → relB.eqType A)
-    {Γ : Context} {A : Term} {rel : RedRel}
-    (hA : LogRelAt eqrel l Γ A rel) :
-    ∀ {t u : Term}, rel.eqTerm t u → rel.eqTerm u t := by
-  induction hA with
-  | @U Γ l' hU =>
-      rintro t u ⟨A₀, B₀, d, d', typeA, typeB, AeqB, relt, ht, ⟨relu, hu⟩, tequ⟩
-      exact ⟨B₀, A₀, d', d, typeB, typeA, eqrel.symmTerm AeqB, relu, hu, ⟨relt, ht⟩,
-        hSymType l' hU.lt ht hu tequ⟩
-  | @nat Γ A _ =>
-      intro t u htu
-      exact symEqTermNat htu
-  | @empty Γ A _ =>
-      intro t u htu
-      exact symEqTermEmpty htu
-  | @unit Γ A _ =>
-      intro t u htu
-      exact symEqTermUnit htu
-  | @ne Γ A K _ =>
-      rintro t u ⟨k, m, d, d', nf⟩
-      exact ⟨m, k, d', d, symNeutralTerm nf⟩
-  | @pi Γ A F G _ _ _ _ relF relG _ _ _ _ _ _ihF ihG =>
-      rintro t u ⟨f, g, d, d', funcF, funcG, feqg, ht, hu, appEq⟩
-      refine ⟨g, f, d', d, funcG, funcF, eqrel.symmTerm feqg, hu, ht,
-        fun {ρ Δ a} hρ hΔ ha ↦ ?_⟩
-      rcases appEq hρ hΔ ha with ⟨s, hs, hfg⟩
-      exact ⟨s, hs, ihG hρ hΔ ha s hs hfg⟩
-  | @sigma Γ A F G _ hF _ _ relF relG _ _ hG_ex derivG Gext ihF ihG =>
-      rintro t u ⟨p, r, d, d', prodP, prodR, peqr, ht, hu, fstP, fstR, fstEq, sndEq⟩
-      have hΓ : CtxWf Γ := wfType hF
-      rcases fstEq with ⟨rF, hrF, hFstEq⟩
-      have hFstSym : RelFEqTerm relF .id Γ (.fst r) (.fst p) :=
-        ⟨rF, hrF, ihF .id hΓ rF hrF hFstEq⟩
-      rcases sndEq with ⟨sG_p, hsG_p, hSndEq_p⟩
-      have hSndSym_p : sG_p.eqTerm (.snd r) (.snd p) :=
-        ihG .id hΓ fstP sG_p hsG_p hSndEq_p
-      rcases Gext .id hΓ fstP fstR ⟨rF, hrF, hFstEq⟩ with ⟨sG_ext, hsG_ext, hG_pr⟩
-      rcases hG_ex .id hΓ fstR with ⟨sG_r, hsG_r⟩
-      have hGAt_p := derivG .id hΓ fstP sG_p hsG_p
-      have hGAt_ext := derivG .id hΓ fstP sG_ext hsG_ext
-      have hGAt_r := derivG .id hΓ fstR sG_r hsG_r
-      have hSndSym_ext : sG_ext.eqTerm (.snd r) (.snd p) :=
-        (irrelLogRel hGAt_p hGAt_ext).2.2.mp hSndSym_p
-      have hSndSym_r : sG_r.eqTerm (.snd r) (.snd p) :=
-        (convLogRelAt hGAt_ext hGAt_r hG_pr).2.mp hSndSym_ext
-      exact ⟨r, p, d', d, prodR, prodP, eqrel.symmTerm peqr, hu, ht,
-        fstR, fstP, hFstSym, ⟨sG_r, hsG_r, hSndSym_r⟩⟩
-  | @emb Γ A l' rel hlt hA =>
-      intro t u htu
-      exact ihRec l' hlt hA htu
-
-/-- Symmetry of reducible term equality (`symEqTerm`). -/
-theorem symEqTerm {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A t u : Term}
-    (pA : RedType eqrel l Γ A) (htu : RedTermEq pA t u) : RedTermEq pA u t := by
-  rcases htu with ⟨rel, hA, htu⟩
-  have h0 : ∀ {Γ A rel t u},
-      LogRelAt eqrel .zero Γ A rel → rel.eqTerm t u → rel.eqTerm u t :=
-    fun hA₀ htu₀ ↦
-      symEqTerm_step (l := .zero) (fun _ hlt ↦ nomatch hlt) (fun _ hlt ↦ nomatch hlt) hA₀ htu₀
-  cases l with
-  | zero => exact ⟨rel, hA, h0 hA htu⟩
-  | one =>
-      refine ⟨rel, hA, symEqTerm_step (l := .one) ?_ ?_ hA htu⟩
-      · intro _ hlt _ _ _ _ _ hA₀ htu₀
-        cases hlt
-        exact h0 hA₀ htu₀
-      · intro _ hlt _ _ _ _ _ hA₀ hB₀ hAB₀
-        cases hlt
-        exact symLogRelAt (l₁ := .zero) (l₂ := .zero) hA₀ hB₀ hAB₀
-
-/-!
-## Transitivity of the Logical Relation (`Definition/LogicalRelation/Properties/Transitivity.agda`)
--/
-
-/-- Single-level transitivity step for `LogRelAt` type equality. -/
-theorem transLogRel_step {eqrel : EqRelSet} {l : TypeLevel}
-    (ihRec : ∀ (l' : TypeLevel) (hlt : TypeLevelLT l' l) {Γ A B C relA relB},
-      logRelRec eqrel l l' hlt Γ A relA → LogRelShape eqrel Γ B relB →
-      relA.eqType B → relB.eqType C → relA.eqType C)
-    {Γ : Context} {A : Term} {relA : RedRel}
-    (hA : LogRelAt eqrel l Γ A relA) :
-    ∀ {B C : Term} {relB : RedRel},
-      LogRelShape eqrel Γ B relB → relA.eqType B → relB.eqType C → relA.eqType C := by
-  induction hA with
-  | @U Γ l₁ _ =>
-      intro B C relB hB hAB hBC
-      change B = .univ at hAB
-      subst hAB
-      cases hB with
-      | U _ => exact hBC
-      | nat D => cases whnfRedStar D.reduction .univ
-      | empty D => cases whnfRedStar D.reduction .univ
-      | unit D => cases whnfRedStar D.reduction .univ
-      | ne neB =>
-          have h := whnfRedStar neB.D.reduction .univ
-          subst h
-          cases neB.neK
-      | pi D => cases whnfRedStar D.reduction .univ
-      | sigma D => cases whnfRedStar D.reduction .univ
-  | @nat Γ A _ =>
-      intro B C relB hB hAB hBC
-      change TypeStar Γ B .nat at hAB
-      cases hB with
-      | U _ => cases whnfRedStar hAB .univ
-      | nat _ => exact hBC
-      | empty D₂ => cases whrDetStar ⟨hAB, .nat⟩ ⟨D₂.reduction, .empty⟩
-      | unit D₂ => cases whrDetStar ⟨hAB, .nat⟩ ⟨D₂.reduction, .unit⟩
-      | ne neB =>
-          have h := whrDetStar ⟨hAB, .nat⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
-          subst h
-          cases neB.neK
-      | pi D₂ => cases whrDetStar ⟨hAB, .nat⟩ ⟨D₂.reduction, .pi⟩
-      | sigma D₂ => cases whrDetStar ⟨hAB, .nat⟩ ⟨D₂.reduction, .sigma⟩
-  | @empty Γ A _ =>
-      intro B C relB hB hAB hBC
-      change TypeStar Γ B .empty at hAB
-      cases hB with
-      | U _ => cases whnfRedStar hAB .univ
-      | nat D₂ => cases whrDetStar ⟨hAB, .empty⟩ ⟨D₂.reduction, .nat⟩
-      | empty _ => exact hBC
-      | unit D₂ => cases whrDetStar ⟨hAB, .empty⟩ ⟨D₂.reduction, .unit⟩
-      | ne neB =>
-          have h := whrDetStar ⟨hAB, .empty⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
-          subst h
-          cases neB.neK
-      | pi D₂ => cases whrDetStar ⟨hAB, .empty⟩ ⟨D₂.reduction, .pi⟩
-      | sigma D₂ => cases whrDetStar ⟨hAB, .empty⟩ ⟨D₂.reduction, .sigma⟩
-  | @unit Γ A _ =>
-      intro B C relB hB hAB hBC
-      change TypeStar Γ B .unit at hAB
-      cases hB with
-      | U _ => cases whnfRedStar hAB .univ
-      | nat D₂ => cases whrDetStar ⟨hAB, .unit⟩ ⟨D₂.reduction, .nat⟩
-      | empty D₂ => cases whrDetStar ⟨hAB, .unit⟩ ⟨D₂.reduction, .empty⟩
-      | unit _ => exact hBC
-      | ne neB =>
-          have h := whrDetStar ⟨hAB, .unit⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
-          subst h
-          cases neB.neK
-      | pi D₂ => cases whrDetStar ⟨hAB, .unit⟩ ⟨D₂.reduction, .pi⟩
-      | sigma D₂ => cases whrDetStar ⟨hAB, .unit⟩ ⟨D₂.reduction, .sigma⟩
-  | @ne Γ A K₁ _ =>
-      intro B C relB hB hAB hBC
-      rcases hAB with ⟨M, D', neM, KeqM⟩
-      cases hB with
-      | U _ =>
-          have h := whnfRedStar D'.reduction .univ
-          subst h
-          cases neM
-      | nat D₂ =>
-          have h := whrDetStar ⟨D₂.reduction, .nat⟩ ⟨D'.reduction, .neutral neM⟩
-          subst h
-          cases neM
-      | empty D₂ =>
-          have h := whrDetStar ⟨D₂.reduction, .empty⟩ ⟨D'.reduction, .neutral neM⟩
-          subst h
-          cases neM
-      | unit D₂ =>
-          have h := whrDetStar ⟨D₂.reduction, .unit⟩ ⟨D'.reduction, .neutral neM⟩
-          subst h
-          cases neM
-      | @ne _ _ K₂ neB =>
-          have hMK₂ : M = K₂ :=
-            whrDetStar ⟨D'.reduction, .neutral neM⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
-          subst hMK₂
-          rcases hBC with ⟨M₁, D'', neM₁, K₂eqM₁⟩
-          exact ⟨M₁, D'', neM₁, eqrel.transNe KeqM K₂eqM₁⟩
-      | pi D₂ =>
-          have h := whrDetStar ⟨D₂.reduction, .pi⟩ ⟨D'.reduction, .neutral neM⟩
-          subst h
-          cases neM
-      | sigma D₂ =>
-          have h := whrDetStar ⟨D₂.reduction, .sigma⟩ ⟨D'.reduction, .neutral neM⟩
-          subst h
-          cases neM
-  | @pi Γ A F₁ G₁ _ _hF₁ _hG₁ _AeqA₁ relF₁ relG₁ _hF_ex₁ derivF₁ _hG_ex₁ _derivG₁ _Gext₁ ihF ihG =>
-      intro B C relB hB hAB hBC
-      rcases hAB with ⟨F', G', D', AeqB, FeqF', GeqG'⟩
-      cases hB with
-      | U _ => cases whnfRedStar D' .univ
-      | nat D₂ => cases whrDetStar ⟨D₂.reduction, .nat⟩ ⟨D', .pi⟩
-      | empty D₂ => cases whrDetStar ⟨D₂.reduction, .empty⟩ ⟨D', .pi⟩
-      | unit D₂ => cases whrDetStar ⟨D₂.reduction, .unit⟩ ⟨D', .pi⟩
-      | ne neB =>
-          have h := whrDetStar ⟨D', .pi⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
-          subst h
-          cases neB.neK
-      | sigma D₂ => cases whrDetStar ⟨D₂.reduction, .sigma⟩ ⟨D', .pi⟩
-      | @pi l₂ _ _ F₂ G₂ D₂ _ _ _ relF₂ relG₂ _hF_ex₂ derivF₂ _hG_ex₂ derivG₂ _ =>
-          have hPi : Term.pi F₂ G₂ = Term.pi F' G' :=
-            whrDetStar ⟨D₂.reduction, .pi⟩ ⟨D', .pi⟩
-          injection hPi with hF₂ hG₂
-          subst hF₂ hG₂
-          rcases hBC with ⟨F'', G'', D'', BeqC, FeqF'', GeqG''⟩
-          refine ⟨F'', G'', D'', eqrel.transType AeqB BeqC,
-            fun {ρ Δ} hρ hΔ ↦ ?_,
-            fun {ρ Δ a} hρ hΔ ha₁ ↦ ?_⟩
-          · rcases FeqF' hρ hΔ with ⟨r₁, hr₁, hF₁₂⟩
-            rcases FeqF'' hρ hΔ with ⟨r₂, hr₂, hF₂₃⟩
-            have hAt₂ := derivF₂ hρ hΔ r₂ hr₂
-            exact ⟨r₁, hr₁, ihF hρ hΔ r₁ hr₁ (logRelShape_of_LogRelAt hAt₂) hF₁₂ hF₂₃⟩
-          · rcases FeqF' hρ hΔ with ⟨r₁, hr₁, hF₁₂⟩
-            rcases FeqF'' hρ hΔ with ⟨r₂, hr₂, _⟩
-            rcases ha₁ with ⟨r₁', hr₁', ha₁'⟩
-            have hAt₁ := derivF₁ hρ hΔ r₁ hr₁
-            have hAt₁' := derivF₁ hρ hΔ r₁' hr₁'
-            have hAt₂ := derivF₂ hρ hΔ r₂ hr₂
-            have ha₁_r₁ : r₁.hasTerm a := (irrelLogRel hAt₁' hAt₁).2.1.mp ha₁'
-            have ha₂ : RelFHasTerm relF₂ ρ Δ a :=
-              ⟨r₂, hr₂, (convLogRelAt hAt₁ hAt₂ hF₁₂).1.mp ha₁_r₁⟩
-            rcases GeqG' hρ hΔ ⟨r₁', hr₁', ha₁'⟩ with ⟨s₁, hs₁, hG₁₂⟩
-            rcases GeqG'' hρ hΔ ha₂ with ⟨s₂, hs₂, hG₂₃⟩
-            have hGAt₂ := derivG₂ hρ hΔ ha₂ s₂ hs₂
-            exact ⟨s₁, hs₁, ihG hρ hΔ ⟨r₁', hr₁', ha₁'⟩ s₁ hs₁ (logRelShape_of_LogRelAt hGAt₂) hG₁₂ hG₂₃⟩
-  | @sigma Γ A F₁ G₁ _ _hF₁ _hG₁ _AeqA₁ relF₁ relG₁ _hF_ex₁ derivF₁ _hG_ex₁ _derivG₁ _Gext₁ ihF ihG =>
-      intro B C relB hB hAB hBC
-      rcases hAB with ⟨F', G', D', AeqB, FeqF', GeqG'⟩
-      cases hB with
-      | U _ => cases whnfRedStar D' .univ
-      | nat D₂ => cases whrDetStar ⟨D₂.reduction, .nat⟩ ⟨D', .sigma⟩
-      | empty D₂ => cases whrDetStar ⟨D₂.reduction, .empty⟩ ⟨D', .sigma⟩
-      | unit D₂ => cases whrDetStar ⟨D₂.reduction, .unit⟩ ⟨D', .sigma⟩
-      | ne neB =>
-          have h := whrDetStar ⟨D', .sigma⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
-          subst h
-          cases neB.neK
-      | pi D₂ => cases whrDetStar ⟨D₂.reduction, .pi⟩ ⟨D', .sigma⟩
-      | @sigma l₂ _ _ F₂ G₂ D₂ _ _ _ relF₂ relG₂ _hF_ex₂ derivF₂ _hG_ex₂ derivG₂ _ =>
-          have hSigma : Term.sigma F₂ G₂ = Term.sigma F' G' :=
-            whrDetStar ⟨D₂.reduction, .sigma⟩ ⟨D', .sigma⟩
-          injection hSigma with hF₂ hG₂
-          subst hF₂ hG₂
-          rcases hBC with ⟨F'', G'', D'', BeqC, FeqF'', GeqG''⟩
-          refine ⟨F'', G'', D'', eqrel.transType AeqB BeqC,
-            fun {ρ Δ} hρ hΔ ↦ ?_,
-            fun {ρ Δ a} hρ hΔ ha₁ ↦ ?_⟩
-          · rcases FeqF' hρ hΔ with ⟨r₁, hr₁, hF₁₂⟩
-            rcases FeqF'' hρ hΔ with ⟨r₂, hr₂, hF₂₃⟩
-            have hAt₂ := derivF₂ hρ hΔ r₂ hr₂
-            exact ⟨r₁, hr₁, ihF hρ hΔ r₁ hr₁ (logRelShape_of_LogRelAt hAt₂) hF₁₂ hF₂₃⟩
-          · rcases FeqF' hρ hΔ with ⟨r₁, hr₁, hF₁₂⟩
-            rcases FeqF'' hρ hΔ with ⟨r₂, hr₂, _⟩
-            rcases ha₁ with ⟨r₁', hr₁', ha₁'⟩
-            have hAt₁ := derivF₁ hρ hΔ r₁ hr₁
-            have hAt₁' := derivF₁ hρ hΔ r₁' hr₁'
-            have hAt₂ := derivF₂ hρ hΔ r₂ hr₂
-            have ha₁_r₁ : r₁.hasTerm a := (irrelLogRel hAt₁' hAt₁).2.1.mp ha₁'
-            have ha₂ : RelFHasTerm relF₂ ρ Δ a :=
-              ⟨r₂, hr₂, (convLogRelAt hAt₁ hAt₂ hF₁₂).1.mp ha₁_r₁⟩
-            rcases GeqG' hρ hΔ ⟨r₁', hr₁', ha₁'⟩ with ⟨s₁, hs₁, hG₁₂⟩
-            rcases GeqG'' hρ hΔ ha₂ with ⟨s₂, hs₂, hG₂₃⟩
-            have hGAt₂ := derivG₂ hρ hΔ ha₂ s₂ hs₂
-            exact ⟨s₁, hs₁, ihG hρ hΔ ⟨r₁', hr₁', ha₁'⟩ s₁ hs₁ (logRelShape_of_LogRelAt hGAt₂) hG₁₂ hG₂₃⟩
-  | @emb Γ A l' relA hlt hA =>
-      intro B C relB hB hAB hBC
-      exact ihRec l' hlt hA hB hAB hBC
-
-theorem transLogRelAt {eqrel : EqRelSet} {l₁ l₂ : TypeLevel} {Γ : Context} {A B C : Term}
-    {relA relB : RedRel}
-    (hA : LogRelAt eqrel l₁ Γ A relA)
-    (hB : LogRelAt eqrel l₂ Γ B relB)
-    (hAB : relA.eqType B)
-    (hBC : relB.eqType C) : relA.eqType C := by
-  have h0 : ∀ {Γ A B C relA relB},
-      LogRelAt eqrel .zero Γ A relA → LogRelShape eqrel Γ B relB →
-      relA.eqType B → relB.eqType C → relA.eqType C :=
-    fun hA₀ hBs hAB₀ hBC₀ ↦
-      transLogRel_step (l := .zero) (fun _ hlt ↦ nomatch hlt) hA₀ hBs hAB₀ hBC₀
-  cases l₁ with
-  | zero => exact h0 hA (logRelShape_of_LogRelAt hB) hAB hBC
-  | one =>
-      exact transLogRel_step (l := .one)
-        (fun _ hlt _ _ _ _ _ _ hA₀ hBs hAB₀ hBC₀ ↦ by cases hlt; exact h0 hA₀ hBs hAB₀ hBC₀)
-        hA (logRelShape_of_LogRelAt hB) hAB hBC
-
-/-- Transitivity of reducible type equality (`transEq`). -/
-theorem transEq {eqrel : EqRelSet} {l l' l'' : TypeLevel} {Γ : Context} {A B C : Term}
-    (pA : RedType eqrel l Γ A) (pB : RedType eqrel l' Γ B) (_pC : RedType eqrel l'' Γ C)
-    (hAB : RedEq pA B) (hBC : RedEq pB C) : RedEq pA C := by
-  rcases hAB with ⟨relA, hA, hEqB⟩
-  rcases hBC with ⟨relB, hB, hEqC⟩
-  exact ⟨relA, hA, transLogRelAt hA hB hEqB hEqC⟩
-
-/-- Transitivity of reducible type equality with propositionally equal types (`transEq′`). -/
-theorem transEq' {eqrel : EqRelSet} {l l' l'' : TypeLevel} {Γ : Context} {A B B' C C' : Term}
-    (hBB' : B = B') (hCC' : C = C')
-    (pA : RedType eqrel l Γ A) (pB : RedType eqrel l' Γ B) (pC : RedType eqrel l'' Γ C)
-    (hAB' : RedEq pA B') (hBC' : RedEq pB C') : RedEq pA C := by
-  subst hBB' hCC'
-  exact transEq pA pB pC hAB' hBC'
-
-theorem transEqTermNe {eqrel : EqRelSet} {Γ : Context} {n n' n'' A : Term}
-    (nf₁ : RedNeNfEq eqrel Γ n n' A) (nf₂ : RedNeNfEq eqrel Γ n' n'' A) :
-    RedNeNfEq eqrel Γ n n'' A :=
-  ⟨nf₁.neK, nf₂.neM, eqrel.transNe nf₁.keqm nf₂.keqm⟩
-
-theorem transEqTermNat {eqrel : EqRelSet} {Γ : Context} {n n' n'' : Term}
-    (h₁ : RedNatTermEq eqrel Γ n n') (h₂ : RedNatTermEq eqrel Γ n' n'') :
-    RedNatTermEq eqrel Γ n n'' :=
-  @RedNatTermEq.rec eqrel Γ
-    (fun n n' _ ↦ ∀ {n''}, RedNatTermEq eqrel Γ n' n'' → RedNatTermEq eqrel Γ n n'')
-    (fun k k' _ ↦ ∀ {k''}, NaturalEqProp eqrel Γ k' k'' → NaturalEqProp eqrel Γ k k'')
-    (fun t u k k' d d' keqk' prop ih {n''} h₂ ↦ by
-      cases h₂ with
-      | mk _ _ k₁ k'' d₁ d'' k₁eqk'' prop₁ =>
-          have ⟨_, natK'⟩ := split_of_NaturalEqProp prop
-          have ⟨natK₁, _⟩ := split_of_NaturalEqProp prop₁
-          have hk₁ : k₁ = k' :=
-            whrDetStarTerm ⟨d₁.reduction, natK₁.toWhnf⟩ ⟨d'.reduction, natK'.toWhnf⟩
-          subst hk₁
-          exact .mk t n'' k k'' d d'' (eqrel.transTerm keqk' k₁eqk'') (ih prop₁))
-    (fun {a b} _ ih {k''} hk₂ ↦ by
-      cases hk₂ with
-      | suc h₂' => exact .suc (ih h₂')
-      | ne nf => cases nf.neK)
-    (fun {k''} hk₂ ↦ hk₂)
-    (fun {a b} nf₁ {k''} hk₂ ↦ by
-      cases hk₂ with
-      | suc _ => cases nf₁.neM
-      | zero => exact .ne nf₁
-      | ne nf₂ => exact .ne (transEqTermNe nf₁ nf₂))
-    n n' h₁ (n'' := n'') h₂
-
-theorem transNaturalProp {eqrel : EqRelSet} {Γ : Context} {k k' k'' : Term}
-    (h₁ : NaturalEqProp eqrel Γ k k') (h₂ : NaturalEqProp eqrel Γ k' k'') :
-    NaturalEqProp eqrel Γ k k'' := by
-  cases h₁ with
-  | suc h₁' =>
-      cases h₂ with
-      | suc h₂' => exact .suc (transEqTermNat h₁' h₂')
-      | ne nf => cases nf.neK
-  | zero => exact h₂
-  | ne nf₁ =>
-      cases h₂ with
-      | suc _ => cases nf₁.neM
-      | zero => exact .ne nf₁
-      | ne nf₂ => exact .ne (transEqTermNe nf₁ nf₂)
-
-theorem transEqTermEmpty {eqrel : EqRelSet} {Γ : Context} {n n' n'' : Term}
-    (h₁ : RedEmptyTermEq eqrel Γ n n') (h₂ : RedEmptyTermEq eqrel Γ n' n'') :
-    RedEmptyTermEq eqrel Γ n n'' := by
-  rcases h₁ with ⟨k, k', d, d', keqk', nf₁⟩
-  rcases h₂ with ⟨k₁, k'', d₁, d'', k₁eqk'', nf₂⟩
-  have hk₁ : k₁ = k' :=
-    whrDetStarTerm ⟨d₁.reduction, .neutral nf₂.neK⟩ ⟨d'.reduction, .neutral nf₁.neM⟩
-  subst hk₁
-  exact .mk k k'' d d'' (eqrel.transTerm keqk' k₁eqk'') (transEqTermNe nf₁ nf₂)
-
-theorem transEqTermUnit {Γ : Context} {t u v : Term}
-    (h₁ : RedUnitTermEq Γ t u) (h₂ : RedUnitTermEq Γ u v) :
-    RedUnitTermEq Γ t v :=
-  ⟨h₁.ht, h₂.hu⟩
-
-theorem transEqTerm_step {eqrel : EqRelSet} {l : TypeLevel}
-    (ihRec : ∀ (l' : TypeLevel) (hlt : TypeLevelLT l' l) {Γ A rel t u v},
-      logRelRec eqrel l l' hlt Γ A rel → rel.eqTerm t u → rel.eqTerm u v → rel.eqTerm t v)
-    (hTransType : ∀ (l' : TypeLevel) (hlt : TypeLevelLT l' l) {Γ A B C relA relB relB'},
-      logRelRec eqrel l l' hlt Γ A relA →
-      logRelRec eqrel l l' hlt Γ B relB →
-      logRelRec eqrel l l' hlt Γ B relB' →
-      relA.eqType B → relB'.eqType C → relA.eqType C)
-    {Γ : Context} {A : Term} {rel : RedRel}
-    (hA : LogRelAt eqrel l Γ A rel) :
-    ∀ {t u v : Term}, rel.eqTerm t u → rel.eqTerm u v → rel.eqTerm t v := by
-  induction hA with
-  | @U Γ l' hU =>
-      rintro t u v
-        ⟨A₀, B₀, d, d', typeA, typeB, AeqB, relt, ht, ⟨relu, hu⟩, tequ⟩
-        ⟨A₁, B₁, d₁, d₁', typeA₁, typeB₁, A₁eqB₁, relu', hu', ⟨relv, hv⟩, ueqv⟩
-      have hBA₁ : B₀ = A₁ :=
-        whrDetStarTerm ⟨d'.reduction, typeB.toWhnf⟩ ⟨d₁.reduction, typeA₁.toWhnf⟩
-      subst hBA₁
-      exact ⟨A₀, B₁, d, d₁', typeA, typeB₁, eqrel.transTerm AeqB A₁eqB₁,
-        relt, ht, ⟨relv, hv⟩, hTransType l' hU.lt ht hu hu' tequ ueqv⟩
-  | @nat Γ A _ =>
-      intro t u v htu huv
-      exact transEqTermNat htu huv
-  | @empty Γ A _ =>
-      intro t u v htu huv
-      exact transEqTermEmpty htu huv
-  | @unit Γ A _ =>
-      intro t u v htu huv
-      exact transEqTermUnit htu huv
-  | @ne Γ A K _ =>
-      rintro t u v ⟨k, m, d, d', nf₁⟩ ⟨k₁, m₁, d₁, d'', nf₂⟩
-      have hk₁m : k₁ = m :=
-        whrDetStarTerm ⟨d₁.reduction, .neutral nf₂.neK⟩ ⟨d'.reduction, .neutral nf₁.neM⟩
-      subst hk₁m
-      exact ⟨k, m₁, d, d'', transEqTermNe nf₁ nf₂⟩
-  | @pi Γ A F G _ _ _ _ relF relG _ _ _ derivG _ _ihF ihG =>
-      rintro t u v
-        ⟨f, g, d, d', funcF, funcG, feqg, ht, _hu, appEq₁⟩
-        ⟨f₁, g₁, d₁, d₁', funcF₁, funcG₁, f₁eqg₁, _hu', hv, appEq₂⟩
-      have hf₁g : f₁ = g :=
-        whrDetStarTerm ⟨d₁.reduction, funcF₁.toWhnf⟩ ⟨d'.reduction, funcG.toWhnf⟩
-      subst hf₁g
-      refine ⟨f, g₁, d, d₁', funcF, funcG₁, eqrel.transTerm feqg f₁eqg₁, ht, hv,
-        fun {ρ Δ a} hρ hΔ ha ↦ ?_⟩
-      rcases appEq₁ hρ hΔ ha with ⟨s₁, hs₁, hfg⟩
-      rcases appEq₂ hρ hΔ ha with ⟨s₂, hs₂, hgg₁⟩
-      have hGAt₁ := derivG hρ hΔ ha s₁ hs₁
-      have hGAt₂ := derivG hρ hΔ ha s₂ hs₂
-      have hgg₁' : s₁.eqTerm (.app (wk ρ f₁) a) (.app (wk ρ g₁) a) :=
-        (irrelLogRel hGAt₂ hGAt₁).2.2.mp hgg₁
-      exact ⟨s₁, hs₁, ihG hρ hΔ ha s₁ hs₁ hfg hgg₁'⟩
-  | @sigma Γ A F G _ hF _ _ relF relG _ derivF _ derivG Gext ihF ihG =>
-      rintro t u v
-        ⟨p, r, d, d', prodP, prodR, peqr, ht, _hu, fstP, fstR, fstEq₁, sndEq₁⟩
-        ⟨p₁, r₁, d₁, d₁', prodP₁, prodR₁, p₁eqr₁, _hu', hv, fstP₁, fstR₁, fstEq₂, sndEq₂⟩
-      have hp₁r : p₁ = r :=
-        whrDetStarTerm ⟨d₁.reduction, prodP₁.toWhnf⟩ ⟨d'.reduction, prodR.toWhnf⟩
-      subst hp₁r
-      have hΓ : CtxWf Γ := wfType hF
-      rcases fstEq₁ with ⟨rF₁, hrF₁, hFstEq₁⟩
-      rcases fstEq₂ with ⟨rF₂, hrF₂, hFstEq₂⟩
-      have hFAt₁ := derivF .id hΓ rF₁ hrF₁
-      have hFAt₂ := derivF .id hΓ rF₂ hrF₂
-      have hFstEq₂' : rF₁.eqTerm (.fst p₁) (.fst r₁) :=
-        (irrelLogRel hFAt₂ hFAt₁).2.2.mp hFstEq₂
-      have hFstTrans : RelFEqTerm relF .id Γ (.fst p) (.fst r₁) :=
-        ⟨rF₁, hrF₁, ihF .id hΓ rF₁ hrF₁ hFstEq₁ hFstEq₂'⟩
-      rcases sndEq₁ with ⟨sG₁, hsG₁, hSndEq₁⟩
-      rcases sndEq₂ with ⟨sG₂, hsG₂, hSndEq₂⟩
-      rcases Gext .id hΓ fstP fstR ⟨rF₁, hrF₁, hFstEq₁⟩ with ⟨sG_ext, hsG_ext, hG_pr⟩
-      have hGAt₁ := derivG .id hΓ fstP sG₁ hsG₁
-      have hGAt_ext := derivG .id hΓ fstP sG_ext hsG_ext
-      have hGAt₂ := derivG .id hΓ fstP₁ sG₂ hsG₂
-      have hSndEq₂_ext : sG_ext.eqTerm (.snd p₁) (.snd r₁) :=
-        (convLogRelAt hGAt_ext hGAt₂ hG_pr).2.mpr hSndEq₂
-      have hSndEq₂_p : sG₁.eqTerm (.snd p₁) (.snd r₁) :=
-        (irrelLogRel hGAt_ext hGAt₁).2.2.mp hSndEq₂_ext
-      have hSndTrans : RelGEqTerm relG .id Γ (.fst p) (.snd p) (.snd r₁) :=
-        ⟨sG₁, hsG₁, ihG .id hΓ fstP sG₁ hsG₁ hSndEq₁ hSndEq₂_p⟩
-      exact ⟨p, r₁, d, d₁', prodP, prodR₁, eqrel.transTerm peqr p₁eqr₁, ht, hv,
-        fstP, fstR₁, hFstTrans, hSndTrans⟩
-  | @emb Γ A l' rel hlt hA =>
-      intro t u v htu huv
-      exact ihRec l' hlt hA htu huv
-
-/-- Transitivity of reducible term equality (`transEqTerm`). -/
-theorem transEqTerm {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A t u v : Term}
-    (pA : RedType eqrel l Γ A)
-    (htu : RedTermEq pA t u) (huv : RedTermEq pA u v) : RedTermEq pA t v := by
-  rcases htu with ⟨rel, hA, htu⟩
-  rcases huv with ⟨rel', hA', huv⟩
-  have huv_rel : rel.eqTerm u v := (irrelLogRel hA' hA).2.2.mp huv
-  have h0 : ∀ {Γ A rel t u v},
-      LogRelAt eqrel .zero Γ A rel → rel.eqTerm t u → rel.eqTerm u v → rel.eqTerm t v :=
-    fun hA₀ htu₀ huv₀ ↦
-      transEqTerm_step (l := .zero) (fun _ hlt ↦ nomatch hlt) (fun _ hlt ↦ nomatch hlt)
-        hA₀ htu₀ huv₀
-  cases l with
-  | zero => exact ⟨rel, hA, h0 hA htu huv_rel⟩
-  | one =>
-      refine ⟨rel, hA, transEqTerm_step (l := .one) ?_ ?_ hA htu huv_rel⟩
-      · intro _ hlt _ _ _ _ _ _ hA₀ htu₀ huv₀
-        cases hlt
-        exact h0 hA₀ htu₀ huv₀
-      · intro _ hlt _ _ _ _ _ _ _ hA₀ hB₀ hB₀' hAB₀ hBC₀
-        cases hlt
-        have hBC₀' := (irrelLogRel (l₁ := .zero) (l₂ := .zero) hB₀' hB₀).1.mp hBC₀
-        exact transLogRelAt (l₁ := .zero) (l₂ := .zero) hA₀ hB₀ hAB₀ hBC₀'
-
-/-!
 ## Universe Properties (`Definition/LogicalRelation/Properties/Universe.agda`)
 -/
 
@@ -1597,6 +1780,7 @@ theorem univEq {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A : Term}
       cases neA.neK
   | pi D => cases whnfRedStar D.reduction .univ
   | sigma D => cases whnfRedStar D.reduction .univ
+  | id D => cases whnfRedStar D.reduction .univ
 
 /-- Reducible term equality of type `U` is reducible type equality (`univEqEq`). -/
 theorem univEqEq {eqrel : EqRelSet} {l l' : TypeLevel} {Γ : Context} {A B : Term}
@@ -1617,6 +1801,7 @@ theorem univEqEq {eqrel : EqRelSet} {l l' : TypeLevel} {Γ : Context} {A B : Ter
       cases neA.neK
   | pi D => cases whnfRedStar D.reduction .univ
   | sigma D => cases whnfRedStar D.reduction .univ
+  | id D => cases whnfRedStar D.reduction .univ
 
 /-!
 ## Neutral Properties (`Definition/LogicalRelation/Properties/Neutral.agda`)
@@ -1876,6 +2061,19 @@ theorem neuLogRel_step {eqrel : EqRelSet} {l : TypeLevel}
       exact ⟨n, n', idRedTermWf hnSigma, idRedTermWf hn'Sigma,
         .neutral neN, .neutral neN', eqrel.neToTerm neqSigma,
         ht, ht', fstN, fstN', fstEq, sndEq⟩
+  | @id Γ A Ty lhs rhs relTy D _AeqA _derivTy _hasLhs _hasRhs _lhsEqLhs _rhsEqRhs _ihTy =>
+      have hAId : TypeEq Γ A (.id Ty lhs rhs) := subsetStar D.reduction
+      refine ⟨?_, ?_⟩
+      · intro n neN hn n_eq_n
+        have hn' : HasType Γ n (.id Ty lhs rhs) := .conv hn hAId
+        have n_eq_n' : eqrel.NeEqRel Γ n n (.id Ty lhs rhs) := eqrel.convNe n_eq_n hAId
+        exact .mk n (idRedTermWf hn') (eqrel.neToTerm n_eq_n') (.ne ⟨neN, hn', n_eq_n'⟩)
+      · intro n n' neN neN' hn hn' n_eq_n'
+        have hn_id : HasType Γ n (.id Ty lhs rhs) := .conv hn hAId
+        have hn'_id : HasType Γ n' (.id Ty lhs rhs) := .conv hn' hAId
+        have n_eq_n'_id : eqrel.NeEqRel Γ n n' (.id Ty lhs rhs) := eqrel.convNe n_eq_n' hAId
+        exact .mk n n' (idRedTermWf hn_id) (idRedTermWf hn'_id)
+          (eqrel.neToTerm n_eq_n'_id) (.ne ⟨neN, neN', n_eq_n'_id⟩)
   | @emb Γ A l' rel hlt hA =>
       exact ihRec l' hlt hA
 
@@ -1970,6 +2168,13 @@ theorem redSubstStar_step {eqrel : EqRelSet} {l : TypeLevel}
         exact ⟨r, hr, (reflLogRelAt (derivF hρ hΔ r hr)).1⟩
       · rcases hG_ex hρ hΔ ha with ⟨s, hs⟩
         exact ⟨s, hs, (reflLogRelAt (derivG hρ hΔ ha s hs)).1⟩
+  | @id Γ B Ty lhs rhs relTy D' AeqA derivTy hasLhs hasRhs lhsEqLhs rhsEqRhs _ihTy =>
+      intro A D
+      have hA : TypeWf Γ A := redFirstStar D
+      exact ⟨.id ⟨hA, D'.target, D.trans D'.reduction⟩
+          AeqA derivTy hasLhs hasRhs lhsEqLhs rhsEqRhs,
+        ⟨Ty, lhs, rhs, D'.reduction, AeqA, (reflLogRelAt derivTy).1,
+          lhsEqLhs, rhsEqRhs, Iff.rfl⟩⟩
   | @emb Γ B l' rel hlt hB =>
       intro A D
       rcases ihRec l' hlt D hB with ⟨hA, hEq⟩
@@ -2077,6 +2282,18 @@ theorem redSubstStarTerm {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A t 
       exact ⟨⟨_, hA, ht_SigmaTerm⟩,
         ⟨_, hA, ⟨p, p, d', d, prodP, prodP, peqp, ht_SigmaTerm, hu_SigmaTerm,
           ⟨rF, hrF, hFstP⟩, ⟨rF, hrF, hFstP⟩, fstEq, sndEq⟩⟩⟩
+  | @id l₀ _ _ Ty lhs rhs relTy D _AeqA _derivTy _hasLhs _hasRhs _lhsEqLhs _rhsEqRhs =>
+      rcases hu with ⟨u', d, u'equ', prop⟩
+      have hAId : TypeEq Γ A (.id Ty lhs rhs) := subsetStar D.reduction
+      have ht_id : HasType Γ t (.id Ty lhs rhs) := .conv (redFirstStarTerm d_tu) hAId
+      have d_tu_id : Star Γ t u (.id Ty lhs rhs) := d_tu.conv hAId
+      have d' : StarWf Γ t u' (.id Ty lhs rhs) := ⟨ht_id, d.target, d_tu_id.trans d.reduction⟩
+      have propEq : RedIdTermEqProp eqrel Γ Ty lhs rhs relTy u' u' := by
+        cases prop with
+        | rfl h => exact .rfl h
+        | ne nf => exact .ne ⟨nf.neK, nf.neK, nf.keqk⟩
+      exact ⟨⟨_, hA, .mk u' d' u'equ' prop⟩,
+        ⟨_, hA, .mk u' u' d' d u'equ' propEq⟩⟩
 
 /-- Single-step weak head expansion of reducible types (`redSubst`). -/
 theorem redSubst {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A B : Term}

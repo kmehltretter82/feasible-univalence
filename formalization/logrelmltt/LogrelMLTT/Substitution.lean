@@ -204,6 +204,56 @@ theorem irrelevanceLift {eqrel : EqRelSet} {l : TypeLevel} {A F H : Term} {Γ : 
     ValidSubstEq.cons hσσ'.tail (hF hΔ hTail).red hHeadEqF
   exact (hA hΔ hσF).eq hσ'F hσσ'F
 
+/-- Irrelevance of valid types under lifting of two equal context types (`irrelevanceLift2`). -/
+theorem irrelevanceLift2 {eqrel : EqRelSet} {l : TypeLevel} {P F H G E : Term} {Γ : Context}
+    (hF : ValidType eqrel l Γ F)
+    (hH : ValidType eqrel l Γ H)
+    (hFH : ValidTypeEq hF H)
+    (hG : ValidType eqrel l (F :: Γ) G)
+    (hE : ValidType eqrel l (H :: Γ) E)
+    (hGE : ValidTypeEq hG E)
+    (hP : ValidType eqrel l (G :: F :: Γ) P) :
+    ValidType eqrel l (E :: H :: Γ) P := by
+  intro Δ σ hΔ hσ
+  have hTail1 : ValidSubst eqrel Δ (tailSubst σ) (H :: Γ) := hσ.tail
+  have hTail2 : ValidSubst eqrel Δ (tailSubst (tailSubst σ)) Γ := hTail1.tail
+  have hHead1H : RedTerm (hH hΔ hTail2).red (headSubst (tailSubst σ)) := hTail1.head hH hΔ
+  have hHead1F : RedTerm (hF hΔ hTail2).red (headSubst (tailSubst σ)) :=
+    convTerm₂ (hF hΔ hTail2).red (hH hΔ hTail2).red (hFH hΔ hTail2) hHead1H
+  have hTail1F : ValidSubst eqrel Δ (tailSubst σ) (F :: Γ) :=
+    ValidSubst.cons hTail2 (hF hΔ hTail2).red hHead1F
+  have hHead0E : RedTerm (hE hΔ hTail1).red (headSubst σ) := hσ.head hE hΔ
+  have hHead0G : RedTerm (hG hΔ hTail1F).red (headSubst σ) :=
+    convTerm₂ (hG hΔ hTail1F).red (hE hΔ hTail1).red (hGE hΔ hTail1F) hHead0E
+  have hσGF : ValidSubst eqrel Δ σ (G :: F :: Γ) :=
+    ValidSubst.cons hTail1F (hG hΔ hTail1F).red hHead0G
+  refine ⟨(hP hΔ hσGF).red, fun {σ'} hσ' hσσ' ↦ ?_⟩
+  have hTail1' : ValidSubst eqrel Δ (tailSubst σ') (H :: Γ) := hσ'.tail
+  have hTail2' : ValidSubst eqrel Δ (tailSubst (tailSubst σ')) Γ := hTail1'.tail
+  have hHead1H' : RedTerm (hH hΔ hTail2').red (headSubst (tailSubst σ')) := hTail1'.head hH hΔ
+  have hHead1F' : RedTerm (hF hΔ hTail2').red (headSubst (tailSubst σ')) :=
+    convTerm₂ (hF hΔ hTail2').red (hH hΔ hTail2').red (hFH hΔ hTail2') hHead1H'
+  have hTail1F' : ValidSubst eqrel Δ (tailSubst σ') (F :: Γ) :=
+    ValidSubst.cons hTail2' (hF hΔ hTail2').red hHead1F'
+  have hHead0E' : RedTerm (hE hΔ hTail1').red (headSubst σ') := hσ'.head hE hΔ
+  have hHead0G' : RedTerm (hG hΔ hTail1F').red (headSubst σ') :=
+    convTerm₂ (hG hΔ hTail1F').red (hE hΔ hTail1').red (hGE hΔ hTail1F') hHead0E'
+  have hσ'GF : ValidSubst eqrel Δ σ' (G :: F :: Γ) :=
+    ValidSubst.cons hTail1F' (hG hΔ hTail1F').red hHead0G'
+  have hHead1EqH : RedTermEq (hH hΔ hTail2).red (headSubst (tailSubst σ)) (headSubst (tailSubst σ')) :=
+    hσσ'.tail.head hH hΔ hTail1
+  have hHead1EqF : RedTermEq (hF hΔ hTail2).red (headSubst (tailSubst σ)) (headSubst (tailSubst σ')) :=
+    convEqTerm₂ (hF hΔ hTail2).red (hH hΔ hTail2).red (hFH hΔ hTail2) hHead1EqH
+  have hTail1EqF : ValidSubstEq eqrel Δ (tailSubst σ) (tailSubst σ') (F :: Γ) :=
+    ValidSubstEq.cons hσσ'.tail.tail (hF hΔ hTail2).red hHead1EqF
+  have hHead0EqE : RedTermEq (hE hΔ hTail1).red (headSubst σ) (headSubst σ') :=
+    hσσ'.head hE hΔ hσ
+  have hHead0EqG : RedTermEq (hG hΔ hTail1F).red (headSubst σ) (headSubst σ') :=
+    convEqTerm₂ (hG hΔ hTail1F).red (hE hΔ hTail1).red (hGE hΔ hTail1F) hHead0EqE
+  have hσσ'GF : ValidSubstEq eqrel Δ σ σ' (G :: F :: Γ) :=
+    ValidSubstEq.cons hTail1EqF (hG hΔ hTail1F).red hHead0EqG
+  exact (hP hΔ hσGF).eq hσ'GF hσσ'GF
+
 /-- Irrelevance of valid type equality (`irrelevanceEq`). -/
 theorem irrelevanceValidEq {eqrel : EqRelSet} {l l' : TypeLevel} {A B : Term} {Γ : Context}
     (hA : ValidType eqrel l Γ A)
@@ -312,6 +362,40 @@ theorem wk1ValidEq {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A B F : Te
   have pA' : RedType eqrel l Δ (subst σ (wk1 A)) :=
     irrelevance' (subst_wk A).symm pA
   exact irrelevanceEq'' (subst_wk A).symm (subst_wk B).symm pA pA' (hAB hΔ hσ.tail)
+
+/-- Weakening of valid terms by one (`wk1Termᵛ`). -/
+theorem wk1ValidTerm {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A F t : Term}
+    (hA : ValidType eqrel l Γ A) (ht : ValidTerm hA t) :
+    ValidTerm (wk1Valid (F := F) hA) (wk1 t) := by
+  intro Δ σ hΔ hσ
+  have pA : RedType eqrel l Δ (subst (tailSubst σ) A) := (hA hΔ hσ.tail).red
+  have pA' : RedType eqrel l Δ (subst σ (wk1 A)) :=
+    ((wk1Valid (F := F) hA) hΔ hσ).red
+  refine ⟨irrelevanceTerm'' (subst_wk A).symm (subst_wk t).symm pA pA' (ht hΔ hσ.tail).term,
+    fun {σ'} hσ' hσσ' ↦ irrelevanceEqTerm'' (subst_wk t).symm (subst_wk t).symm (subst_wk A).symm
+      pA pA' ((ht hΔ hσ.tail).eq hσ'.tail hσσ'.tail)⟩
+
+/-- Weakening of valid term equality by one (`wk1EqTermᵛ`). -/
+theorem wk1ValidTermEq {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A F t u : Term}
+    (hA : ValidType eqrel l Γ A) (htu : ValidTermEq hA t u) :
+    ValidTermEq (wk1Valid (F := F) hA) (wk1 t) (wk1 u) := by
+  intro Δ σ hΔ hσ
+  have pA : RedType eqrel l Δ (subst (tailSubst σ) A) := (hA hΔ hσ.tail).red
+  have pA' : RedType eqrel l Δ (subst σ (wk1 A)) :=
+    ((wk1Valid (F := F) hA) hΔ hσ).red
+  exact irrelevanceEqTerm'' (subst_wk t).symm (subst_wk u).symm (subst_wk A).symm
+    pA pA' (htu hΔ hσ.tail)
+
+/-- Validity of variable `0` in an extended context (`var0ᵛ`). -/
+theorem var0Valid {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A : Term}
+    (hA : ValidType eqrel l Γ A) :
+    ValidTerm (wk1Valid (F := A) hA) (.var 0) := by
+  intro Δ σ hΔ hσ
+  have pA : RedType eqrel l Δ (subst (tailSubst σ) A) := (hA hΔ hσ.tail).red
+  have pA' : RedType eqrel l Δ (subst σ (wk1 A)) :=
+    ((wk1Valid (F := A) hA) hΔ hσ).red
+  refine ⟨irrelevanceTerm'' (subst_wk A).symm rfl pA pA' (hσ.head hA hΔ),
+    fun {σ'} hσ' hσσ' ↦ irrelevanceEqTerm'' rfl rfl (subst_wk A).symm pA pA' (hσσ'.head hA hΔ hσ)⟩
 
 /-!
 ## Conversion (`Definition/LogicalRelation/Substitution/Conversion.agda`)
@@ -519,6 +603,28 @@ theorem liftSubstSEq {eqrel : EqRelSet} {l : TypeLevel} {F : Term} {σ σ' : Sub
   have hHeadEq : RedTermEq pF (.var 0) (.var 0) :=
     neuEqTerm pF (.var 0) (.var 0) hVar0 hVar0 (eqrel.varRefl hVar0)
   exact ⟨hTailEq, l, pF, hHeadEq⟩
+
+/-- Lift the right-hand side of a valid substitution equality into the left-hand extended context. -/
+theorem liftSubstS' {eqrel : EqRelSet} {l : TypeLevel} {F : Term} {σ σ' : Subst} {Γ Δ : Context}
+    (hΔ : CtxWf Δ)
+    (hF : ValidType eqrel l Γ F)
+    (hσ : ValidSubst eqrel Δ σ Γ)
+    (hσ' : ValidSubst eqrel Δ σ' Γ)
+    (hσσ' : ValidSubstEq eqrel Δ σ σ' Γ) :
+    ValidSubst eqrel (subst σ F :: Δ) (liftSubst σ') (F :: Γ) := by
+  have wfF : TypeWf Δ (subst σ F) := escape (hF hΔ hσ).red
+  have wfΔF : CtxWf (subst σ F :: Δ) := .cons hΔ wfF
+  have hwk1σ := wk1SubstS hΔ wfF hσ
+  have hwk1σ' := wk1SubstS hΔ wfF hσ'
+  have hwk1σσ' := wk1SubstSEq hΔ wfF hσσ'
+  have pF_wk1σ := (hF wfΔF hwk1σ).red
+  have pF_wk1σ' := (hF wfΔF hwk1σ').red
+  have var0 : HasType (subst σ F :: Δ) (.var 0) (subst (wk1Subst σ) F) :=
+    .var wfΔF (member_here_wk1Subst σ F Δ)
+  have var0' : HasType (subst σ F :: Δ) (.var 0) (subst (wk1Subst σ') F) :=
+    .conv var0 (eqrel.typeToEq (escapeEq pF_wk1σ ((hF wfΔF hwk1σ).eq hwk1σ' hwk1σσ')))
+  exact ValidSubst.cons hwk1σ' pF_wk1σ'
+    (neuTerm pF_wk1σ' (.var 0) var0' (eqrel.varRefl var0'))
 
 /-- Valid contexts are well-formed and admit a valid identity substitution
 (`soundContext` and `idSubstS`). -/
@@ -1077,6 +1183,7 @@ theorem elimPiAt_zero {eqrel : EqRelSet} {Γ : Context} {A F G : Term}
         rcases Gext hρ hΔ ha' hb' hab' with ⟨s, hs, hB⟩
         exact ⟨s, derivG hρ hΔ ha' s hs, hB⟩
   | sigma D' => cases whrDetStar ⟨D'.reduction, .sigma⟩ ⟨D, .pi⟩
+  | id D' => cases whrDetStar ⟨D'.reduction, .id⟩ ⟨D, .pi⟩
   | emb hlt _ => cases hlt
 
 theorem elimSigmaAt_zero {eqrel : EqRelSet} {Γ : Context} {A F G : Term}
@@ -1121,6 +1228,7 @@ theorem elimSigmaAt_zero {eqrel : EqRelSet} {Γ : Context} {A F G : Term}
           exact ⟨r, hr, (RedTermEq_of_LogRelAt (derivF hρ hΔ r hr) _).mp hab⟩
         rcases Gext hρ hΔ ha' hb' hab' with ⟨s, hs, hB⟩
         exact ⟨s, derivG hρ hΔ ha' s hs, hB⟩
+  | id D' => cases whrDetStar ⟨D'.reduction, .id⟩ ⟨D, .sigma⟩
   | emb hlt _ => cases hlt
 
 /-- Reducible substitution of `Π`-types (`substSΠ₁`). -/
@@ -2756,5 +2864,1001 @@ theorem emptyrecCongValid {eqrel : EqRelSet} {l l' : TypeLevel} {Γ : Context} {
   intro Δ σ hΔ hσ
   exact emptyrecCongTerm (hEmpty hΔ hσ).red
     (hA hΔ hσ).red (hA' hΔ hσ).red (hAA' hΔ hσ) (hn hΔ hσ)
+
+/-!
+## Identity Type Introductions (`Definition/LogicalRelation/Substitution/Introductions/Identity.agda`)
+-/
+
+/-- `LogRelAt` witness for `redId`. -/
+theorem redIdLogRelAt {eqrel : EqRelSet} {l : TypeLevel} {Δ : Context} {A t u : Term}
+    {relA : RedRel}
+    (hA : LogRelAt eqrel l Δ A relA)
+    (pt : RedTerm ⟨relA, hA⟩ t)
+    (pu : RedTerm ⟨relA, hA⟩ u) :
+    LogRelAt eqrel l Δ (.id A t u) (RedIdRel eqrel Δ A t u relA) := by
+  have wfA : TypeWf Δ A := escape ⟨relA, hA⟩
+  have wft : HasType Δ t A := escapeTerm ⟨relA, hA⟩ pt
+  have wfu : HasType Δ u A := escapeTerm ⟨relA, hA⟩ pu
+  have wfId : TypeWf Δ (.id A t u) := .id wfA wft wfu
+  have hAA : eqrel.TypeEqRel Δ A A := escapeEq ⟨relA, hA⟩ (reflEq ⟨relA, hA⟩)
+  have htt : RedTermEq ⟨relA, hA⟩ t t := reflEqTerm ⟨relA, hA⟩ pt
+  have huu : RedTermEq ⟨relA, hA⟩ u u := reflEqTerm ⟨relA, hA⟩ pu
+  have hIdEq : eqrel.TypeEqRel Δ (.id A t u) (.id A t u) :=
+    eqrel.idCong hAA (escapeTermEq ⟨relA, hA⟩ htt) (escapeTermEq ⟨relA, hA⟩ huu)
+  exact .id (idRedWf wfId) hIdEq hA
+    ((RedTerm_of_LogRelAt hA ⟨relA, hA⟩).mp pt)
+    ((RedTerm_of_LogRelAt hA ⟨relA, hA⟩).mp pu)
+    ((RedTermEq_of_LogRelAt hA ⟨relA, hA⟩).mp htt)
+    ((RedTermEq_of_LogRelAt hA ⟨relA, hA⟩).mp huu)
+
+/-- Helper constructing `RedType eqrel l Δ (.id A t u)`. -/
+theorem redId {eqrel : EqRelSet} {l : TypeLevel} {Δ : Context} {A t u : Term}
+    (pA : RedType eqrel l Δ A)
+    (pt : RedTerm pA t)
+    (pu : RedTerm pA u) :
+    RedType eqrel l Δ (.id A t u) := by
+  rcases pA with ⟨relA, hA⟩
+  exact ⟨RedIdRel eqrel Δ A t u relA, redIdLogRelAt hA pt pu⟩
+
+/-- Helper constructing `RedEq (redId pA pt pu) (.id A' t' u')`. -/
+theorem redIdCong {eqrel : EqRelSet} {l l' : TypeLevel} {Δ : Context} {A A' t t' u u' : Term}
+    (pA : RedType eqrel l Δ A)
+    (pA' : RedType eqrel l' Δ A')
+    (pAA' : RedEq pA A')
+    (pt : RedTerm pA t)
+    (pt' : RedTerm pA' t')
+    (ptt' : RedTermEq pA t t')
+    (pu : RedTerm pA u)
+    (pu' : RedTerm pA' u')
+    (puu' : RedTermEq pA u u') :
+    RedEq (redId pA pt pu) (.id A' t' u') := by
+  rcases pA with ⟨relA, hA⟩
+  have wfA : TypeWf Δ A := escape ⟨relA, hA⟩
+  have wft : HasType Δ t A := escapeTerm ⟨relA, hA⟩ pt
+  have wfu : HasType Δ u A := escapeTerm ⟨relA, hA⟩ pu
+  have wfId : TypeWf Δ (.id A t u) := .id wfA wft wfu
+  have hAA : eqrel.TypeEqRel Δ A A := escapeEq ⟨relA, hA⟩ (reflEq ⟨relA, hA⟩)
+  have htt : RedTermEq ⟨relA, hA⟩ t t := reflEqTerm ⟨relA, hA⟩ pt
+  have huu : RedTermEq ⟨relA, hA⟩ u u := reflEqTerm ⟨relA, hA⟩ pu
+  have hIdRefl : eqrel.TypeEqRel Δ (.id A t u) (.id A t u) :=
+    eqrel.idCong hAA (escapeTermEq ⟨relA, hA⟩ htt) (escapeTermEq ⟨relA, hA⟩ huu)
+  have wfA' : TypeWf Δ A' := escape pA'
+  have wft' : HasType Δ t' A' := escapeTerm pA' pt'
+  have wfu' : HasType Δ u' A' := escapeTerm pA' pu'
+  have wfId' : TypeWf Δ (.id A' t' u') := .id wfA' wft' wfu'
+  have hIdEq : eqrel.TypeEqRel Δ (.id A t u) (.id A' t' u') :=
+    eqrel.idCong (escapeEq ⟨relA, hA⟩ pAA')
+      (escapeTermEq ⟨relA, hA⟩ ptt')
+      (escapeTermEq ⟨relA, hA⟩ puu')
+  exact ⟨RedIdRel eqrel Δ A t u relA,
+    .id (idRedWf wfId) hIdRefl hA
+      ((RedTerm_of_LogRelAt hA ⟨relA, hA⟩).mp pt)
+      ((RedTerm_of_LogRelAt hA ⟨relA, hA⟩).mp pu)
+      ((RedTermEq_of_LogRelAt hA ⟨relA, hA⟩).mp htt)
+      ((RedTermEq_of_LogRelAt hA ⟨relA, hA⟩).mp huu),
+    RedIdEq.ofTermEq hA (.refl wfId') hIdEq
+      ((RedEq_of_LogRelAt hA ⟨relA, hA⟩).mp pAA')
+      ((RedTermEq_of_LogRelAt hA ⟨relA, hA⟩).mp ptt')
+      ((RedTermEq_of_LogRelAt hA ⟨relA, hA⟩).mp puu')⟩
+
+/-- Validity of `Id A t u` (`Idᵛ`). -/
+theorem idValid {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A t u : Term}
+    (hA : ValidType eqrel l Γ A)
+    (ht : ValidTerm hA t)
+    (hu : ValidTerm hA u) :
+    ValidType eqrel l Γ (.id A t u) := by
+  intro Δ σ hΔ hσ
+  have pA := (hA hΔ hσ).red
+  have pt := (ht hΔ hσ).term
+  have pu := (hu hΔ hσ).term
+  refine ⟨redId pA pt pu, fun {σ'} hσ' hσσ' ↦ ?_⟩
+  exact redIdCong pA (hA hΔ hσ').red ((hA hΔ hσ).eq hσ' hσσ')
+    pt (ht hΔ hσ').term ((ht hΔ hσ).eq hσ' hσσ')
+    pu (hu hΔ hσ').term ((hu hΔ hσ).eq hσ' hσσ')
+
+/-- Validity of `Id`-congruence (`Id-congᵛ`). -/
+theorem idCongValid {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A A' t t' u u' : Term}
+    (hA : ValidType eqrel l Γ A)
+    (hA' : ValidType eqrel l Γ A')
+    (hAA' : ValidTypeEq hA A')
+    (ht : ValidTerm hA t)
+    (ht' : ValidTerm hA' t')
+    (htt' : ValidTermEq hA t t')
+    (hu : ValidTerm hA u)
+    (hu' : ValidTerm hA' u')
+    (huu' : ValidTermEq hA u u') :
+    ValidTypeEq (idValid hA ht hu) (.id A' t' u') := by
+  intro Δ σ hΔ hσ
+  exact redIdCong (hA hΔ hσ).red (hA' hΔ hσ).red (hAA' hΔ hσ)
+    (ht hΔ hσ).term (ht' hΔ hσ).term (htt' hΔ hσ)
+    (hu hΔ hσ).term (hu' hΔ hσ).term (huu' hΔ hσ)
+
+/-- Validity of `Id A t u` as a term of `U` (`Idᵗᵛ`). -/
+theorem idTermValid {eqrel : EqRelSet} {Γ : Context} {A t u : Term}
+    (hA : ValidType eqrel .one Γ A)
+    (hAt : ValidTerm (UValid (eqrel := eqrel) (Γ := Γ)) A)
+    (ht : ValidTerm hA t)
+    (hu : ValidTerm hA u) :
+    ValidTerm (UValid (eqrel := eqrel) (Γ := Γ)) (.id A t u) := by
+  intro Δ σ hΔ hσ
+  have pUΔ : RedType eqrel .one Δ .univ := redUOne hΔ
+  have wfAt : HasType Δ (subst σ A) .univ := escapeTerm pUΔ (hAt hΔ hσ).term
+  have hAAt : eqrel.TermEqRel Δ (subst σ A) (subst σ A) .univ :=
+    escapeTermEq pUΔ (reflEqTerm pUΔ (hAt hΔ hσ).term)
+  have pA := (hA hΔ hσ).red
+  have wft : HasType Δ (subst σ t) (subst σ A) := escapeTerm pA (ht hΔ hσ).term
+  have wfu : HasType Δ (subst σ u) (subst σ A) := escapeTerm pA (hu hΔ hσ).term
+  have htt : eqrel.TermEqRel Δ (subst σ t) (subst σ t) (subst σ A) :=
+    escapeTermEq pA (reflEqTerm pA (ht hΔ hσ).term)
+  have huu : eqrel.TermEqRel Δ (subst σ u) (subst σ u) (subst σ A) :=
+    escapeTermEq pA (reflEqTerm pA (hu hΔ hσ).term)
+  have hA₀ : ValidType eqrel .zero Γ A := univValid UValid hAt
+  have ht₀ : ValidTerm hA₀ t := irrelevanceValidTerm hA hA₀ ht
+  have hu₀ : ValidTerm hA₀ u := irrelevanceValidTerm hA hA₀ hu
+  have hId₀Valid : ValidType eqrel .zero Γ (.id A t u) := idValid hA₀ ht₀ hu₀
+  have hId₀ := hId₀Valid hΔ hσ
+  have wfIdt : HasType Δ (.id (subst σ A) (subst σ t) (subst σ u)) .univ :=
+    .id wfAt wft wfu
+  rcases hId₀.red with ⟨relId₀, hLogId₀⟩
+  refine ⟨⟨RedURel eqrel (logRelRec eqrel .one .zero .zeroLT) Δ, .U ⟨.zeroLT, hΔ⟩,
+      .mk (.id (subst σ A) (subst σ t) (subst σ u)) (idRedTermWf wfIdt)
+        .id (eqrel.idTermCong hAAt htt huu) ⟨relId₀, hLogId₀⟩⟩,
+    fun {σ'} hσ' hσσ' ↦ ?_⟩
+  have wfAt' : HasType Δ (subst σ' A) .univ := escapeTerm pUΔ (hAt hΔ hσ').term
+  have pA' := (hA hΔ hσ').red
+  have wft' : HasType Δ (subst σ' t) (subst σ' A) := escapeTerm pA' (ht hΔ hσ').term
+  have wfu' : HasType Δ (subst σ' u) (subst σ' A) := escapeTerm pA' (hu hΔ hσ').term
+  have hAA't : eqrel.TermEqRel Δ (subst σ A) (subst σ' A) .univ :=
+    escapeTermEq pUΔ ((hAt hΔ hσ).eq hσ' hσσ')
+  have htt' : eqrel.TermEqRel Δ (subst σ t) (subst σ' t) (subst σ A) :=
+    escapeTermEq pA ((ht hΔ hσ).eq hσ' hσσ')
+  have huu' : eqrel.TermEqRel Δ (subst σ u) (subst σ' u) (subst σ A) :=
+    escapeTermEq pA ((hu hΔ hσ).eq hσ' hσσ')
+  have hId₀' := hId₀Valid hΔ hσ'
+  rcases hId₀.eq hσ' hσσ' with ⟨rel₀, hLog₀, hEq₀⟩
+  exact ⟨RedURel eqrel (logRelRec eqrel .one .zero .zeroLT) Δ, .U ⟨.zeroLT, hΔ⟩,
+    .mk (.id (subst σ A) (subst σ t) (subst σ u))
+      (.id (subst σ' A) (subst σ' t) (subst σ' u))
+      (idRedTermWf wfIdt) (idRedTermWf (.id wfAt' wft' wfu'))
+      .id .id (eqrel.idTermCong hAA't htt' huu')
+      rel₀ hLog₀ hId₀'.red hEq₀⟩
+
+/-- Validity of `Id`-congruence as a term equality in `U` (`Id-congᵗᵛ`). -/
+theorem idCongTermValid {eqrel : EqRelSet} {Γ : Context} {A A' t t' u u' : Term}
+    (hA : ValidType eqrel .one Γ A)
+    (hA' : ValidType eqrel .one Γ A')
+    (hAt : ValidTerm (UValid (eqrel := eqrel) (Γ := Γ)) A)
+    (hA't : ValidTerm (UValid (eqrel := eqrel) (Γ := Γ)) A')
+    (hAA't : ValidTermEq (UValid (eqrel := eqrel) (Γ := Γ)) A A')
+    (ht : ValidTerm hA t)
+    (ht' : ValidTerm hA' t')
+    (htt' : ValidTermEq hA t t')
+    (hu : ValidTerm hA u)
+    (hu' : ValidTerm hA' u')
+    (huu' : ValidTermEq hA u u') :
+    ValidTermEq (UValid (eqrel := eqrel) (Γ := Γ)) (.id A t u) (.id A' t' u') := by
+  intro Δ σ hΔ hσ
+  have hA_u : ValidType eqrel .zero Γ A := univValid UValid hAt
+  have hA'_u : ValidType eqrel .zero Γ A' := univValid UValid hA't
+  have hAA'_u : ValidTypeEq hA_u A' := univEqValid UValid hA_u hAA't
+  have ht_u : ValidTerm hA_u t := irrelevanceValidTerm hA hA_u ht
+  have ht'_u : ValidTerm hA'_u t' := irrelevanceValidTerm hA' hA'_u ht'
+  have htt'_u : ValidTermEq hA_u t t' := irrelevanceValidEqTerm hA hA_u htt'
+  have hu_u : ValidTerm hA_u u := irrelevanceValidTerm hA hA_u hu
+  have hu'_u : ValidTerm hA'_u u' := irrelevanceValidTerm hA' hA'_u hu'
+  have huu'_u : ValidTermEq hA_u u u' := irrelevanceValidEqTerm hA hA_u huu'
+  have pUΔ : RedType eqrel .one Δ .univ := redUOne hΔ
+  have pA := (hA hΔ hσ).red
+  have pA' := (hA' hΔ hσ).red
+  have wfId : HasType Δ (.id (subst σ A) (subst σ t) (subst σ u)) .univ :=
+    .id (escapeTerm pUΔ (hAt hΔ hσ).term)
+      (escapeTerm pA (ht hΔ hσ).term) (escapeTerm pA (hu hΔ hσ).term)
+  have wfId' : HasType Δ (.id (subst σ A') (subst σ t') (subst σ u')) .univ :=
+    .id (escapeTerm pUΔ (hA't hΔ hσ).term)
+      (escapeTerm pA' (ht' hΔ hσ).term) (escapeTerm pA' (hu' hΔ hσ).term)
+  rcases idCongValid hA_u hA'_u hAA'_u ht_u ht'_u htt'_u hu_u hu'_u huu'_u hΔ hσ with
+    ⟨rel₀, hLog₀, hEq₀⟩
+  have hId'_u : ValidType eqrel .zero Γ (.id A' t' u') := idValid hA'_u ht'_u hu'_u
+  exact ⟨RedURel eqrel (logRelRec eqrel .one .zero .zeroLT) Δ, .U ⟨.zeroLT, hΔ⟩,
+    .mk (.id (subst σ A) (subst σ t) (subst σ u))
+      (.id (subst σ A') (subst σ t') (subst σ u'))
+      (idRedTermWf wfId) (idRedTermWf wfId')
+      .id .id
+      (eqrel.idTermCong (escapeTermEq pUΔ (hAA't hΔ hσ))
+        (escapeTermEq pA (htt' hΔ hσ))
+        (escapeTermEq pA (huu' hΔ hσ)))
+      rel₀ hLog₀ (hId'_u hΔ hσ).red hEq₀⟩
+
+/-- Reducibility of `rfl` at `redId pA pt pu` (`⊩rfl′`). -/
+theorem rflTerm {eqrel : EqRelSet} {l : TypeLevel} {Δ : Context} {A t u : Term}
+    (pA : RedType eqrel l Δ A)
+    (pt : RedTerm pA t)
+    (pu : RedTerm pA u)
+    (ptu : RedTermEq pA t u) :
+    RedTerm (redId pA pt pu) .rfl := by
+  rcases pA with ⟨relA, hA⟩
+  have wfA : TypeWf Δ A := escape ⟨relA, hA⟩
+  have wft : HasType Δ t A := escapeTerm ⟨relA, hA⟩ pt
+  have wfu : HasType Δ u A := escapeTerm ⟨relA, hA⟩ pu
+  have wfId : TypeWf Δ (.id A t u) := .id wfA wft wfu
+  have hAA : eqrel.TypeEqRel Δ A A := escapeEq ⟨relA, hA⟩ (reflEq ⟨relA, hA⟩)
+  have htt : RedTermEq ⟨relA, hA⟩ t t := reflEqTerm ⟨relA, hA⟩ pt
+  have huu : RedTermEq ⟨relA, hA⟩ u u := reflEqTerm ⟨relA, hA⟩ pu
+  have hIdRefl : eqrel.TypeEqRel Δ (.id A t u) (.id A t u) :=
+    eqrel.idCong hAA (escapeTermEq ⟨relA, hA⟩ htt) (escapeTermEq ⟨relA, hA⟩ huu)
+  have hIdConv : TypeEq Δ (.id A t t) (.id A t u) :=
+    .id (.refl wfA) (.refl wft) (eqrel.termToEq (escapeTermEq ⟨relA, hA⟩ ptu))
+  have wfRfl : HasType Δ .rfl (.id A t u) :=
+    .conv (.rfl wfA wft) hIdConv
+  have hRflEq : eqrel.TermEqRel Δ .rfl .rfl (.id A t u) :=
+    eqrel.convTerm (eqrel.rflRefl wfA wft) hIdConv
+  exact ⟨RedIdRel eqrel Δ A t u relA,
+    redIdLogRelAt hA pt pu,
+    .mk .rfl (idRedTermWf wfRfl) hRflEq
+      (.rfl ((RedTermEq_of_LogRelAt hA ⟨relA, hA⟩).mp ptu))⟩
+
+/-- Reducibility of `rfl ≡ rfl` at `redId pA pt pu` (`⊩rfl≡rfl`). -/
+theorem rflEqTerm {eqrel : EqRelSet} {l : TypeLevel} {Δ : Context} {A t u : Term}
+    (pA : RedType eqrel l Δ A)
+    (pt : RedTerm pA t)
+    (pu : RedTerm pA u)
+    (ptu : RedTermEq pA t u) :
+    RedTermEq (redId pA pt pu) .rfl .rfl := by
+  rcases pA with ⟨relA, hA⟩
+  have wfA : TypeWf Δ A := escape ⟨relA, hA⟩
+  have wft : HasType Δ t A := escapeTerm ⟨relA, hA⟩ pt
+  have hIdConv : TypeEq Δ (.id A t t) (.id A t u) :=
+    .id (.refl wfA) (.refl wft) (eqrel.termToEq (escapeTermEq ⟨relA, hA⟩ ptu))
+  have wfRfl : HasType Δ .rfl (.id A t u) :=
+    .conv (.rfl wfA wft) hIdConv
+  have hRflEq : eqrel.TermEqRel Δ .rfl .rfl (.id A t u) :=
+    eqrel.convTerm (eqrel.rflRefl wfA wft) hIdConv
+  exact ⟨RedIdRel eqrel Δ A t u relA,
+    redIdLogRelAt hA pt pu,
+    .mk .rfl .rfl (idRedTermWf wfRfl) (idRedTermWf wfRfl) hRflEq
+      (.rfl ((RedTermEq_of_LogRelAt hA ⟨relA, hA⟩).mp ptu))⟩
+
+/-- Validity of `rfl` (`rflᵛ`). -/
+theorem rflValid {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A t : Term}
+    (hA : ValidType eqrel l Γ A)
+    (ht : ValidTerm hA t) :
+    ValidTerm (idValid hA ht ht) .rfl := by
+  intro Δ σ hΔ hσ
+  have pA := (hA hΔ hσ).red
+  have pt := (ht hΔ hσ).term
+  exact ⟨rflTerm pA pt pt (reflEqTerm pA pt),
+    fun _ _ ↦ rflEqTerm pA pt pt (reflEqTerm pA pt)⟩
+
+/-- Validity of the identity motive context type `.id (wk1 A) (wk1 t) (.var 0)`. -/
+theorem idMotiveCtxType {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A t : Term}
+    (hA : ValidType eqrel l Γ A) (ht : ValidTerm hA t) :
+    ValidType eqrel l (A :: Γ) (.id (wk1 A) (wk1 t) (.var 0)) :=
+  idValid (wk1Valid hA) (wk1ValidTerm hA ht) (var0Valid hA)
+
+/-- Congruence of the identity motive context type `.id (wk1 A) (wk1 t) (.var 0)`. -/
+theorem idMotiveCtxTypeEq {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A A' t t' : Term}
+    (hA : ValidType eqrel l Γ A)
+    (hA' : ValidType eqrel l Γ A')
+    (hAA' : ValidTypeEq hA A')
+    (ht : ValidTerm hA t)
+    (ht' : ValidTerm hA' t')
+    (htt' : ValidTermEq hA t t') :
+    ValidTypeEq (idMotiveCtxType hA ht) (.id (wk1 A') (wk1 t') (.var 0)) :=
+  idCongValid (wk1Valid hA) (wk1Valid hA') (wk1ValidEq hA hAA')
+    (wk1ValidTerm hA ht) (wk1ValidTerm hA' ht') (wk1ValidTermEq hA htt')
+    (var0Valid hA) (convValid (wk1Valid hA) (wk1Valid hA') (wk1ValidEq hA hAA') (var0Valid hA))
+    (reflValidTerm (wk1Valid hA) (var0Valid hA))
+
+/-- Escape well-formedness of an `idrec` motive under a lifted substitution. -/
+theorem escapeIdMotive {eqrel : EqRelSet} {l : TypeLevel} {Γ Δ : Context}
+    {A t P : Term} {σ : Subst}
+    (hΔ : CtxWf Δ)
+    (hσ : ValidSubst eqrel Δ σ Γ)
+    (hA : ValidType eqrel l Γ A)
+    (ht : ValidTerm hA t)
+    (hP : ValidType eqrel l (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P) :
+    TypeWf (.id (wk1 (subst σ A)) (wk1 (subst σ t)) (.var 0) :: subst σ A :: Δ)
+      (subst (liftSubst (liftSubst σ)) P) := by
+  have wfA : TypeWf Δ (subst σ A) := escape (hA hΔ hσ).red
+  have wfΔA : CtxWf (subst σ A :: Δ) := .cons hΔ wfA
+  have hLift1 : ValidSubst eqrel (subst σ A :: Δ) (liftSubst σ) (A :: Γ) :=
+    liftSubstS hΔ hA hσ
+  have hId0 : ValidType eqrel l (A :: Γ) (.id (wk1 A) (wk1 t) (.var 0)) := idMotiveCtxType hA ht
+  have hLift2 : ValidSubst eqrel
+      (subst (liftSubst σ) (.id (wk1 A) (wk1 t) (.var 0)) :: subst σ A :: Δ)
+      (liftSubst (liftSubst σ)) (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) :=
+    liftSubstS wfΔA hId0 hLift1
+  have wfId0 : TypeWf (subst σ A :: Δ) (subst (liftSubst σ) (.id (wk1 A) (wk1 t) (.var 0))) :=
+    escape (hId0 wfΔA hLift1).red
+  have wfP_raw : TypeWf (subst (liftSubst σ) (.id (wk1 A) (wk1 t) (.var 0)) :: subst σ A :: Δ)
+      (subst (liftSubst (liftSubst σ)) P) :=
+    escape (hP (.cons wfΔA wfId0) hLift2).red
+  rwa [id_wk1_wk1_0_liftSubst σ A t] at wfP_raw
+
+/-- Escape type equality of `idrec` motives under lifted substitutions. -/
+theorem escapeIdMotiveEq {eqrel : EqRelSet} {l : TypeLevel} {Γ Δ : Context}
+    {A t P P' : Term} {σ σ' : Subst}
+    (hΔ : CtxWf Δ)
+    (hσ : ValidSubst eqrel Δ σ Γ)
+    (hσ' : ValidSubst eqrel Δ σ' Γ)
+    (hσσ' : ValidSubstEq eqrel Δ σ σ' Γ)
+    (hA : ValidType eqrel l Γ A)
+    (ht : ValidTerm hA t)
+    (hP : ValidType eqrel l (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P)
+    (hP' : ValidType eqrel l (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P')
+    (hPP' : ValidTypeEq hP P') :
+    eqrel.TypeEqRel (.id (wk1 (subst σ A)) (wk1 (subst σ t)) (.var 0) :: subst σ A :: Δ)
+      (subst (liftSubst (liftSubst σ)) P)
+      (subst (liftSubst (liftSubst σ')) P') := by
+  have wfA : TypeWf Δ (subst σ A) := escape (hA hΔ hσ).red
+  have wfΔA : CtxWf (subst σ A :: Δ) := .cons hΔ wfA
+  have hLift1 := liftSubstS hΔ hA hσ
+  have hLift1' := liftSubstS' hΔ hA hσ hσ' hσσ'
+  have hLift1Eq := liftSubstSEq hΔ hA hσ hσσ'
+  have hId0 : ValidType eqrel l (A :: Γ) (.id (wk1 A) (wk1 t) (.var 0)) := idMotiveCtxType hA ht
+  have wfId0 : TypeWf (subst σ A :: Δ) (subst (liftSubst σ) (.id (wk1 A) (wk1 t) (.var 0))) :=
+    escape (hId0 wfΔA hLift1).red
+  have wfΔ2 : CtxWf (subst (liftSubst σ) (.id (wk1 A) (wk1 t) (.var 0)) :: subst σ A :: Δ) :=
+    .cons wfΔA wfId0
+  have hLift2 := liftSubstS wfΔA hId0 hLift1
+  have hLift2' := liftSubstS' wfΔA hId0 hLift1 hLift1' hLift1Eq
+  have hLift2Eq := liftSubstSEq wfΔA hId0 hLift1 hLift1Eq
+  have pP := (hP wfΔ2 hLift2).red
+  have pP_σ' := (hP wfΔ2 hLift2').red
+  have pP'_σ' := (hP' wfΔ2 hLift2').red
+  have hEq1 : RedEq pP (subst (liftSubst (liftSubst σ')) P) :=
+    (hP wfΔ2 hLift2).eq hLift2' hLift2Eq
+  have hEq2 : RedEq pP_σ' (subst (liftSubst (liftSubst σ')) P') :=
+    hPP' wfΔ2 hLift2'
+  have hEq_raw : eqrel.TypeEqRel
+      (subst (liftSubst σ) (.id (wk1 A) (wk1 t) (.var 0)) :: subst σ A :: Δ)
+      (subst (liftSubst (liftSubst σ)) P)
+      (subst (liftSubst (liftSubst σ')) P') :=
+    escapeEq pP (transEq pP pP_σ' pP'_σ' hEq1 hEq2)
+  rwa [id_wk1_wk1_0_liftSubst σ A t] at hEq_raw
+
+/-- Extend a valid substitution with an endpoint `u₀` and an identity proof `v₀`. -/
+theorem consSubstS2Id {eqrel : EqRelSet} {l : TypeLevel} {Γ Δ : Context}
+    {A t u₀ v₀ : Term} {σ : Subst}
+    (hΔ : CtxWf Δ)
+    (hσ : ValidSubst eqrel Δ σ Γ)
+    (hA : ValidType eqrel l Γ A)
+    (ht : ValidTerm hA t)
+    (hu₀ : RedTerm (hA hΔ hσ).red u₀)
+    (hv₀ : RedTerm (redId (hA hΔ hσ).red (ht hΔ hσ).term hu₀) v₀) :
+    ValidSubst eqrel Δ (consSubst (consSubst σ u₀) v₀) (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) := by
+  have hσu : ValidSubst eqrel Δ (consSubst σ u₀) (A :: Γ) := consSubstS hΔ hσ hA hu₀
+  have hId0 : ValidType eqrel l (A :: Γ) (.id (wk1 A) (wk1 t) (.var 0)) := idMotiveCtxType hA ht
+  have pId_u₀ := redId (hA hΔ hσ).red (ht hΔ hσ).term hu₀
+  have hv₀' : RedTerm (hId0 hΔ hσu).red v₀ :=
+    irrelevanceTerm' (subst_consSubst_id_wk1 σ u₀ A t).symm pId_u₀ (hId0 hΔ hσu).red hv₀
+  exact consSubstS hΔ hσu hId0 hv₀'
+
+/-- Extend a valid substitution equality with endpoints `u₀, u₀'` and identity proofs `v₀, v₀'`. -/
+theorem consSubstSEq2Id {eqrel : EqRelSet} {l : TypeLevel} {Γ Δ : Context}
+    {A t u₀ u₀' v₀ v₀' : Term} {σ σ' : Subst}
+    (hΔ : CtxWf Δ)
+    (hσ : ValidSubst eqrel Δ σ Γ)
+    (hσσ' : ValidSubstEq eqrel Δ σ σ' Γ)
+    (hA : ValidType eqrel l Γ A)
+    (ht : ValidTerm hA t)
+    (hu₀ : RedTerm (hA hΔ hσ).red u₀)
+    (hu₀u₀' : RedTermEq (hA hΔ hσ).red u₀ u₀')
+    (hv₀v₀' : RedTermEq (redId (hA hΔ hσ).red (ht hΔ hσ).term hu₀) v₀ v₀') :
+    ValidSubstEq eqrel Δ
+      (consSubst (consSubst σ u₀) v₀)
+      (consSubst (consSubst σ' u₀') v₀')
+      (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) := by
+  have hσu : ValidSubst eqrel Δ (consSubst σ u₀) (A :: Γ) := consSubstS hΔ hσ hA hu₀
+  have hσσ'u : ValidSubstEq eqrel Δ (consSubst σ u₀) (consSubst σ' u₀') (A :: Γ) :=
+    ValidSubstEq.cons hσσ' (hA hΔ hσ).red hu₀u₀'
+  have hId0 : ValidType eqrel l (A :: Γ) (.id (wk1 A) (wk1 t) (.var 0)) := idMotiveCtxType hA ht
+  have pId_u₀ := redId (hA hΔ hσ).red (ht hΔ hσ).term hu₀
+  have hv₀v₀'' : RedTermEq (hId0 hΔ hσu).red v₀ v₀' :=
+    irrelevanceEqTerm' (subst_consSubst_id_wk1 σ u₀ A t).symm pId_u₀ (hId0 hΔ hσu).red hv₀v₀'
+  exact ValidSubstEq.cons hσσ'u (hId0 hΔ hσu).red hv₀v₀''
+
+/-- Reducibility of `subst2 (subst (liftSubst (liftSubst σ)) P) u₀ v₀`. -/
+theorem redIdMotiveSubst2 {eqrel : EqRelSet} {l : TypeLevel} {Γ Δ : Context}
+    {A t P u₀ v₀ : Term} {σ : Subst}
+    (hΔ : CtxWf Δ)
+    (hσ : ValidSubst eqrel Δ σ Γ)
+    (hA : ValidType eqrel l Γ A)
+    (ht : ValidTerm hA t)
+    (hP : ValidType eqrel l (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P)
+    (hu₀ : RedTerm (hA hΔ hσ).red u₀)
+    (hv₀ : RedTerm (redId (hA hΔ hσ).red (ht hΔ hσ).term hu₀) v₀) :
+    RedType eqrel l Δ (subst2 (subst (liftSubst (liftSubst σ)) P) u₀ v₀) :=
+  irrelevance' (doubleSubstComp P u₀ v₀ σ).symm
+    (hP hΔ (consSubstS2Id hΔ hσ hA ht hu₀ hv₀)).red
+
+/-- Reducible type equality of `subst2 (subst (liftSubst (liftSubst σ)) P) u₀ v₀`. -/
+theorem redIdMotiveSubst2Eq {eqrel : EqRelSet} {l : TypeLevel} {Γ Δ : Context}
+    {A t P P' u₀ v₀ u₀' v₀' : Term} {σ σ' : Subst}
+    (hΔ : CtxWf Δ)
+    (hσ : ValidSubst eqrel Δ σ Γ)
+    (hσ' : ValidSubst eqrel Δ σ' Γ)
+    (hσσ' : ValidSubstEq eqrel Δ σ σ' Γ)
+    (hA : ValidType eqrel l Γ A)
+    (ht : ValidTerm hA t)
+    (hP : ValidType eqrel l (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P)
+    (hP' : ValidType eqrel l (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P')
+    (hPP' : ValidTypeEq hP P')
+    (hu₀ : RedTerm (hA hΔ hσ).red u₀)
+    (hv₀ : RedTerm (redId (hA hΔ hσ).red (ht hΔ hσ).term hu₀) v₀)
+    (hu₀' : RedTerm (hA hΔ hσ').red u₀')
+    (hv₀' : RedTerm (redId (hA hΔ hσ').red (ht hΔ hσ').term hu₀') v₀')
+    (hu₀u₀' : RedTermEq (hA hΔ hσ).red u₀ u₀')
+    (hv₀v₀' : RedTermEq (redId (hA hΔ hσ).red (ht hΔ hσ).term hu₀) v₀ v₀') :
+    RedEq (redIdMotiveSubst2 hΔ hσ hA ht hP hu₀ hv₀)
+      (subst2 (subst (liftSubst (liftSubst σ')) P') u₀' v₀') := by
+  have hσ2 := consSubstS2Id hΔ hσ hA ht hu₀ hv₀
+  have hσ2' := consSubstS2Id hΔ hσ' hA ht hu₀' hv₀'
+  have hσσ2' := consSubstSEq2Id hΔ hσ hσσ' hA ht hu₀ hu₀u₀' hv₀v₀'
+  have pP_σ := (hP hΔ hσ2).red
+  have pP_σ_subst2 := redIdMotiveSubst2 hΔ hσ hA ht hP hu₀ hv₀
+  have pP_σ' := (hP hΔ hσ2').red
+  have pP'_σ' := (hP' hΔ hσ2').red
+  have pP'_σ'_subst2 := irrelevance' (doubleSubstComp P' u₀' v₀' σ').symm pP'_σ'
+  have hEq1 : RedEq pP_σ_subst2 (subst (consSubst (consSubst σ' u₀') v₀') P) :=
+    irrelevanceEq' (doubleSubstComp P u₀ v₀ σ).symm pP_σ pP_σ_subst2
+      ((hP hΔ hσ2).eq hσ2' hσσ2')
+  have hEq2 : RedEq pP_σ' (subst2 (subst (liftSubst (liftSubst σ')) P') u₀' v₀') :=
+    irrelevanceEqR' (doubleSubstComp P' u₀' v₀' σ').symm pP_σ' (hPP' hΔ hσ2')
+  exact transEq pP_σ_subst2 pP_σ' pP'_σ'_subst2 hEq1 hEq2
+
+/-- Validity of substituting an endpoint `u` and an identity proof `h` into motive `P` (`substS2Id`). -/
+theorem substS2Id {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A t P u h : Term}
+    (hA : ValidType eqrel l Γ A)
+    (ht : ValidTerm hA t)
+    (hP : ValidType eqrel l (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P)
+    (hu : ValidTerm hA u)
+    (hh : ValidTerm (idValid hA ht hu) h) :
+    ValidType eqrel l Γ (subst2 P u h) := by
+  intro Δ σ hΔ hσ
+  have hu₀ : RedTerm (hA hΔ hσ).red (subst σ u) := (hu hΔ hσ).term
+  have hv₀ : RedTerm (redId (hA hΔ hσ).red (ht hΔ hσ).term hu₀) (subst σ h) :=
+    (hh hΔ hσ).term
+  have pP₀ := redIdMotiveSubst2 hΔ hσ hA ht hP hu₀ hv₀
+  have pP := irrelevance' (subst2_subst_commute P u h σ).symm pP₀
+  refine ⟨pP, fun {σ'} hσ' hσσ' ↦ ?_⟩
+  have hu₀' : RedTerm (hA hΔ hσ').red (subst σ' u) := (hu hΔ hσ').term
+  have hv₀' : RedTerm (redId (hA hΔ hσ').red (ht hΔ hσ').term hu₀') (subst σ' h) :=
+    (hh hΔ hσ').term
+  exact irrelevanceEq'' (subst2_subst_commute P u h σ).symm (subst2_subst_commute P u h σ').symm
+    pP₀ pP
+    (redIdMotiveSubst2Eq hΔ hσ hσ' hσσ' hA ht hP hP (reflValid hP)
+      hu₀ hv₀ hu₀' hv₀' ((hu hΔ hσ).eq hσ' hσσ') ((hh hΔ hσ).eq hσ' hσσ'))
+
+/-- Validity of congruence for `subst2 P u h` (`substS2IdEq`). -/
+theorem substS2IdEq {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context}
+    {A t P P' u u' h h' : Term}
+    (hA : ValidType eqrel l Γ A)
+    (ht : ValidTerm hA t)
+    (hP : ValidType eqrel l (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P)
+    (hP' : ValidType eqrel l (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P')
+    (hPP' : ValidTypeEq hP P')
+    (hu : ValidTerm hA u)
+    (hu' : ValidTerm hA u')
+    (huu' : ValidTermEq hA u u')
+    (hh : ValidTerm (idValid hA ht hu) h)
+    (hh' : ValidTerm (idValid hA ht hu') h')
+    (hhh' : ValidTermEq (idValid hA ht hu) h h') :
+    ValidTypeEq (substS2Id hA ht hP hu hh) (subst2 P' u' h') := by
+  intro Δ σ hΔ hσ
+  have hu₀ : RedTerm (hA hΔ hσ).red (subst σ u) := (hu hΔ hσ).term
+  have hv₀ : RedTerm (redId (hA hΔ hσ).red (ht hΔ hσ).term hu₀) (subst σ h) :=
+    (hh hΔ hσ).term
+  have hu₀' : RedTerm (hA hΔ hσ).red (subst σ u') := (hu' hΔ hσ).term
+  have hv₀' : RedTerm (redId (hA hΔ hσ).red (ht hΔ hσ).term hu₀') (subst σ h') :=
+    (hh' hΔ hσ).term
+  have pP₀ := redIdMotiveSubst2 hΔ hσ hA ht hP hu₀ hv₀
+  have pP := ((substS2Id hA ht hP hu hh) hΔ hσ).red
+  exact irrelevanceEq'' (subst2_subst_commute P u h σ).symm (subst2_subst_commute P' u' h' σ).symm
+    pP₀ pP
+    (redIdMotiveSubst2Eq hΔ hσ hσ (reflSubst hσ) hA ht hP hP' hPP'
+      hu₀ hv₀ hu₀' hv₀' (huu' hΔ hσ) (hhh' hΔ hσ))
+
+/-- Multi-step reduction congruence for `idrec` (`J-subst*`). -/
+theorem idrecSubstStar {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context}
+    {A P r t u h h' : Term}
+    (hA : TypeWf Γ A)
+    (hP : TypeWf (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P)
+    (hr : HasType Γ r (subst2 P t .rfl))
+    (ht : HasType Γ t A)
+    (hu : HasType Γ u A)
+    (dhh' : Star Γ h h' (.id A t u))
+    (pId : RedType eqrel l Γ (.id A t u))
+    (hh' : RedTerm pId h')
+    (prop : ∀ {v v'}, RedTerm pId v → RedTerm pId v' → RedTermEq pId v v' →
+      TypeEq Γ (subst2 P u v) (subst2 P u v')) :
+    Star Γ (.idrec A P r t u h) (.idrec A P r t u h') (subst2 P u h) := by
+  generalize hIdEq : Term.id A t u = I₀ at dhh'
+  induction dhh' with
+  | refl hh =>
+      subst hIdEq
+      exact .refl (.idrec hA hP hr ht hu hh)
+  | @step _ h₀ h₁ h' hStep hRest ih =>
+      subst hIdEq
+      rcases redSubstStarTerm hRest pId hh' with ⟨hh₁, _⟩
+      rcases redSubstTerm hStep pId hh₁ with ⟨hh₀, hh₀h₁⟩
+      have hRestIdrec : Star Γ (.idrec A P r t u h₁) (.idrec A P r t u h') (subst2 P u h₁) :=
+        ih hh' rfl
+      exact .step (.idrec hA hP hr ht hu hStep)
+        (hRestIdrec.conv (prop hh₁ hh₀ (symEqTerm pId hh₀h₁)))
+
+/-- Reducibility of `idrec` under a valid substitution (`idrecTerm`). -/
+theorem idrecTerm {eqrel : EqRelSet} {l : TypeLevel} {Γ Δ : Context}
+    {A P r t u h : Term} {σ : Subst}
+    (hA : ValidType eqrel l Γ A)
+    (ht : ValidTerm hA t)
+    (hP : ValidType eqrel l (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P)
+    (hr : ValidTerm (substS2Id hA ht hP ht (rflValid hA ht)) r)
+    (hu : ValidTerm hA u)
+    (hh : ValidTerm (idValid hA ht hu) h)
+    (hΔ : CtxWf Δ)
+    (hσ : ValidSubst eqrel Δ σ Γ) :
+    RedTerm (((substS2Id hA ht hP hu hh) hΔ hσ).red)
+      (subst σ (.idrec A P r t u h)) := by
+  have pA := (hA hΔ hσ).red
+  have pt := (ht hΔ hσ).term
+  have pu := (hu hΔ hσ).term
+  have pId := redId pA pt pu
+  have ph : RedTerm pId (subst σ h) := (hh hΔ hσ).term
+  have wfA : TypeWf Δ (subst σ A) := escape pA
+  have wft : HasType Δ (subst σ t) (subst σ A) := escapeTerm pA pt
+  have wfu : HasType Δ (subst σ u) (subst σ A) := escapeTerm pA pu
+  have wfP : TypeWf (.id (wk1 (subst σ A)) (wk1 (subst σ t)) (.var 0) :: subst σ A :: Δ)
+      (subst (liftSubst (liftSubst σ)) P) :=
+    escapeIdMotive hΔ hσ hA ht hP
+  have pRfl_t : RedTerm (redId pA pt pt) .rfl := rflTerm pA pt pt (reflEqTerm pA pt)
+  have pPtrfl₀ := redIdMotiveSubst2 hΔ hσ hA ht hP pt pRfl_t
+  have pPtrfl_valid := ((substS2Id hA ht hP ht (rflValid hA ht)) hΔ hσ).red
+  have pr₀ : RedTerm pPtrfl₀ (subst σ r) :=
+    irrelevanceTerm' (subst2_subst_commute P t .rfl σ) pPtrfl_valid pPtrfl₀ (hr hΔ hσ).term
+  have wfr : HasType Δ (subst σ r)
+      (subst2 (subst (liftSubst (liftSubst σ)) P) (subst σ t) .rfl) :=
+    escapeTerm pPtrfl₀ pr₀
+  have hPropP : ∀ {v v'}, RedTerm pId v → RedTerm pId v' → RedTermEq pId v v' →
+      TypeEq Δ
+        (subst2 (subst (liftSubst (liftSubst σ)) P) (subst σ u) v)
+        (subst2 (subst (liftSubst (liftSubst σ)) P) (subst σ u) v') := by
+    intro v v' hv hv' hvv'
+    exact eqrel.typeToEq (escapeEq (redIdMotiveSubst2 hΔ hσ hA ht hP pu hv)
+      (redIdMotiveSubst2Eq hΔ hσ hσ (reflSubst hσ) hA ht hP hP (reflValid hP)
+        pu hv pu hv' (reflEqTerm pA pu) hvv'))
+  have pPuh₀ := redIdMotiveSubst2 hΔ hσ hA ht hP pu ph
+  have pPuh_valid := ((substS2Id hA ht hP hu hh) hΔ hσ).red
+  rcases pA with ⟨relA, hLogA⟩
+  have hLogId : LogRelAt eqrel l Δ (.id (subst σ A) (subst σ t) (subst σ u))
+      (RedIdRel eqrel Δ (subst σ A) (subst σ t) (subst σ u) relA) :=
+    redIdLogRelAt hLogA pt pu
+  have ph_id : RedIdTerm eqrel Δ (subst σ A) (subst σ t) (subst σ u) relA (subst σ h) :=
+    (RedTerm_of_LogRelAt hLogId pId).mp ph
+  rcases ph_id with ⟨h₁, d, h₁eqh₁, prop⟩
+  have hRes₀ : RedTerm pPuh₀
+      (.idrec (subst σ A) (subst (liftSubst (liftSubst σ)) P)
+        (subst σ r) (subst σ t) (subst σ u) (subst σ h)) := by
+    cases prop with
+    | rfl htu_rel =>
+        have ptu : RedTermEq ⟨relA, hLogA⟩ (subst σ t) (subst σ u) := ⟨relA, hLogA, htu_rel⟩
+        have pRfl_u : RedTerm pId .rfl := rflTerm ⟨relA, hLogA⟩ pt pu ptu
+        rcases redSubstStarTerm d.reduction pId pRfl_u with ⟨_, ph_eq_rfl⟩
+        have pPurfl₀ := redIdMotiveSubst2 hΔ hσ hA ht hP pu pRfl_u
+        have hPuh_eq_Purfl : RedEq pPuh₀
+            (subst2 (subst (liftSubst (liftSubst σ)) P) (subst σ u) .rfl) :=
+          redIdMotiveSubst2Eq hΔ hσ hσ (reflSubst hσ) hA ht hP hP (reflValid hP)
+            pu ph pu pRfl_u (reflEqTerm ⟨relA, hLogA⟩ pu) ph_eq_rfl
+        have hPtrfl_eq_Purfl : RedEq pPtrfl₀
+            (subst2 (subst (liftSubst (liftSubst σ)) P) (subst σ u) .rfl) :=
+          redIdMotiveSubst2Eq hΔ hσ hσ (reflSubst hσ) hA ht hP hP (reflValid hP)
+            pt pRfl_t pu pRfl_u ptu (reflEqTerm (redId ⟨relA, hLogA⟩ pt pt) pRfl_t)
+        have hPuh_eq_Ptrfl : RedEq pPuh₀
+            (subst2 (subst (liftSubst (liftSubst σ)) P) (subst σ t) .rfl) :=
+          transEq pPuh₀ pPurfl₀ pPtrfl₀ hPuh_eq_Purfl (symEq pPtrfl₀ pPurfl₀ hPtrfl_eq_Purfl)
+        have hRed1 := idrecSubstStar wfA wfP wfr wft wfu d.reduction pId pRfl_u hPropP
+        have hStepBeta : Step Δ
+            (.idrec (subst σ A) (subst (liftSubst (liftSubst σ)) P)
+              (subst σ r) (subst σ t) (subst σ u) .rfl)
+            (subst σ r)
+            (subst2 (subst (liftSubst (liftSubst σ)) P) (subst σ t) .rfl) :=
+          .idrecBeta wfA wfP wfr wft wfu
+            (eqrel.termToEq (escapeTermEq ⟨relA, hLogA⟩ ptu))
+            (eqrel.typeToEq (escapeEq pPtrfl₀ hPtrfl_eq_Purfl))
+        have hRed2 : Star Δ
+            (.idrec (subst σ A) (subst (liftSubst (liftSubst σ)) P)
+              (subst σ r) (subst σ t) (subst σ u) .rfl)
+            (subst σ r)
+            (subst2 (subst (liftSubst (liftSubst σ)) P) (subst σ u) (subst σ h)) :=
+          (Star.step hStepBeta (.refl wfr)).conv
+            (.symm (eqrel.typeToEq (escapeEq pPuh₀ hPuh_eq_Ptrfl)))
+        exact (redSubstStarTerm (hRed1.trans hRed2) pPuh₀
+          (convTerm₂ pPuh₀ pPtrfl₀ hPuh_eq_Ptrfl pr₀)).1
+    | ne nf =>
+        have ph₁ : RedTerm pId h₁ := neuTerm pId nf.neK nf.hk nf.keqk
+        rcases redSubstStarTerm d.reduction pId ph₁ with ⟨_, ph_eq_h₁⟩
+        have pPuh₁ := redIdMotiveSubst2 hΔ hσ hA ht hP pu ph₁
+        have hPuh_eq_Puh₁ : RedEq pPuh₀
+            (subst2 (subst (liftSubst (liftSubst σ)) P) (subst σ u) h₁) :=
+          redIdMotiveSubst2Eq hΔ hσ hσ (reflSubst hσ) hA ht hP hP (reflValid hP)
+            pu ph pu ph₁ (reflEqTerm ⟨relA, hLogA⟩ pu) ph_eq_h₁
+        have hPP_rel := escapeIdMotiveEq hΔ hσ hσ (reflSubst hσ) hA ht hP hP (reflValid hP)
+        have wfIdrec₁ : HasType Δ
+            (.idrec (subst σ A) (subst (liftSubst (liftSubst σ)) P)
+              (subst σ r) (subst σ t) (subst σ u) h₁)
+            (subst2 (subst (liftSubst (liftSubst σ)) P) (subst σ u) h₁) :=
+          .idrec wfA wfP wfr wft wfu nf.hk
+        have neIdrec₁ : RedTerm pPuh₁
+            (.idrec (subst σ A) (subst (liftSubst (liftSubst σ)) P)
+              (subst σ r) (subst σ t) (subst σ u) h₁) :=
+          neuTerm pPuh₁ (.idrec nf.neK) wfIdrec₁
+            (eqrel.idrecCong wfA
+              (escapeEq ⟨relA, hLogA⟩ (reflEq ⟨relA, hLogA⟩))
+              wft
+              (escapeTermEq ⟨relA, hLogA⟩ (reflEqTerm ⟨relA, hLogA⟩ pt))
+              hPP_rel
+              (escapeTermEq pPtrfl₀ (reflEqTerm pPtrfl₀ pr₀))
+              (escapeTermEq ⟨relA, hLogA⟩ (reflEqTerm ⟨relA, hLogA⟩ pu))
+              nf.keqk)
+        have hRed := idrecSubstStar wfA wfP wfr wft wfu d.reduction pId ph₁ hPropP
+        exact (redSubstStarTerm hRed pPuh₀
+          (convTerm₂ pPuh₀ pPuh₁ hPuh_eq_Puh₁ neIdrec₁)).1
+  exact irrelevanceTerm' (subst2_subst_commute P u h σ).symm pPuh₀ pPuh_valid hRes₀
+
+/-- Reducibility of `idrec` congruence under a valid substitution equality (`⊩J≡J`). -/
+theorem idrecCongTerm {eqrel : EqRelSet} {l : TypeLevel} {Γ Δ : Context}
+    {A A' P P' r r' t t' u u' h h' : Term} {σ σ' : Subst}
+    (hA : ValidType eqrel l Γ A)
+    (hA' : ValidType eqrel l Γ A')
+    (hAA' : ValidTypeEq hA A')
+    (ht : ValidTerm hA t)
+    (ht' : ValidTerm hA' t')
+    (htt' : ValidTermEq hA t t')
+    (hP : ValidType eqrel l (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P)
+    (hP' : ValidType eqrel l (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P')
+    (hPP' : ValidTypeEq hP P')
+    (hr : ValidTerm (substS2Id hA ht hP ht (rflValid hA ht)) r)
+    (hr' : ValidTerm (substS2Id hA ht hP ht (rflValid hA ht)) r')
+    (hrr' : ValidTermEq (substS2Id hA ht hP ht (rflValid hA ht)) r r')
+    (hu : ValidTerm hA u)
+    (hu' : ValidTerm hA' u')
+    (huu' : ValidTermEq hA u u')
+    (hh : ValidTerm (idValid hA ht hu) h)
+    (hh' : ValidTerm (idValid hA' ht' hu') h')
+    (hhh' : ValidTermEq (idValid hA ht hu) h h')
+    (hΔ : CtxWf Δ)
+    (hσ : ValidSubst eqrel Δ σ Γ)
+    (hσ' : ValidSubst eqrel Δ σ' Γ)
+    (hσσ' : ValidSubstEq eqrel Δ σ σ' Γ) :
+    RedTermEq (((substS2Id hA ht hP hu hh) hΔ hσ).red)
+      (subst σ (.idrec A P r t u h))
+      (subst σ' (.idrec A' P' r' t' u' h')) := by
+  have pA := (hA hΔ hσ).red
+  have pA_σ' := (hA hΔ hσ').red
+  have pA' := (hA' hΔ hσ').red
+  have hA_eq_A_σ' := (hA hΔ hσ).eq hσ' hσσ'
+  have hA_σ'_eq_A' := hAA' hΔ hσ'
+  have hA_eq_A' : RedEq pA (subst σ' A') := transEq pA pA_σ' pA' hA_eq_A_σ' hA_σ'_eq_A'
+  have pt := (ht hΔ hσ).term
+  have pt_σ' := (ht hΔ hσ').term
+  have pt' := (ht' hΔ hσ').term
+  have pt'_in_A : RedTerm pA_σ' (subst σ' t') := convTerm₂ pA_σ' pA' hA_σ'_eq_A' pt'
+  have ptt'_σ : RedTermEq pA (subst σ t) (subst σ' t') :=
+    transEqTerm pA ((ht hΔ hσ).eq hσ' hσσ')
+      (convEqTerm₂ pA pA_σ' hA_eq_A_σ' (htt' hΔ hσ'))
+  have pu := (hu hΔ hσ).term
+  have pu_σ' := (hu hΔ hσ').term
+  have pu' := (hu' hΔ hσ').term
+  have pu'_in_A : RedTerm pA_σ' (subst σ' u') := convTerm₂ pA_σ' pA' hA_σ'_eq_A' pu'
+  have puu'_σ : RedTermEq pA (subst σ u) (subst σ' u') :=
+    transEqTerm pA ((hu hΔ hσ).eq hσ' hσσ')
+      (convEqTerm₂ pA pA_σ' hA_eq_A_σ' (huu' hΔ hσ'))
+  have pId := redId pA pt pu
+  have pId' := redId pA' pt' pu'
+  have hId_eq_Id' : RedEq pId (.id (subst σ' A') (subst σ' t') (subst σ' u')) :=
+    redIdCong pA pA' hA_eq_A' pt pt' ptt'_σ pu pu' puu'_σ
+  have ph : RedTerm pId (subst σ h) := (hh hΔ hσ).term
+  have ph' : RedTerm pId' (subst σ' h') := (hh' hΔ hσ').term
+  have ph'_in_Id : RedTerm pId (subst σ' h') := convTerm₂ pId pId' hId_eq_Id' ph'
+  have hIdValid : ValidType eqrel l Γ (.id A t u) := idValid hA ht hu
+  have phh'_σ : RedTermEq pId (subst σ h) (subst σ' h') :=
+    transEqTerm pId ((hh hΔ hσ).eq hσ' hσσ')
+      (convEqTerm₂ pId (hIdValid hΔ hσ').red ((hIdValid hΔ hσ).eq hσ' hσσ') (hhh' hΔ hσ'))
+  have wfA : TypeWf Δ (subst σ A) := escape pA
+  have wfA' : TypeWf Δ (subst σ' A') := escape pA'
+  have wft : HasType Δ (subst σ t) (subst σ A) := escapeTerm pA pt
+  have wft' : HasType Δ (subst σ' t') (subst σ' A') := escapeTerm pA' pt'
+  have wfu : HasType Δ (subst σ u) (subst σ A) := escapeTerm pA pu
+  have wfu' : HasType Δ (subst σ' u') (subst σ' A') := escapeTerm pA' pu'
+  have wfP : TypeWf (.id (wk1 (subst σ A)) (wk1 (subst σ t)) (.var 0) :: subst σ A :: Δ)
+      (subst (liftSubst (liftSubst σ)) P) :=
+    escapeIdMotive hΔ hσ hA ht hP
+  have hP'_lifted : ValidType eqrel l (.id (wk1 A') (wk1 t') (.var 0) :: A' :: Γ) P' :=
+    irrelevanceLift2 hA hA' hAA' (idMotiveCtxType hA ht) (idMotiveCtxType hA' ht')
+      (idMotiveCtxTypeEq hA hA' hAA' ht ht' htt') hP'
+  have wfP' : TypeWf (.id (wk1 (subst σ' A')) (wk1 (subst σ' t')) (.var 0) :: subst σ' A' :: Δ)
+      (subst (liftSubst (liftSubst σ')) P') :=
+    escapeIdMotive hΔ hσ' hA' ht' hP'_lifted
+  have pRfl_t : RedTerm (redId pA pt pt) .rfl := rflTerm pA pt pt (reflEqTerm pA pt)
+  have pRfl_t'_A : RedTerm (redId pA_σ' pt_σ' pt'_in_A) .rfl :=
+    rflTerm pA_σ' pt_σ' pt'_in_A (htt' hΔ hσ')
+  have pRfl_t' : RedTerm (redId pA' pt' pt') .rfl := rflTerm pA' pt' pt' (reflEqTerm pA' pt')
+  have pPtrfl₀ := redIdMotiveSubst2 hΔ hσ hA ht hP pt pRfl_t
+  have pP't'rfl₀ := redIdMotiveSubst2 hΔ hσ' hA' ht' hP'_lifted pt' pRfl_t'
+  have hPtrfl_eq_P't'rfl : RedEq pPtrfl₀
+      (subst2 (subst (liftSubst (liftSubst σ')) P') (subst σ' t') .rfl) :=
+    redIdMotiveSubst2Eq hΔ hσ hσ' hσσ' hA ht hP hP' hPP'
+      pt pRfl_t pt'_in_A pRfl_t'_A ptt'_σ
+      (rflEqTerm pA pt pt (reflEqTerm pA pt))
+  have hPtrflValid : ValidType eqrel l Γ (subst2 P t .rfl) :=
+    substS2Id hA ht hP ht (rflValid hA ht)
+  have pr₀ : RedTerm pPtrfl₀ (subst σ r) :=
+    irrelevanceTerm' (subst2_subst_commute P t .rfl σ) (hPtrflValid hΔ hσ).red pPtrfl₀
+      (hr hΔ hσ).term
+  have pr'_in_Ptrfl : RedTerm pPtrfl₀ (subst σ' r') :=
+    irrelevanceTerm' (subst2_subst_commute P t .rfl σ) (hPtrflValid hΔ hσ).red pPtrfl₀
+      (convTerm₂ (hPtrflValid hΔ hσ).red (hPtrflValid hΔ hσ').red
+        ((hPtrflValid hΔ hσ).eq hσ' hσσ') (hr' hΔ hσ').term)
+  have pr'₀ : RedTerm pP't'rfl₀ (subst σ' r') :=
+    convTerm₁ pPtrfl₀ pP't'rfl₀ hPtrfl_eq_P't'rfl pr'_in_Ptrfl
+  have prr'₀ : RedTermEq pPtrfl₀ (subst σ r) (subst σ' r') :=
+    irrelevanceEqTerm' (subst2_subst_commute P t .rfl σ) (hPtrflValid hΔ hσ).red pPtrfl₀
+      (transEqTerm (hPtrflValid hΔ hσ).red ((hr hΔ hσ).eq hσ' hσσ')
+        (convEqTerm₂ (hPtrflValid hΔ hσ).red (hPtrflValid hΔ hσ').red
+          ((hPtrflValid hΔ hσ).eq hσ' hσσ') (hrr' hΔ hσ')))
+  have wfr : HasType Δ (subst σ r)
+      (subst2 (subst (liftSubst (liftSubst σ)) P) (subst σ t) .rfl) :=
+    escapeTerm pPtrfl₀ pr₀
+  have wfr' : HasType Δ (subst σ' r')
+      (subst2 (subst (liftSubst (liftSubst σ')) P') (subst σ' t') .rfl) :=
+    escapeTerm pP't'rfl₀ pr'₀
+  have hPropP : ∀ {v v'}, RedTerm pId v → RedTerm pId v' → RedTermEq pId v v' →
+      TypeEq Δ
+        (subst2 (subst (liftSubst (liftSubst σ)) P) (subst σ u) v)
+        (subst2 (subst (liftSubst (liftSubst σ)) P) (subst σ u) v') := by
+    intro v v' hv hv' hvv'
+    exact eqrel.typeToEq (escapeEq (redIdMotiveSubst2 hΔ hσ hA ht hP pu hv)
+      (redIdMotiveSubst2Eq hΔ hσ hσ (reflSubst hσ) hA ht hP hP (reflValid hP)
+        pu hv pu hv' (reflEqTerm pA pu) hvv'))
+  have hPropP' : ∀ {v v'}, RedTerm pId' v → RedTerm pId' v' → RedTermEq pId' v v' →
+      TypeEq Δ
+        (subst2 (subst (liftSubst (liftSubst σ')) P') (subst σ' u') v)
+        (subst2 (subst (liftSubst (liftSubst σ')) P') (subst σ' u') v') := by
+    intro v v' hv hv' hvv'
+    exact eqrel.typeToEq (escapeEq (redIdMotiveSubst2 hΔ hσ' hA' ht' hP'_lifted pu' hv)
+      (redIdMotiveSubst2Eq hΔ hσ' hσ' (reflSubst hσ') hA' ht' hP'_lifted hP'_lifted
+        (reflValid hP'_lifted) pu' hv pu' hv' (reflEqTerm pA' pu') hvv'))
+  have pPuh₀ := redIdMotiveSubst2 hΔ hσ hA ht hP pu ph
+  have pP'u'h'₀ := redIdMotiveSubst2 hΔ hσ' hA' ht' hP'_lifted pu' ph'
+  have pPuh_valid := ((substS2Id hA ht hP hu hh) hΔ hσ).red
+  rcases pA with ⟨relA, hLogA⟩
+  have hLogId : LogRelAt eqrel l Δ (.id (subst σ A) (subst σ t) (subst σ u))
+      (RedIdRel eqrel Δ (subst σ A) (subst σ t) (subst σ u) relA) :=
+    redIdLogRelAt hLogA pt pu
+  have phh'_id : RedIdTermEq eqrel Δ (subst σ A) (subst σ t) (subst σ u) relA
+      (subst σ h) (subst σ' h') :=
+    (RedTermEq_of_LogRelAt hLogId pId).mp phh'_σ
+  rcases phh'_id with ⟨h₁, h₁', d, d', h₁eqh₁', prop⟩
+  have d'_Id' : Star Δ (subst σ' h') h₁' (.id (subst σ' A') (subst σ' t') (subst σ' u')) :=
+    d'.reduction.conv (eqrel.typeToEq (escapeEq pId hId_eq_Id'))
+  have hRes₀ : RedTermEq pPuh₀
+      (.idrec (subst σ A) (subst (liftSubst (liftSubst σ)) P)
+        (subst σ r) (subst σ t) (subst σ u) (subst σ h))
+      (.idrec (subst σ' A') (subst (liftSubst (liftSubst σ')) P')
+        (subst σ' r') (subst σ' t') (subst σ' u') (subst σ' h')) := by
+    cases prop with
+    | rfl htu_rel =>
+        have ptu : RedTermEq ⟨relA, hLogA⟩ (subst σ t) (subst σ u) := ⟨relA, hLogA, htu_rel⟩
+        have pt'u'_in_A : RedTermEq ⟨relA, hLogA⟩ (subst σ' t') (subst σ' u') :=
+          transEqTerm ⟨relA, hLogA⟩ (symEqTerm ⟨relA, hLogA⟩ ptt'_σ)
+            (transEqTerm ⟨relA, hLogA⟩ ptu puu'_σ)
+        have pt'u' : RedTermEq pA' (subst σ' t') (subst σ' u') :=
+          convEqTerm₁ ⟨relA, hLogA⟩ pA' hA_eq_A' pt'u'_in_A
+        have pRfl_u : RedTerm pId .rfl := rflTerm ⟨relA, hLogA⟩ pt pu ptu
+        have pRfl_u' : RedTerm pId' .rfl := rflTerm pA' pt' pu' pt'u'
+        rcases redSubstStarTerm d.reduction pId pRfl_u with ⟨_, ph_eq_rfl⟩
+        rcases redSubstStarTerm d'_Id' pId' pRfl_u' with ⟨_, ph'_eq_rfl'⟩
+        have pPurfl₀ := redIdMotiveSubst2 hΔ hσ hA ht hP pu pRfl_u
+        have pP'u'rfl₀ := redIdMotiveSubst2 hΔ hσ' hA' ht' hP'_lifted pu' pRfl_u'
+        have hPuh_eq_Purfl : RedEq pPuh₀
+            (subst2 (subst (liftSubst (liftSubst σ)) P) (subst σ u) .rfl) :=
+          redIdMotiveSubst2Eq hΔ hσ hσ (reflSubst hσ) hA ht hP hP (reflValid hP)
+            pu ph pu pRfl_u (reflEqTerm ⟨relA, hLogA⟩ pu) ph_eq_rfl
+        have hPtrfl_eq_Purfl : RedEq pPtrfl₀
+            (subst2 (subst (liftSubst (liftSubst σ)) P) (subst σ u) .rfl) :=
+          redIdMotiveSubst2Eq hΔ hσ hσ (reflSubst hσ) hA ht hP hP (reflValid hP)
+            pt pRfl_t pu pRfl_u ptu (reflEqTerm (redId ⟨relA, hLogA⟩ pt pt) pRfl_t)
+        have hPuh_eq_Ptrfl : RedEq pPuh₀
+            (subst2 (subst (liftSubst (liftSubst σ)) P) (subst σ t) .rfl) :=
+          transEq pPuh₀ pPurfl₀ pPtrfl₀ hPuh_eq_Purfl (symEq pPtrfl₀ pPurfl₀ hPtrfl_eq_Purfl)
+        have hP'u'h'_eq_P'u'rfl : RedEq pP'u'h'₀
+            (subst2 (subst (liftSubst (liftSubst σ')) P') (subst σ' u') .rfl) :=
+          redIdMotiveSubst2Eq hΔ hσ' hσ' (reflSubst hσ') hA' ht' hP'_lifted hP'_lifted
+            (reflValid hP'_lifted) pu' ph' pu' pRfl_u' (reflEqTerm pA' pu') ph'_eq_rfl'
+        have hP't'rfl_eq_P'u'rfl : RedEq pP't'rfl₀
+            (subst2 (subst (liftSubst (liftSubst σ')) P') (subst σ' u') .rfl) :=
+          redIdMotiveSubst2Eq hΔ hσ' hσ' (reflSubst hσ') hA' ht' hP'_lifted hP'_lifted
+            (reflValid hP'_lifted) pt' pRfl_t' pu' pRfl_u' pt'u'
+            (reflEqTerm (redId pA' pt' pt') pRfl_t')
+        have hP'u'h'_eq_P't'rfl : RedEq pP'u'h'₀
+            (subst2 (subst (liftSubst (liftSubst σ')) P') (subst σ' t') .rfl) :=
+          transEq pP'u'h'₀ pP'u'rfl₀ pP't'rfl₀ hP'u'h'_eq_P'u'rfl
+            (symEq pP't'rfl₀ pP'u'rfl₀ hP't'rfl_eq_P'u'rfl)
+        have hPuh_eq_P'u'h' : RedEq pPuh₀
+            (subst2 (subst (liftSubst (liftSubst σ')) P') (subst σ' u') (subst σ' h')) :=
+          transEq pPuh₀ pPtrfl₀ pP'u'h'₀ hPuh_eq_Ptrfl
+            (transEq pPtrfl₀ pP't'rfl₀ pP'u'h'₀ hPtrfl_eq_P't'rfl
+              (symEq pP'u'h'₀ pP't'rfl₀ hP'u'h'_eq_P't'rfl))
+        have hRed1 := (idrecSubstStar wfA wfP wfr wft wfu d.reduction pId pRfl_u hPropP).trans
+          ((Star.step
+            (.idrecBeta wfA wfP wfr wft wfu
+              (eqrel.termToEq (escapeTermEq ⟨relA, hLogA⟩ ptu))
+              (eqrel.typeToEq (escapeEq pPtrfl₀ hPtrfl_eq_Purfl)))
+            (.refl wfr)).conv
+            (.symm (eqrel.typeToEq (escapeEq pPuh₀ hPuh_eq_Ptrfl))))
+        have hRed2 := (idrecSubstStar wfA' wfP' wfr' wft' wfu' d'_Id' pId' pRfl_u' hPropP').trans
+          ((Star.step
+            (.idrecBeta wfA' wfP' wfr' wft' wfu'
+              (eqrel.termToEq (escapeTermEq pA' pt'u'))
+              (eqrel.typeToEq (escapeEq pP't'rfl₀ hP't'rfl_eq_P'u'rfl)))
+            (.refl wfr')).conv
+            (.symm (eqrel.typeToEq (escapeEq pP'u'h'₀ hP'u'h'_eq_P't'rfl))))
+        have eq₁ : RedTermEq pPuh₀
+            (.idrec (subst σ A) (subst (liftSubst (liftSubst σ)) P)
+              (subst σ r) (subst σ t) (subst σ u) (subst σ h))
+            (subst σ r) :=
+          (redSubstStarTerm hRed1 pPuh₀ (convTerm₂ pPuh₀ pPtrfl₀ hPuh_eq_Ptrfl pr₀)).2
+        have eq₂ : RedTermEq pP'u'h'₀
+            (.idrec (subst σ' A') (subst (liftSubst (liftSubst σ')) P')
+              (subst σ' r') (subst σ' t') (subst σ' u') (subst σ' h'))
+            (subst σ' r') :=
+          (redSubstStarTerm hRed2 pP'u'h'₀
+            (convTerm₂ pP'u'h'₀ pP't'rfl₀ hP'u'h'_eq_P't'rfl pr'₀)).2
+        have prr'_in_Puh : RedTermEq pPuh₀ (subst σ r) (subst σ' r') :=
+          convEqTerm₂ pPuh₀ pPtrfl₀ hPuh_eq_Ptrfl prr'₀
+        exact transEqTerm pPuh₀ eq₁
+          (transEqTerm pPuh₀ prr'_in_Puh
+            (convEqTerm₂ pPuh₀ pP'u'h'₀ hPuh_eq_P'u'h' (symEqTerm pP'u'h'₀ eq₂)))
+    | ne nf =>
+        have wf_h₁ : HasType Δ h₁ (.id (subst σ A) (subst σ t) (subst σ u)) := d.target
+        have wf_h₁'_Id : HasType Δ h₁' (.id (subst σ A) (subst σ t) (subst σ u)) := d'.target
+        have wf_h₁' : HasType Δ h₁' (.id (subst σ' A') (subst σ' t') (subst σ' u')) :=
+          .conv wf_h₁'_Id (eqrel.typeToEq (escapeEq pId hId_eq_Id'))
+        have ph₁ : RedTerm pId h₁ :=
+          neuTerm pId nf.neK wf_h₁ (eqrel.transNe nf.keqm (eqrel.symmNe nf.keqm))
+        have ph₁' : RedTerm pId' h₁' :=
+          neuTerm pId' nf.neM wf_h₁'
+            (eqrel.convNe (eqrel.transNe (eqrel.symmNe nf.keqm) nf.keqm)
+              (eqrel.typeToEq (escapeEq pId hId_eq_Id')))
+        have ph₁'_in_Id : RedTerm pId h₁' := convTerm₂ pId pId' hId_eq_Id' ph₁'
+        have ph₁h₁'_Id : RedTermEq pId h₁ h₁' :=
+          neuEqTerm pId nf.neK nf.neM wf_h₁ wf_h₁'_Id nf.keqm
+        rcases redSubstStarTerm d.reduction pId ph₁ with ⟨_, ph_eq_h₁⟩
+        rcases redSubstStarTerm d'_Id' pId' ph₁' with ⟨_, ph'_eq_h₁'⟩
+        have pPuh₁ := redIdMotiveSubst2 hΔ hσ hA ht hP pu ph₁
+        have pP'u'h₁' := redIdMotiveSubst2 hΔ hσ' hA' ht' hP'_lifted pu' ph₁'
+        have hPuh_eq_Puh₁ : RedEq pPuh₀
+            (subst2 (subst (liftSubst (liftSubst σ)) P) (subst σ u) h₁) :=
+          redIdMotiveSubst2Eq hΔ hσ hσ (reflSubst hσ) hA ht hP hP (reflValid hP)
+            pu ph pu ph₁ (reflEqTerm ⟨relA, hLogA⟩ pu) ph_eq_h₁
+        have hP'u'h'_eq_P'u'h₁' : RedEq pP'u'h'₀
+            (subst2 (subst (liftSubst (liftSubst σ')) P') (subst σ' u') h₁') :=
+          redIdMotiveSubst2Eq hΔ hσ' hσ' (reflSubst hσ') hA' ht' hP'_lifted hP'_lifted
+            (reflValid hP'_lifted) pu' ph' pu' ph₁' (reflEqTerm pA' pu') ph'_eq_h₁'
+        have ph₁'_in_Id_σ' : RedTerm (redId pA_σ' pt_σ' pu'_in_A) h₁' :=
+          convTerm₁ pId (redId pA_σ' pt_σ' pu'_in_A)
+            (redIdCong ⟨relA, hLogA⟩ pA_σ' hA_eq_A_σ'
+              pt pt_σ' ((ht hΔ hσ).eq hσ' hσσ') pu pu'_in_A puu'_σ)
+            ph₁'_in_Id
+        have hPuh₁_eq_P'u'h₁' : RedEq pPuh₁
+            (subst2 (subst (liftSubst (liftSubst σ')) P') (subst σ' u') h₁') :=
+          redIdMotiveSubst2Eq hΔ hσ hσ' hσσ' hA ht hP hP' hPP'
+            pu ph₁ pu'_in_A ph₁'_in_Id_σ' puu'_σ ph₁h₁'_Id
+        have hPuh_eq_P'u'h' : RedEq pPuh₀
+            (subst2 (subst (liftSubst (liftSubst σ')) P') (subst σ' u') (subst σ' h')) :=
+          transEq pPuh₀ pPuh₁ pP'u'h'₀ hPuh_eq_Puh₁
+            (transEq pPuh₁ pP'u'h₁' pP'u'h'₀ hPuh₁_eq_P'u'h₁'
+              (symEq pP'u'h'₀ pP'u'h₁' hP'u'h'_eq_P'u'h₁'))
+        have wfIdrec₁ : HasType Δ
+            (.idrec (subst σ A) (subst (liftSubst (liftSubst σ)) P)
+              (subst σ r) (subst σ t) (subst σ u) h₁)
+            (subst2 (subst (liftSubst (liftSubst σ)) P) (subst σ u) h₁) :=
+          .idrec wfA wfP wfr wft wfu wf_h₁
+        have wfIdrec₁' : HasType Δ
+            (.idrec (subst σ' A') (subst (liftSubst (liftSubst σ')) P')
+              (subst σ' r') (subst σ' t') (subst σ' u') h₁')
+            (subst2 (subst (liftSubst (liftSubst σ')) P') (subst σ' u') h₁') :=
+          .idrec wfA' wfP' wfr' wft' wfu' wf_h₁'
+        have wfIdrec₁'_conv : HasType Δ
+            (.idrec (subst σ' A') (subst (liftSubst (liftSubst σ')) P')
+              (subst σ' r') (subst σ' t') (subst σ' u') h₁')
+            (subst2 (subst (liftSubst (liftSubst σ)) P) (subst σ u) h₁) :=
+          .conv wfIdrec₁' (.symm (eqrel.typeToEq (escapeEq pPuh₁ hPuh₁_eq_P'u'h₁')))
+        have hPP'_rel := escapeIdMotiveEq hΔ hσ hσ' hσσ' hA ht hP hP' hPP'
+        have hNeCong : eqrel.NeEqRel Δ
+            (.idrec (subst σ A) (subst (liftSubst (liftSubst σ)) P)
+              (subst σ r) (subst σ t) (subst σ u) h₁)
+            (.idrec (subst σ' A') (subst (liftSubst (liftSubst σ')) P')
+              (subst σ' r') (subst σ' t') (subst σ' u') h₁')
+            (subst2 (subst (liftSubst (liftSubst σ)) P) (subst σ u) h₁) :=
+          eqrel.idrecCong wfA (escapeEq ⟨relA, hLogA⟩ hA_eq_A') wft
+            (escapeTermEq ⟨relA, hLogA⟩ ptt'_σ)
+            hPP'_rel
+            (escapeTermEq pPtrfl₀ prr'₀)
+            (escapeTermEq ⟨relA, hLogA⟩ puu'_σ)
+            nf.keqm
+        have neIdrec₁ : RedTerm pPuh₁
+            (.idrec (subst σ A) (subst (liftSubst (liftSubst σ)) P)
+              (subst σ r) (subst σ t) (subst σ u) h₁) :=
+          neuTerm pPuh₁ (.idrec nf.neK) wfIdrec₁
+            (eqrel.transNe hNeCong (eqrel.symmNe hNeCong))
+        have neIdrec₁' : RedTerm pP'u'h₁'
+            (.idrec (subst σ' A') (subst (liftSubst (liftSubst σ')) P')
+              (subst σ' r') (subst σ' t') (subst σ' u') h₁') :=
+          neuTerm pP'u'h₁' (.idrec nf.neM) wfIdrec₁'
+            (eqrel.convNe (eqrel.transNe (eqrel.symmNe hNeCong) hNeCong)
+              (eqrel.typeToEq (escapeEq pPuh₁ hPuh₁_eq_P'u'h₁')))
+        have neIdrecEq : RedTermEq pPuh₁
+            (.idrec (subst σ A) (subst (liftSubst (liftSubst σ)) P)
+              (subst σ r) (subst σ t) (subst σ u) h₁)
+            (.idrec (subst σ' A') (subst (liftSubst (liftSubst σ')) P')
+              (subst σ' r') (subst σ' t') (subst σ' u') h₁') :=
+          neuEqTerm pPuh₁ (.idrec nf.neK) (.idrec nf.neM) wfIdrec₁ wfIdrec₁'_conv hNeCong
+        have hRed1 := idrecSubstStar wfA wfP wfr wft wfu d.reduction pId ph₁ hPropP
+        have hRed2 := idrecSubstStar wfA' wfP' wfr' wft' wfu' d'_Id' pId' ph₁' hPropP'
+        have eq₁ := (redSubstStarTerm hRed1 pPuh₀
+          (convTerm₂ pPuh₀ pPuh₁ hPuh_eq_Puh₁ neIdrec₁)).2
+        have eq₂ := (redSubstStarTerm hRed2 pP'u'h'₀
+          (convTerm₂ pP'u'h'₀ pP'u'h₁' hP'u'h'_eq_P'u'h₁' neIdrec₁')).2
+        exact transEqTerm pPuh₀ eq₁
+          (transEqTerm pPuh₀ (convEqTerm₂ pPuh₀ pPuh₁ hPuh_eq_Puh₁ neIdrecEq)
+            (convEqTerm₂ pPuh₀ pP'u'h'₀ hPuh_eq_P'u'h' (symEqTerm pP'u'h'₀ eq₂)))
+  exact irrelevanceEqTerm' (subst2_subst_commute P u h σ).symm pPuh₀ pPuh_valid hRes₀
+
+/-- Validity of `idrec` (`Jᵛ`). -/
+theorem idrecValid {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context}
+    {A P r t u h : Term}
+    (hA : ValidType eqrel l Γ A)
+    (ht : ValidTerm hA t)
+    (hP : ValidType eqrel l (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P)
+    (hr : ValidTerm (substS2Id hA ht hP ht (rflValid hA ht)) r)
+    (hu : ValidTerm hA u)
+    (hh : ValidTerm (idValid hA ht hu) h) :
+    ValidTerm (substS2Id hA ht hP hu hh) (.idrec A P r t u h) := by
+  intro Δ σ hΔ hσ
+  refine ⟨idrecTerm hA ht hP hr hu hh hΔ hσ, fun {σ'} hσ' hσσ' ↦ ?_⟩
+  exact idrecCongTerm hA hA (reflValid hA) ht ht (reflValidTerm hA ht)
+    hP hP (reflValid hP)
+    hr hr (reflValidTerm (substS2Id hA ht hP ht (rflValid hA ht)) hr)
+    hu hu (reflValidTerm hA hu)
+    hh hh (reflValidTerm (idValid hA ht hu) hh)
+    hΔ hσ hσ' hσσ'
+
+/-- Validity of `idrec` congruence (`J-congᵛ`). -/
+theorem idrecCongValid {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context}
+    {A A' P P' r r' t t' u u' h h' : Term}
+    (hA : ValidType eqrel l Γ A)
+    (hA' : ValidType eqrel l Γ A')
+    (hAA' : ValidTypeEq hA A')
+    (ht : ValidTerm hA t)
+    (ht' : ValidTerm hA' t')
+    (htt' : ValidTermEq hA t t')
+    (hP : ValidType eqrel l (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P)
+    (hP' : ValidType eqrel l (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P')
+    (hPP' : ValidTypeEq hP P')
+    (hr : ValidTerm (substS2Id hA ht hP ht (rflValid hA ht)) r)
+    (hr' : ValidTerm (substS2Id hA ht hP ht (rflValid hA ht)) r')
+    (hrr' : ValidTermEq (substS2Id hA ht hP ht (rflValid hA ht)) r r')
+    (hu : ValidTerm hA u)
+    (hu' : ValidTerm hA' u')
+    (huu' : ValidTermEq hA u u')
+    (hh : ValidTerm (idValid hA ht hu) h)
+    (hh' : ValidTerm (idValid hA' ht' hu') h')
+    (hhh' : ValidTermEq (idValid hA ht hu) h h') :
+    ValidTermEq (substS2Id hA ht hP hu hh)
+      (.idrec A P r t u h) (.idrec A' P' r' t' u' h') := by
+  intro Δ σ hΔ hσ
+  exact idrecCongTerm hA hA' hAA' ht ht' htt' hP hP' hPP' hr hr' hrr' hu hu' huu' hh hh' hhh'
+    hΔ hσ hσ (reflSubst hσ)
 
 end LogrelMLTT

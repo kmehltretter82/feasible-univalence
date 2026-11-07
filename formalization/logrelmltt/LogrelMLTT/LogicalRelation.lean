@@ -369,6 +369,65 @@ def RedSigmaRel (eqrel : EqRelSet) (Γ : Context) (F G : Term)
   hasTerm t := RedSigmaTerm eqrel Γ F G relF relG t
   eqTerm t u := RedSigmaTermEq eqrel Γ F G relF relG t u
 
+/-- Reducible `Id`-type equality (`Γ ⊩⟨ l ⟩Id A ≡ B / [A]`). -/
+inductive RedIdEq (eqrel : EqRelSet) (Γ : Context) (Ty lhs rhs : Term)
+    (relTy : RedRel) (B : Term) : Prop where
+  | mk (Ty' lhs' rhs' : Term)
+      (D' : TypeStar Γ B (.id Ty' lhs' rhs'))
+      (AeqB : eqrel.TypeEqRel Γ (.id Ty lhs rhs) (.id Ty' lhs' rhs'))
+      (TyeqTy' : relTy.eqType Ty')
+      (lhseqlhs' : relTy.eqTerm lhs lhs')
+      (rhseqrhs' : relTy.eqTerm rhs rhs')
+      (lhsEqRhs_iff : relTy.eqTerm lhs rhs ↔ relTy.eqTerm lhs' rhs')
+
+/-- WHNF property of reducible identity terms (`_⊩Id_∷_`). -/
+inductive RedIdTermProp (eqrel : EqRelSet) (Γ : Context) (Ty lhs rhs : Term)
+    (relTy : RedRel) : Term → Prop where
+  | rfl : relTy.eqTerm lhs rhs → RedIdTermProp eqrel Γ Ty lhs rhs relTy .rfl
+  | ne {u' : Term} : RedNeNf eqrel Γ u' (.id Ty lhs rhs) →
+      RedIdTermProp eqrel Γ Ty lhs rhs relTy u'
+
+/-- Reducible term of `Id`-type (`Γ ⊩⟨ l ⟩Id t ∷ A / [A]`). -/
+inductive RedIdTerm (eqrel : EqRelSet) (Γ : Context) (Ty lhs rhs : Term)
+    (relTy : RedRel) (t : Term) : Prop where
+  | mk (u : Term)
+      (d : StarWf Γ t u (.id Ty lhs rhs))
+      (uequ : eqrel.TermEqRel Γ u u (.id Ty lhs rhs))
+      (prop : RedIdTermProp eqrel Γ Ty lhs rhs relTy u)
+
+/-- WHNF property of reducible identity term equality (`_⊩Id_≡_∷_`). -/
+inductive RedIdTermEqProp (eqrel : EqRelSet) (Γ : Context) (Ty lhs rhs : Term)
+    (relTy : RedRel) : Term → Term → Prop where
+  | rfl : relTy.eqTerm lhs rhs → RedIdTermEqProp eqrel Γ Ty lhs rhs relTy .rfl .rfl
+  | ne {u' v' : Term} : RedNeNfEq eqrel Γ u' v' (.id Ty lhs rhs) →
+      RedIdTermEqProp eqrel Γ Ty lhs rhs relTy u' v'
+
+/-- Reducible term equality of `Id`-type (`Γ ⊩⟨ l ⟩Id t ≡ u ∷ A / [A]`). -/
+inductive RedIdTermEq (eqrel : EqRelSet) (Γ : Context) (Ty lhs rhs : Term)
+    (relTy : RedRel) (t u : Term) : Prop where
+  | mk (t' u' : Term)
+      (d : StarWf Γ t t' (.id Ty lhs rhs))
+      (d' : StarWf Γ u u' (.id Ty lhs rhs))
+      (t'equ' : eqrel.TermEqRel Γ t' u' (.id Ty lhs rhs))
+      (prop : RedIdTermEqProp eqrel Γ Ty lhs rhs relTy t' u')
+
+theorem identity_of_RedIdTermProp {eqrel : EqRelSet} {Γ : Context} {Ty lhs rhs u : Term}
+    {relTy : RedRel} : RedIdTermProp eqrel Γ Ty lhs rhs relTy u → IdentityView u
+  | .rfl _ => .rfl
+  | .ne nf => .neutral nf.neK
+
+theorem split_of_RedIdTermEqProp {eqrel : EqRelSet} {Γ : Context} {Ty lhs rhs u v : Term}
+    {relTy : RedRel} :
+    RedIdTermEqProp eqrel Γ Ty lhs rhs relTy u v → IdentityView u ∧ IdentityView v
+  | .rfl _ => ⟨.rfl, .rfl⟩
+  | .ne nf => ⟨.neutral nf.neK, .neutral nf.neM⟩
+
+/-- Relation bundle for `Id`-types. -/
+def RedIdRel (eqrel : EqRelSet) (Γ : Context) (Ty lhs rhs : Term) (relTy : RedRel) : RedRel where
+  eqType B := RedIdEq eqrel Γ Ty lhs rhs relTy B
+  hasTerm t := RedIdTerm eqrel Γ Ty lhs rhs relTy t
+  eqTerm t u := RedIdTermEq eqrel Γ Ty lhs rhs relTy t u
+
 /-- One level of the logical relation (`LogRel` in `Definition/LogicalRelation.agda`),
 parameterized by the lower-level relation `rec`. -/
 inductive LogRel (eqrel : EqRelSet) (l : TypeLevel)
@@ -426,6 +485,15 @@ inductive LogRel (eqrel : EqRelSet) (l : TypeLevel)
         RelFEqTerm relF ρ Δ a b →
         RelGEqType relG ρ Δ a (subst0 (wk (.lift ρ) G) b)) :
       LogRel eqrel l rec Γ A (RedSigmaRel eqrel Γ F G relF relG)
+  | id {Γ : Context} {A Ty lhs rhs : Term} {relTy : RedRel}
+      (D : TypeStarWf Γ A (.id Ty lhs rhs))
+      (AeqA : eqrel.TypeEqRel Γ (.id Ty lhs rhs) (.id Ty lhs rhs))
+      (derivTy : LogRel eqrel l rec Γ Ty relTy)
+      (hasLhs : relTy.hasTerm lhs)
+      (hasRhs : relTy.hasTerm rhs)
+      (lhsEqLhs : relTy.eqTerm lhs lhs)
+      (rhsEqRhs : relTy.eqTerm rhs rhs) :
+      LogRel eqrel l rec Γ A (RedIdRel eqrel Γ Ty lhs rhs relTy)
   | emb {Γ : Context} {A : Term} {l' : TypeLevel} {rel : RedRel}
       (hlt : TypeLevelLT l' l)
       (hA : rec l' hlt Γ A rel) :
@@ -525,6 +593,27 @@ inductive RedSigma (eqrel : EqRelSet) (l : TypeLevel) (Γ : Context) (A : Term) 
         (ha : RedTerm (redF hρ hΔ) a) (_hb : RedTerm (redF hρ hΔ) b),
         RedTermEq (redF hρ hΔ) a b →
         RedEq (redG hρ hΔ ha) (subst0 (wk (.lift ρ) G) b))
+
+/-- Bundled `Id`-reducibility data with explicit components (`Γ ⊩′⟨ l ⟩Id A`). -/
+structure RedIdAt (eqrel : EqRelSet) (l : TypeLevel) (Γ : Context) (A Ty lhs rhs : Term) : Prop where
+  D : TypeStarWf Γ A (.id Ty lhs rhs)
+  AeqA : eqrel.TypeEqRel Γ (.id Ty lhs rhs) (.id Ty lhs rhs)
+  redTy : RedType eqrel l Γ Ty
+  hasLhs : RedTerm redTy lhs
+  hasRhs : RedTerm redTy rhs
+  lhsEqLhs : RedTermEq redTy lhs lhs
+  rhsEqRhs : RedTermEq redTy rhs rhs
+
+/-- Bundled `Id`-reducibility data (`Γ ⊩′⟨ l ⟩Id A`). -/
+inductive RedId (eqrel : EqRelSet) (l : TypeLevel) (Γ : Context) (A : Term) : Prop where
+  | mk (Ty lhs rhs : Term)
+      (D : TypeStarWf Γ A (.id Ty lhs rhs))
+      (AeqA : eqrel.TypeEqRel Γ (.id Ty lhs rhs) (.id Ty lhs rhs))
+      (redTy : RedType eqrel l Γ Ty)
+      (hasLhs : RedTerm redTy lhs)
+      (hasRhs : RedTerm redTy rhs)
+      (lhsEqLhs : RedTermEq redTy lhs lhs)
+      (rhsEqRhs : RedTermEq redTy rhs rhs)
 
 theorem RedType.U {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context}
     (hU : RedU l Γ) : RedType eqrel l Γ .univ := by
@@ -659,6 +748,15 @@ inductive LogRelShape (eqrel : EqRelSet) : Context → Term → RedRel → Prop 
         RelFEqTerm relF ρ Δ a b →
         RelGEqType relG ρ Δ a (subst0 (wk (.lift ρ) G) b)) :
       LogRelShape eqrel Γ A (RedSigmaRel eqrel Γ F G relF relG)
+  | id {l : TypeLevel} {Γ : Context} {A Ty lhs rhs : Term} {relTy : RedRel}
+      (D : TypeStarWf Γ A (.id Ty lhs rhs))
+      (AeqA : eqrel.TypeEqRel Γ (.id Ty lhs rhs) (.id Ty lhs rhs))
+      (derivTy : LogRelAt eqrel l Γ Ty relTy)
+      (hasLhs : relTy.hasTerm lhs)
+      (hasRhs : relTy.hasTerm rhs)
+      (lhsEqLhs : relTy.eqTerm lhs lhs)
+      (rhsEqRhs : relTy.eqTerm rhs rhs) :
+      LogRelShape eqrel Γ A (RedIdRel eqrel Γ Ty lhs rhs relTy)
 
 theorem logRelShape_of_LogRelAt {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A : Term}
     {rel : RedRel} (h : LogRelAt eqrel l Γ A rel) : LogRelShape eqrel Γ A rel := by
@@ -672,6 +770,8 @@ theorem logRelShape_of_LogRelAt {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context
   | unit D => exact .unit D
   | sigma D hF hG AeqA relF relG hF_ex derivF hG_ex derivG Gext =>
       exact .sigma D hF hG AeqA relF relG hF_ex derivF hG_ex derivG Gext
+  | id D AeqA derivTy hasLhs hasRhs lhsEqLhs rhsEqRhs =>
+      exact .id D AeqA derivTy hasLhs hasRhs lhsEqLhs rhsEqRhs
   | emb hlt hA =>
       cases hlt
       cases hA with
@@ -684,6 +784,8 @@ theorem logRelShape_of_LogRelAt {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context
       | unit D => exact .unit D
       | sigma D hF hG AeqA relF relG hF_ex derivF hG_ex derivG Gext =>
           exact .sigma D hF hG AeqA relF relG hF_ex derivF hG_ex derivG Gext
+      | id D AeqA derivTy hasLhs hasRhs lhsEqLhs rhsEqRhs =>
+          exact .id D AeqA derivTy hasLhs hasRhs lhsEqLhs rhsEqRhs
       | emb hlt' _ => cases hlt'
 
 /-- Equivalence of two `RedRel` bundles. -/
@@ -750,6 +852,8 @@ theorem irrelLogRel_step {eqrel : EqRelSet} {l : TypeLevel}
           cases whnfRedStar D.reduction .univ
       | sigma D =>
           cases whnfRedStar D.reduction .univ
+      | id D =>
+          cases whnfRedStar D.reduction .univ
   | @nat Γ A D₁ =>
       intro A' rel₂ hAA' h₂
       subst hAA'
@@ -769,6 +873,8 @@ theorem irrelLogRel_step {eqrel : EqRelSet} {l : TypeLevel}
           cases whrDetStar ⟨D₁.reduction, .nat⟩ ⟨D₂.reduction, .unit⟩
       | sigma D₂ =>
           cases whrDetStar ⟨D₁.reduction, .nat⟩ ⟨D₂.reduction, .sigma⟩
+      | id D₂ =>
+          cases whrDetStar ⟨D₁.reduction, .nat⟩ ⟨D₂.reduction, .id⟩
   | @ne Γ A K₁ neA =>
       intro A' rel₂ hAA' h₂
       subst hAA'
@@ -802,6 +908,10 @@ theorem irrelLogRel_step {eqrel : EqRelSet} {l : TypeLevel}
           have h := whrDetStar ⟨D₂.reduction, .sigma⟩ ⟨neA.D.reduction, .neutral neA.neK⟩
           subst h
           cases neA.neK
+      | id D₂ =>
+          have h := whrDetStar ⟨D₂.reduction, .id⟩ ⟨neA.D.reduction, .neutral neA.neK⟩
+          subst h
+          cases neA.neK
   | @pi Γ A F₁ G₁ D₁ _hF₁ _hG₁ _AeqA₁ relF₁ relG₁ hF_ex₁ _derivF₁ hG_ex₁ _derivG₁ _Gext₁ ihF ihG =>
       intro A' rel₂ hAA' h₂
       subst hAA'
@@ -820,6 +930,8 @@ theorem irrelLogRel_step {eqrel : EqRelSet} {l : TypeLevel}
           cases whrDetStar ⟨D₂.reduction, .unit⟩ ⟨D₁.reduction, .pi⟩
       | sigma D₂ =>
           cases whrDetStar ⟨D₂.reduction, .sigma⟩ ⟨D₁.reduction, .pi⟩
+      | id D₂ =>
+          cases whrDetStar ⟨D₂.reduction, .id⟩ ⟨D₁.reduction, .pi⟩
       | @pi l₂ _ _ F₂ G₂ D₂ _ _ _ relF₂ relG₂ hF_ex₂ derivF₂ hG_ex₂ derivG₂ _ =>
           have hPi : Term.pi F₁ G₁ = Term.pi F₂ G₂ :=
             whrDetStar ⟨D₁.reduction, .pi⟩ ⟨D₂.reduction, .pi⟩
@@ -979,6 +1091,8 @@ theorem irrelLogRel_step {eqrel : EqRelSet} {l : TypeLevel}
           cases whrDetStar ⟨D₁.reduction, .empty⟩ ⟨D₂.reduction, .unit⟩
       | sigma D₂ =>
           cases whrDetStar ⟨D₁.reduction, .empty⟩ ⟨D₂.reduction, .sigma⟩
+      | id D₂ =>
+          cases whrDetStar ⟨D₁.reduction, .empty⟩ ⟨D₂.reduction, .id⟩
   | @unit Γ A D₁ =>
       intro A' rel₂ hAA' h₂
       subst hAA'
@@ -998,6 +1112,8 @@ theorem irrelLogRel_step {eqrel : EqRelSet} {l : TypeLevel}
       | unit _ => exact RedRelEquiv.refl _
       | sigma D₂ =>
           cases whrDetStar ⟨D₁.reduction, .unit⟩ ⟨D₂.reduction, .sigma⟩
+      | id D₂ =>
+          cases whrDetStar ⟨D₁.reduction, .unit⟩ ⟨D₂.reduction, .id⟩
   | @sigma Γ A F₁ G₁ D₁ hF₁ _hG₁ _AeqA₁ relF₁ relG₁ hF_ex₁ _derivF₁ hG_ex₁ _derivG₁ _Gext₁ ihF ihG =>
       intro A' rel₂ hAA' h₂
       subst hAA'
@@ -1016,6 +1132,8 @@ theorem irrelLogRel_step {eqrel : EqRelSet} {l : TypeLevel}
           cases whrDetStar ⟨D₂.reduction, .empty⟩ ⟨D₁.reduction, .sigma⟩
       | unit D₂ =>
           cases whrDetStar ⟨D₂.reduction, .unit⟩ ⟨D₁.reduction, .sigma⟩
+      | id D₂ =>
+          cases whrDetStar ⟨D₂.reduction, .id⟩ ⟨D₁.reduction, .sigma⟩
       | @sigma l₂ _ _ F₂ G₂ D₂ _ _ _ relF₂ relG₂ hF_ex₂ derivF₂ hG_ex₂ derivG₂ _ =>
           have hSigma : Term.sigma F₁ G₁ = Term.sigma F₂ G₂ :=
             whrDetStar ⟨D₁.reduction, .sigma⟩ ⟨D₂.reduction, .sigma⟩
@@ -1151,6 +1269,68 @@ theorem irrelLogRel_step {eqrel : EqRelSet} {l : TypeLevel}
                 (hFhasTerm .id hΓ).mpr fstR,
                 (hFeqTerm .id hΓ).mpr fstEq,
                 (hGeqTerm .id hΓ fstP₁).mpr sndEq⟩
+  | @id Γ A Ty₁ lhs₁ rhs₁ relTy₁ D₁ _AeqA₁ _derivTy₁ _hasLhs₁ _hasRhs₁ _lhsEqLhs₁ _rhsEqRhs₁ ihTy =>
+      intro A' rel₂ hAA' h₂
+      subst hAA'
+      cases h₂ with
+      | U _ =>
+          cases whnfRedStar D₁.reduction .univ
+      | nat D₂ =>
+          cases whrDetStar ⟨D₂.reduction, .nat⟩ ⟨D₁.reduction, .id⟩
+      | ne neB =>
+          have h := whrDetStar ⟨D₁.reduction, .id⟩ ⟨neB.D.reduction, .neutral neB.neK⟩
+          subst h
+          cases neB.neK
+      | pi D₂ =>
+          cases whrDetStar ⟨D₂.reduction, .pi⟩ ⟨D₁.reduction, .id⟩
+      | empty D₂ =>
+          cases whrDetStar ⟨D₂.reduction, .empty⟩ ⟨D₁.reduction, .id⟩
+      | unit D₂ =>
+          cases whrDetStar ⟨D₂.reduction, .unit⟩ ⟨D₁.reduction, .id⟩
+      | sigma D₂ =>
+          cases whrDetStar ⟨D₂.reduction, .sigma⟩ ⟨D₁.reduction, .id⟩
+      | @id _ _ _ Ty₂ lhs₂ rhs₂ relTy₂ D₂ _ derivTy₂ _ _ _ _ =>
+          have hId : Term.id Ty₁ lhs₁ rhs₁ = Term.id Ty₂ lhs₂ rhs₂ :=
+            whrDetStar ⟨D₁.reduction, .id⟩ ⟨D₂.reduction, .id⟩
+          injection hId with hTy₁₂ hlhs₁₂ hrhs₁₂
+          subst hTy₁₂ hlhs₁₂ hrhs₁₂
+          have heq : RedRelEquiv relTy₁ relTy₂ :=
+            ihTy rfl (logRelShape_of_LogRelAt derivTy₂)
+          refine ⟨?_, ?_, ?_⟩
+          · intro B
+            constructor
+            · rintro ⟨Ty', lhs', rhs', D', AeqB, TyeqTy', lhseqlhs', rhseqrhs', hiff⟩
+              exact ⟨Ty', lhs', rhs', D', AeqB,
+                heq.1.mp TyeqTy', heq.2.2.mp lhseqlhs', heq.2.2.mp rhseqrhs',
+                heq.2.2.symm.trans (hiff.trans heq.2.2)⟩
+            · rintro ⟨Ty', lhs', rhs', D', AeqB, TyeqTy', lhseqlhs', rhseqrhs', hiff⟩
+              exact ⟨Ty', lhs', rhs', D', AeqB,
+                heq.1.mpr TyeqTy', heq.2.2.mpr lhseqlhs', heq.2.2.mpr rhseqrhs',
+                heq.2.2.trans (hiff.trans heq.2.2.symm)⟩
+          · intro t
+            constructor
+            · rintro ⟨u, d, uequ, prop⟩
+              refine ⟨u, d, uequ, ?_⟩
+              cases prop with
+              | rfl h => exact .rfl (heq.2.2.mp h)
+              | ne nf => exact .ne nf
+            · rintro ⟨u, d, uequ, prop⟩
+              refine ⟨u, d, uequ, ?_⟩
+              cases prop with
+              | rfl h => exact .rfl (heq.2.2.mpr h)
+              | ne nf => exact .ne nf
+          · intro t u
+            constructor
+            · rintro ⟨t', u', d, d', t'equ', prop⟩
+              refine ⟨t', u', d, d', t'equ', ?_⟩
+              cases prop with
+              | rfl h => exact .rfl (heq.2.2.mp h)
+              | ne nf => exact .ne nf
+            · rintro ⟨t', u', d, d', t'equ', prop⟩
+              refine ⟨t', u', d, d', t'equ', ?_⟩
+              cases prop with
+              | rfl h => exact .rfl (heq.2.2.mpr h)
+              | ne nf => exact .ne nf
   | @emb Γ A l' rel hlt hA =>
       intro A' rel₂ hAA' h₂
       subst hAA'
@@ -1306,6 +1486,20 @@ theorem RedTermEq_of_LogRelAt {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} 
   · intro htu
     exact ⟨rel, h, htu⟩
 
+theorem RedType.idAt {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A Ty lhs rhs : Term}
+    (idA : RedIdAt eqrel l Γ A Ty lhs rhs) : RedType eqrel l Γ A := by
+  rcases idA.redTy with ⟨relTy, hTy⟩
+  have hasLhs := (RedTerm_of_LogRelAt hTy ⟨relTy, hTy⟩).mp idA.hasLhs
+  have hasRhs := (RedTerm_of_LogRelAt hTy ⟨relTy, hTy⟩).mp idA.hasRhs
+  have lhsEqLhs := (RedTermEq_of_LogRelAt hTy ⟨relTy, hTy⟩).mp idA.lhsEqLhs
+  have rhsEqRhs := (RedTermEq_of_LogRelAt hTy ⟨relTy, hTy⟩).mp idA.rhsEqRhs
+  exact ⟨_, .id idA.D idA.AeqA hTy hasLhs hasRhs lhsEqLhs rhsEqRhs⟩
+
+theorem RedType.id {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A : Term}
+    (idA : RedId eqrel l Γ A) : RedType eqrel l Γ A := by
+  rcases idA with ⟨Ty, lhs, rhs, D, AeqA, redTy, hasLhs, hasRhs, lhsEqLhs, rhsEqRhs⟩
+  exact RedType.idAt ⟨D, AeqA, redTy, hasLhs, hasRhs, lhsEqLhs, rhsEqRhs⟩
+
 /-!
 ## Escape Lemmas (`Definition/LogicalRelation/Properties/Escape.agda`)
 -/
@@ -1322,6 +1516,7 @@ theorem escape {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A : Term}
   | empty D => exact D.source
   | unit D => exact D.source
   | sigma D => exact D.source
+  | id D => exact D.source
 
 /-- Reducible type equality implies `eqrel.TypeEqRel` (`escapeEq`). -/
 theorem escapeEq {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A B : Term}
@@ -1351,6 +1546,9 @@ theorem escapeEq {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A B : Term}
   | sigma D _ _ _ _ _ _ _ _ _ _ =>
       rcases hB with ⟨F', G', D', AeqB, _, _⟩
       exact eqrel.redType D.reduction D' .sigma .sigma AeqB
+  | id D _ _ _ _ _ _ =>
+      rcases hB with ⟨Ty', lhs', rhs', D', AeqB, _, _, _, _⟩
+      exact eqrel.redType D.reduction D' .id .id AeqB
 
 /-- Reducible terms are syntactically well-typed (`escapeTerm`). -/
 theorem escapeTerm {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A t : Term}
@@ -1377,6 +1575,9 @@ theorem escapeTerm {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A t : Term
       exact .conv d.source (.symm (subsetStar D.reduction))
   | sigma D _ _ _ _ _ _ _ _ _ _ =>
       rcases ht with ⟨_, d, _, _, _, _⟩
+      exact .conv d.source (.symm (subsetStar D.reduction))
+  | id D _ _ _ _ _ _ =>
+      rcases ht with ⟨_, d, _, _⟩
       exact .conv d.source (.symm (subsetStar D.reduction))
 
 /-- Reducible term equality implies `eqrel.TermEqRel` (`escapeTermEq`). -/
@@ -1412,6 +1613,11 @@ theorem escapeTermEq {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A t u : 
       rcases htu with ⟨p, r, d, d', prodP, prodR, peqr, _, _, _, _, _, _⟩
       exact eqrel.redTerm D.reduction d.reduction d'.reduction
         .sigma prodP.toWhnf prodR.toWhnf peqr
+  | id D _ _ _ _ _ _ =>
+      rcases htu with ⟨t', u', d, d', t'equ', prop⟩
+      have ⟨idT', idU'⟩ := split_of_RedIdTermEqProp prop
+      exact eqrel.redTerm D.reduction d.reduction d'.reduction
+        .id idT'.toWhnf idU'.toWhnf t'equ'
 
 /-!
 ## Shape Elimination Lemmas (`Definition/LogicalRelation/ShapeView.agda` lines 58–108)
@@ -1441,6 +1647,8 @@ theorem elimU {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context}
       cases whnfRedStar D.reduction .univ
   | sigma D =>
       cases whnfRedStar D.reduction .univ
+  | id D =>
+      cases whnfRedStar D.reduction .univ
 
 /-- Elimination for `ℕ` (`ℕ-elim′`). -/
 theorem elimNat' {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A : Term}
@@ -1462,6 +1670,8 @@ theorem elimNat' {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A : Term}
       cases whrDetStar ⟨D, .nat⟩ ⟨D'.reduction, .unit⟩
   | sigma D' =>
       cases whrDetStar ⟨D, .nat⟩ ⟨D'.reduction, .sigma⟩
+  | id D' =>
+      cases whrDetStar ⟨D, .nat⟩ ⟨D'.reduction, .id⟩
 
 theorem elimNat {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context}
     (p : RedType eqrel l Γ .nat) : RedNat Γ .nat :=
@@ -1487,6 +1697,8 @@ theorem elimEmpty' {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A : Term}
       cases whrDetStar ⟨D, .empty⟩ ⟨D'.reduction, .unit⟩
   | sigma D' =>
       cases whrDetStar ⟨D, .empty⟩ ⟨D'.reduction, .sigma⟩
+  | id D' =>
+      cases whrDetStar ⟨D, .empty⟩ ⟨D'.reduction, .id⟩
 
 theorem elimEmpty {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context}
     (p : RedType eqrel l Γ .empty) : RedEmpty Γ .empty :=
@@ -1512,6 +1724,8 @@ theorem elimUnit' {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A : Term}
   | unit D' => exact D'
   | sigma D' =>
       cases whrDetStar ⟨D, .unit⟩ ⟨D'.reduction, .sigma⟩
+  | id D' =>
+      cases whrDetStar ⟨D, .unit⟩ ⟨D'.reduction, .id⟩
 
 theorem elimUnit {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context}
     (p : RedType eqrel l Γ .unit) : RedUnit Γ .unit :=
@@ -1551,6 +1765,10 @@ theorem elimNeAt' {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A K : Term}
       have h := whrDetStar ⟨D'.reduction, .sigma⟩ ⟨D, .neutral neK⟩
       subst h
       cases neK
+  | id D' =>
+      have h := whrDetStar ⟨D'.reduction, .id⟩ ⟨D, .neutral neK⟩
+      subst h
+      cases neK
 
 /-- Elimination for neutral types (`ne-elim′`). -/
 theorem elimNe' {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A K : Term}
@@ -1582,6 +1800,8 @@ theorem elimPiAt' {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A F G : Ter
       cases whrDetStar ⟨D'.reduction, .unit⟩ ⟨D, .pi⟩
   | sigma D' =>
       cases whrDetStar ⟨D'.reduction, .sigma⟩ ⟨D, .pi⟩
+  | id D' =>
+      cases whrDetStar ⟨D'.reduction, .id⟩ ⟨D, .pi⟩
   | @pi l₀ _ _ F₀ G₀ D' hF hG AeqA relF relG hF_ex derivF hG_ex derivG Gext =>
       have hPi : Term.pi F₀ G₀ = Term.pi F G :=
         whrDetStar ⟨D'.reduction, .pi⟩ ⟨D, .pi⟩
@@ -1642,6 +1862,8 @@ theorem elimSigmaAt' {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A F G : 
       cases whrDetStar ⟨D'.reduction, .empty⟩ ⟨D, .sigma⟩
   | unit D' =>
       cases whrDetStar ⟨D'.reduction, .unit⟩ ⟨D, .sigma⟩
+  | id D' =>
+      cases whrDetStar ⟨D'.reduction, .id⟩ ⟨D, .sigma⟩
   | @sigma l₀ _ _ F₀ G₀ D' hF hG AeqA relF relG hF_ex derivF hG_ex derivG Gext =>
       have hSigma : Term.sigma F₀ G₀ = Term.sigma F G :=
         whrDetStar ⟨D'.reduction, .sigma⟩ ⟨D, .sigma⟩
@@ -1682,6 +1904,49 @@ theorem elimSigma' {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A F G : Te
 theorem elimSigma {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {F G : Term}
     (p : RedType eqrel l Γ (.sigma F G)) : ∃ l₀, RedSigma eqrel l₀ Γ (.sigma F G) :=
   elimSigma' (.refl (escape p)) p
+
+/-- Elimination for `Id`-types with explicit components (`Id-elim′`). -/
+theorem elimIdAt' {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A Ty lhs rhs : Term}
+    (D : TypeStar Γ A (.id Ty lhs rhs)) (p : RedType eqrel l Γ A) :
+    ∃ l₀, RedIdAt eqrel l₀ Γ A Ty lhs rhs := by
+  rcases p with ⟨rel, h⟩
+  cases logRelShape_of_LogRelAt h with
+  | U _ =>
+      cases whnfRedStar D .univ
+  | nat D' =>
+      cases whrDetStar ⟨D'.reduction, .nat⟩ ⟨D, .id⟩
+  | ne neA =>
+      have h := whrDetStar ⟨D, .id⟩ ⟨neA.D.reduction, .neutral neA.neK⟩
+      subst h
+      cases neA.neK
+  | pi D' =>
+      cases whrDetStar ⟨D'.reduction, .pi⟩ ⟨D, .id⟩
+  | empty D' =>
+      cases whrDetStar ⟨D'.reduction, .empty⟩ ⟨D, .id⟩
+  | unit D' =>
+      cases whrDetStar ⟨D'.reduction, .unit⟩ ⟨D, .id⟩
+  | sigma D' =>
+      cases whrDetStar ⟨D'.reduction, .sigma⟩ ⟨D, .id⟩
+  | @id l₀ _ _ Ty₀ lhs₀ rhs₀ relTy D' AeqA derivTy hasLhs hasRhs lhsEqLhs rhsEqRhs =>
+      have hId : Term.id Ty₀ lhs₀ rhs₀ = Term.id Ty lhs rhs :=
+        whrDetStar ⟨D'.reduction, .id⟩ ⟨D, .id⟩
+      injection hId with hTy₀ hlhs₀ hrhs₀
+      subst hTy₀ hlhs₀ hrhs₀
+      exact ⟨l₀, ⟨D', AeqA, ⟨relTy, derivTy⟩,
+        ⟨relTy, derivTy, hasLhs⟩, ⟨relTy, derivTy, hasRhs⟩,
+        ⟨relTy, derivTy, lhsEqLhs⟩, ⟨relTy, derivTy, rhsEqRhs⟩⟩⟩
+
+/-- Elimination for `Id`-types (`Id-elim′`). -/
+theorem elimId' {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A Ty lhs rhs : Term}
+    (D : TypeStar Γ A (.id Ty lhs rhs)) (p : RedType eqrel l Γ A) :
+    ∃ l₀, RedId eqrel l₀ Γ A := by
+  rcases elimIdAt' D p with ⟨l₀, idA⟩
+  exact ⟨l₀, ⟨Ty, lhs, rhs, idA.D, idA.AeqA, idA.redTy, idA.hasLhs, idA.hasRhs,
+    idA.lhsEqLhs, idA.rhsEqRhs⟩⟩
+
+theorem elimId {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {Ty lhs rhs : Term}
+    (p : RedType eqrel l Γ (.id Ty lhs rhs)) : ∃ l₀, RedId eqrel l₀ Γ (.id Ty lhs rhs) :=
+  elimId' (.refl (escape p)) p
 
 /-!
 ## Reflexivity (`Definition/LogicalRelation/Properties/Reflexivity.agda`)
@@ -1766,6 +2031,13 @@ theorem reflLogRel_step {eqrel : EqRelSet} {l : TypeLevel}
           ⟨p, d, prodP, peqp, fstTerm, sndTerm⟩,
           ⟨p, d, prodP, peqp, fstTerm, sndTerm⟩,
           fstTerm, fstTerm, hFstEq, hSndEq⟩
+  | @id Γ A Ty lhs rhs relTy D AeqA _derivTy _hasLhs _hasRhs lhsEqLhs rhsEqRhs ihTy =>
+      refine ⟨⟨Ty, lhs, rhs, D.reduction, AeqA, ihTy.1, lhsEqLhs, rhsEqRhs, Iff.rfl⟩, ?_⟩
+      rintro t ⟨u, d, uequ, prop⟩
+      refine ⟨u, u, d, d, uequ, ?_⟩
+      cases prop with
+      | rfl hEq => exact .rfl hEq
+      | ne nf => exact .ne ⟨nf.neK, nf.neK, nf.keqk⟩
   | @emb _ _ l' _ hlt hA => exact ihRec l' hlt hA
 
 theorem reflLogRelAt {eqrel : EqRelSet} {l : TypeLevel} {Γ : Context} {A : Term} {rel : RedRel}

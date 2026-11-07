@@ -454,6 +454,80 @@ private theorem wk_sigmaEta_case {Γ : Context} {p r F G : Term}
   exact TermEq.sigmaEta hρF (ihG (.lift hρ) (.cons hΔ hρF)) (ihp hρ hΔ) (ihr hρ hΔ)
     (ihfst hρ hΔ) hsnd
 
+private theorem wk_idMotiveCtx {Γ Δ : Context} {A t : Term} {ρ : Wk}
+    (ihA : WkTypeWfMotive Γ A) (iht : WkHasTypeMotive Γ t A)
+    (hρ : WkCtx ρ Δ Γ) (hΔ : CtxWf Δ) :
+    WkCtx (.lift (.lift ρ)) (.id (wk1 (wk ρ A)) (wk1 (wk ρ t)) (.var 0) :: wk ρ A :: Δ)
+      (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) ∧
+      CtxWf (.id (wk1 (wk ρ A)) (wk1 (wk ρ t)) (.var 0) :: wk ρ A :: Δ) := by
+  have hρA : TypeWf Δ (wk ρ A) := ihA hρ hΔ
+  have hΔA : CtxWf (wk ρ A :: Δ) := .cons hΔ hρA
+  have hρA1 : TypeWf (wk ρ A :: Δ) (wk1 (wk ρ A)) := by
+    rw [wk1_wk]
+    exact ihA (.step hρ) hΔA
+  have hρt1 : HasType (wk ρ A :: Δ) (wk1 (wk ρ t)) (wk1 (wk ρ A)) := by
+    rw [wk1_wk, wk1_wk]
+    exact iht (.step hρ) hΔA
+  have hvar0 : HasType (wk ρ A :: Δ) (.var 0) (wk1 (wk ρ A)) :=
+    .var hΔA .here
+  have hIdWf : TypeWf (wk ρ A :: Δ) (.id (wk1 (wk ρ A)) (wk1 (wk ρ t)) (.var 0)) :=
+    .id hρA1 hρt1 hvar0
+  have hLift2 : WkCtx (.lift (.lift ρ))
+      (wk (.lift ρ) (.id (wk1 A) (wk1 t) (.var 0)) :: wk ρ A :: Δ)
+      (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) :=
+    .lift (.lift hρ)
+  rw [id_wk1_wk1_0_wk_lift ρ A t] at hLift2
+  exact ⟨hLift2, .cons hΔA hIdWf⟩
+
+private theorem wk_idrec_case {Γ : Context} {A P r t u h : Term}
+    (ihA : WkTypeWfMotive Γ A)
+    (ihP : WkTypeWfMotive (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P)
+    (ihr : WkHasTypeMotive Γ r (subst2 P t .rfl))
+    (iht : WkHasTypeMotive Γ t A)
+    (ihu : WkHasTypeMotive Γ u A)
+    (ihh : WkHasTypeMotive Γ h (.id A t u)) :
+    WkHasTypeMotive Γ (.idrec A P r t u h) (subst2 P u h) := by
+  intro Δ ρ hρ hΔ
+  rcases wk_idMotiveCtx ihA iht hρ hΔ with ⟨hLift2, hΔ2⟩
+  have hρP := ihP hLift2 hΔ2
+  have hρr := ihr hρ hΔ
+  rw [wk_beta_doubleSubst P t .rfl] at hρr
+  rw [wk, wk_beta_doubleSubst P u h]
+  exact HasType.idrec (ihA hρ hΔ) hρP hρr (iht hρ hΔ) (ihu hρ hΔ) (ihh hρ hΔ)
+
+private theorem wk_idrec_term_eq_case {Γ : Context} {A A' P P' r r' t t' u u' h h' : Term}
+    (ihA : WkTypeWfMotive Γ A)
+    (ihAA' : WkTypeEqMotive Γ A A')
+    (iht : WkHasTypeMotive Γ t A)
+    (ihtt' : WkTermEqMotive Γ t t' A)
+    (ihPP' : WkTypeEqMotive (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P P')
+    (ihrr' : WkTermEqMotive Γ r r' (subst2 P t .rfl))
+    (ihuu' : WkTermEqMotive Γ u u' A)
+    (ihhh' : WkTermEqMotive Γ h h' (.id A t u)) :
+    WkTermEqMotive Γ (.idrec A P r t u h) (.idrec A' P' r' t' u' h') (subst2 P u h) := by
+  intro Δ ρ hρ hΔ
+  rcases wk_idMotiveCtx ihA iht hρ hΔ with ⟨hLift2, hΔ2⟩
+  have hρPP' := ihPP' hLift2 hΔ2
+  have hρrr' := ihrr' hρ hΔ
+  rw [wk_beta_doubleSubst P t .rfl] at hρrr'
+  rw [wk, wk, wk_beta_doubleSubst P u h]
+  exact TermEq.idrec (ihA hρ hΔ) (ihAA' hρ hΔ) (iht hρ hΔ) (ihtt' hρ hΔ)
+    hρPP' hρrr' (ihuu' hρ hΔ) (ihhh' hρ hΔ)
+
+private theorem wk_idrecBeta_case {Γ : Context} {A P r t : Term}
+    (ihA : WkTypeWfMotive Γ A)
+    (ihP : WkTypeWfMotive (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P)
+    (ihr : WkHasTypeMotive Γ r (subst2 P t .rfl))
+    (iht : WkHasTypeMotive Γ t A) :
+    WkTermEqMotive Γ (.idrec A P r t t .rfl) r (subst2 P t .rfl) := by
+  intro Δ ρ hρ hΔ
+  rcases wk_idMotiveCtx ihA iht hρ hΔ with ⟨hLift2, hΔ2⟩
+  have hρP := ihP hLift2 hΔ2
+  have hρr := ihr hρ hΔ
+  rw [wk_beta_doubleSubst P t .rfl] at hρr
+  rw [wk, wk_beta_doubleSubst P t .rfl]
+  exact TermEq.idrecBeta (ihA hρ hΔ) hρP hρr (iht hρ hΔ)
+
 mutual
 /-- Weakening of well-formed types (`wk`, Lemma 2.7). -/
 theorem wkTypeWfAux : ∀ {Γ : Context} {A : Term}, TypeWf Γ A → WkTypeWfMotive Γ A
@@ -464,6 +538,8 @@ theorem wkTypeWfAux : ∀ {Γ : Context} {A : Term}, TypeWf Γ A → WkTypeWfMot
   | _, _, .empty _ => fun _ hΔ ↦ .empty hΔ
   | _, _, .unit _ => fun _ hΔ ↦ .unit hΔ
   | _, _, .sigma hF hG => wk_sigma_type_case (wkTypeWfAux hF) (wkTypeWfAux hG)
+  | _, _, .id hA ht hu =>
+      fun hρ hΔ ↦ .id (wkTypeWfAux hA hρ hΔ) (wkHasTypeAux ht hρ hΔ) (wkHasTypeAux hu hρ hΔ)
 
 /-- Weakening of well-typed terms (`wkTerm`, Lemma 2.7). -/
 theorem wkHasTypeAux : ∀ {Γ : Context} {t A : Term}, HasType Γ t A → WkHasTypeMotive Γ t A
@@ -488,6 +564,13 @@ theorem wkHasTypeAux : ∀ {Γ : Context} {t A : Term}, HasType Γ t A → WkHas
   | _, _, _, .emptyrec hA he =>
       fun hρ hΔ ↦ .emptyrec (wkTypeWfAux hA hρ hΔ) (wkHasTypeAux he hρ hΔ)
   | _, _, _, .star _ => fun _ hΔ ↦ .star hΔ
+  | _, _, _, .id hA ht hu =>
+      fun hρ hΔ ↦ .id (wkHasTypeAux hA hρ hΔ) (wkHasTypeAux ht hρ hΔ) (wkHasTypeAux hu hρ hΔ)
+  | _, _, _, .rfl hA ht =>
+      fun hρ hΔ ↦ .rfl (wkTypeWfAux hA hρ hΔ) (wkHasTypeAux ht hρ hΔ)
+  | _, _, _, .idrec hA hP hr ht hu hh =>
+      wk_idrec_case (wkTypeWfAux hA) (wkTypeWfAux hP) (wkHasTypeAux hr)
+        (wkHasTypeAux ht) (wkHasTypeAux hu) (wkHasTypeAux hh)
 
 /-- Weakening of type equality (`wkEq`, Lemma 2.7). -/
 theorem wkTypeEqAux : ∀ {Γ : Context} {A B : Term}, TypeEq Γ A B → WkTypeEqMotive Γ A B
@@ -499,6 +582,8 @@ theorem wkTypeEqAux : ∀ {Γ : Context} {A B : Term}, TypeEq Γ A B → WkTypeE
       wk_pi_type_eq_case hF hFH hGE (wkTypeWfAux hF) (wkTypeEqAux hFH) (wkTypeEqAux hGE)
   | _, _, _, .sigma hF hFH hGE =>
       wk_sigma_type_eq_case (wkTypeWfAux hF) (wkTypeEqAux hFH) (wkTypeEqAux hGE)
+  | _, _, _, .id hAA' htt' huu' =>
+      fun hρ hΔ ↦ .id (wkTypeEqAux hAA' hρ hΔ) (wkTermEqAux htt' hρ hΔ) (wkTermEqAux huu' hρ hΔ)
 
 /-- Weakening of term equality (`wkEqTerm`, Lemma 2.7). -/
 theorem wkTermEqAux : ∀ {Γ : Context} {t u A : Term}, TermEq Γ t u A → WkTermEqMotive Γ t u A
@@ -540,6 +625,14 @@ theorem wkTermEqAux : ∀ {Γ : Context} {t u A : Term}, TermEq Γ t u A → WkT
       fun hρ hΔ ↦ .emptyrec (wkTypeEqAux hAA' hρ hΔ) (wkTermEqAux hee' hρ hΔ)
   | _, _, _, _, .etaUnit he he' =>
       fun hρ hΔ ↦ .etaUnit (wkHasTypeAux he hρ hΔ) (wkHasTypeAux he' hρ hΔ)
+  | _, _, _, _, .id hAA' htt' huu' =>
+      fun hρ hΔ ↦ .id (wkTermEqAux hAA' hρ hΔ) (wkTermEqAux htt' hρ hΔ) (wkTermEqAux huu' hρ hΔ)
+  | _, _, _, _, .idrec hA hAA' ht htt' hPP' hrr' huu' hhh' =>
+      wk_idrec_term_eq_case (wkTypeWfAux hA) (wkTypeEqAux hAA') (wkHasTypeAux ht)
+        (wkTermEqAux htt') (wkTypeEqAux hPP') (wkTermEqAux hrr') (wkTermEqAux huu')
+        (wkTermEqAux hhh')
+  | _, _, _, _, .idrecBeta hA hP hr ht =>
+      wk_idrecBeta_case (wkTypeWfAux hA) (wkTypeWfAux hP) (wkHasTypeAux hr) (wkHasTypeAux ht)
 end
 
 /-- Weakening of well-formed types (`wk`, Lemma 2.7). -/
@@ -641,6 +734,23 @@ theorem wkStep {Γ Δ : Context} {t u A : Term} {ρ : Wk}
       exact h
   | emptyrec hA _ ih =>
       exact Step.emptyrec (wkTypeWf hρ hΔ hA) ih
+  | @idrec A P r t u h h' hA hP hr ht hu _ ih =>
+      rcases wk_idMotiveCtx (wkTypeWfAux hA) (wkHasTypeAux ht) hρ hΔ with ⟨hLift2, hΔ2⟩
+      have hρP := wkTypeWf hLift2 hΔ2 hP
+      have hρr := wkHasType hρ hΔ hr
+      rw [wk_beta_doubleSubst P t .rfl] at hρr
+      rw [wk, wk, wk_beta_doubleSubst P u h]
+      exact Step.idrec (wkTypeWf hρ hΔ hA) hρP hρr (wkHasType hρ hΔ ht) (wkHasType hρ hΔ hu) ih
+  | @idrecBeta A P r t u hA hP hr ht hu htu hPP =>
+      rcases wk_idMotiveCtx (wkTypeWfAux hA) (wkHasTypeAux ht) hρ hΔ with ⟨hLift2, hΔ2⟩
+      have hρP := wkTypeWf hLift2 hΔ2 hP
+      have hρr := wkHasType hρ hΔ hr
+      rw [wk_beta_doubleSubst P t .rfl] at hρr
+      have hρPP := wkTypeEq hρ hΔ hPP
+      rw [wk_beta_doubleSubst P t .rfl, wk_beta_doubleSubst P u .rfl] at hρPP
+      rw [wk, wk_beta_doubleSubst P t .rfl]
+      exact Step.idrecBeta (wkTypeWf hρ hΔ hA) hρP hρr (wkHasType hρ hΔ ht)
+        (wkHasType hρ hΔ hu) (wkTermEq hρ hΔ htu) hρPP
 
 /-- Weakening of single-step type reduction (`wkRed`). -/
 theorem wkTypeStep {Γ Δ : Context} {A B : Term} {ρ : Wk}
