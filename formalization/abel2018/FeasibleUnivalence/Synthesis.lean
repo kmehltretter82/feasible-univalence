@@ -390,24 +390,36 @@ theorem feasible_univalence_main_theorem :
          R x (evalProg D.extractProg x).output ∧
          (evalProg D.extractProg x).steps ≤ D.timePoly.eval x.length ∧
          (evalProg D.extractProg x).output.length ≤ D.sizePoly.eval x.length) ∧
-    -- Clause 3: First-order FP soundness and completeness (Paper B)
+    -- Clause 3: First-order FP soundness, completeness, and Bellantoni–Cook equivalence (Paper B & BC)
     ((∀ {P : FeasibleProg}, BCSafeDerivation P →
        ∀ (w : Word) {n : Nat}, w.length ≤ n →
          (evalProg P w).steps ≤ (synthTimePoly P).eval n ∧
          (evalProg P w).output.length ≤ (synthSizePoly P).eval n ∧
          evalProg (eraseProg P) w = evalProg P w) ∧
-     (∀ (stepFn : Word → Word) (growth stepCost : Nat)
-        (hsize : ∀ s : Word, (stepFn s).length ≤ s.length + growth),
-        let P := FeasibleProg.wordIter .one (.boundedTransition stepFn growth stepCost hsize) .idProg
-        BCSafeDerivation P ∧
-        ∀ (w : Word) {n : Nat}, w.length ≤ n →
-          (evalProg P w).output = iterateTransition stepFn w.length w ∧
-          (evalProg P w).steps ≤ (synthTimePoly P).eval n ∧
-          (evalProg P w).output.length ≤ (synthSizePoly P).eval n)) ∧
+     (∀ (f : Word → Word), BC.FP f →
+       ∃ P : FeasibleProg,
+         BCSafeDerivation P ∧
+         ∀ (w : Word) {n : Nat}, w.length ≤ n →
+           (evalProg P w).output = f w ∧
+           (evalProg P w).steps ≤ (synthTimePoly P).eval n ∧
+           (evalProg P w).output.length ≤ (synthSizePoly P).eval n ∧
+           evalProg (eraseProg P) w = evalProg P w) ∧
+     (∀ (f : Word → Word),
+       (∃ prog : BC.Fn 1 0, ∀ x : Word, prog.eval [x] [] = f x) ↔ BC.FP f)) ∧
     -- Clause 4: Univalence obstruction, quantitative cubical transport, & finite-map transfer (Paper C)
     ((∀ h : Word → Bool,
        (∀ p : Word × Bool, eh h (eh h p) = p) ∧
-       (∀ x : Word, (eh h (x, false)).2 = h x)) ∧
+       (∀ x : Word, (eh h (x, false)).2 = h x) ∧
+       (∀ (P : FeasibleProg),
+         BCSafeDerivation P →
+         (∀ p : Word × Bool, decodeWordBool (evalProg P (encodeWordBool p)).output = eh h p) →
+         BC.FP (fun x => [h x]) ∧
+         ∀ x : Word,
+           ((evalProg P (false :: x)).output.headD false = h x) ∧
+           (evalProg P (false :: x)).steps ≤ (synthTimePoly P).eval (x.length + 1)) ∧
+       (∀ (prog : BC.Fn 1 0),
+         (∀ p : Word × Bool, decodeWordBool (prog.eval [encodeWordBool p] []) = eh h p) →
+         BC.FP (fun x => [h x]))) ∧
      (∀ {𝕄 : Modality ZeroOneMany} {t : CubicalTerm},
        WellResourcedCubical 𝕄 t →
        ∀ (w : Word) {n : Nat}, w.length ≤ n →
@@ -427,8 +439,9 @@ theorem feasible_univalence_main_theorem :
    @paper_A_resource_correctness_after_erasure,
    @pi_sigma_quantitative_extraction,
    ⟨@paper_B_polytime_soundness,
-    paper_B_FP_completeness⟩,
-   ⟨fun h ↦ ⟨eh_involution h, eh_recovers_h h⟩,
+    paper_B_FP_completeness,
+    BC.defFun_eq_FP⟩,
+   ⟨transport_obstruction_xor,
     @paper_C_quantitative_transport_soundness,
     finMap_client_transfer_theorem⟩⟩
 

@@ -15,13 +15,13 @@ $$\forall f : \mathrm{Word} \to \mathrm{Word},\quad \bigl(\exists\,\mathrm{prog}
 
 | File | Lines | Contents |
 | :--- | ---: | :--- |
-| [`Poly.lean`](./Poly.lean) | ~200 | Univariate (`Poly`) and multivariate (`MPoly n`) polynomials over $\mathbb{N}$ with non-negative coefficients, evaluation, monotonicity (`eval_mono`), composition (`comp`), and finite sums (`sumFin`). |
-| [`Syntax.lean`](./Syntax.lean) | ~260 | Binary words (`Word := List Bool`), Bellantoni–Cook syntax `Fn n m` indexed by normal arity $n$ and safe arity $m$, denotational semantics `Fn.eval`, and the syntactic polynomial max-output-length bound `Fn.eval_length_le_sizePoly` (Bellantoni–Cook Lemma 2.1). |
-| [`StackProg.lean`](./StackProg.lean) | ~220 | Imperative multi-stack programs (`Stmt`) operating on binary-word stacks (`Stacks := Reg → Word`) with explicit step cost `exec : Stmt → Stacks → Stacks × Nat`, cost accounting laws, and bounded-loop lemmas. |
-| [`TM.lean`](./TM.lean) | ~315 | Standard deterministic $k$-tape Turing machines (`TM`), configurations (`Cfg`), single-step transition (`TM.step`), bounded-step execution (`TM.HaltsWithin`), and the machine-based definition of `FP`. |
-| [`CompileStmt.lean`](./CompileStmt.lean) | ~550 | Verified compiler from `StackProg.Stmt` to `TM` (`stmtToTM`), mapping each stack register to a dedicated Turing tape with the tape head invariant at the top of the stack, proving exact step-count preservation (`stmtToTM_haltsWithin`). |
-| [`Soundness.lean`](./Soundness.lean) | ~755 | Compiler from `BC.Fn n m` to `StackProg.Stmt` (`compileBC`), syntactic running-time polynomial `Fn.timePoly`, joint correctness and polynomial step-bound theorem `exec_compileBC`, and **Soundness** (`bc_soundness : ∀ f, BCDefinable f → FP f`). |
-| [`Completeness.lean`](./Completeness.lean) | ~1520 | Encoding of $k$-tape Turing machine configurations as fixed-width block tables in `BC.Fn`, single-step transition via safe recursion on notation (`stepCfgBC`), $T$-step iteration (`runCfgBC`), output extraction (`outputCfgBC`), **Completeness** (`bc_completeness : ∀ f, FP f → BCDefinable f`), and the **Headline Equivalence** (`defFun_eq_FP`). |
+| [`Poly.lean`](./Poly.lean) | 90 | Univariate polynomials (`Poly`) over $\mathbb{N}$ with non-negative coefficients, evaluation, monotonicity (`eval_mono`), composition (`comp`), and finite sums (`sumFin`). |
+| [`Syntax.lean`](./Syntax.lean) | 364 | Binary words (`Word := List Bool`), Bellantoni–Cook syntax `Fn n m` indexed by normal arity $n$ and safe arity $m$, denotational semantics `Fn.eval`, and the syntactic polynomial max-output-length bound `Fn.eval_length_le_sizePoly` (Bellantoni–Cook Lemma 2.1). |
+| [`StackProg.lean`](./StackProg.lean) | 69 | Imperative multi-stack programs (`Stmt`) operating on binary-word stacks (`Stacks := Nat → Word`) with big-step cost relation `Exec : Stmt → Stacks → Nat → Stacks → Prop`. |
+| [`TM.lean`](./TM.lean) | 155 | Standard deterministic $k$-tape Turing machines (`TM`), configurations (`Cfg`), single-step transition (`TM.step`), bounded-step execution (`TM.HaltsWithin`), and the machine-based definition of `FP`. |
+| [`CompileStmt.lean`](./CompileStmt.lean) | 633 | Verified compiler from `StackProg.Stmt` to `TM` (`stmtToTM`), mapping each stack register to a dedicated Turing tape with the tape head invariant at the top of the stack, proving step-bound preservation (`stmtToTM_haltsWithin`). |
+| [`Soundness.lean`](./Soundness.lean) | 1608 | Compiler from `BC.Fn n m` to `StackProg.Stmt` (`compileBC`), syntactic running-time polynomial `Fn.timePoly`, joint correctness and polynomial step-bound theorem `exec_compileBC`, and **Soundness** (`bc_soundness : ∀ f, BCDefinable f → FP f`). |
+| [`Completeness.lean`](./Completeness.lean) | 1523 | Encoding of $k$-tape Turing machine configurations as fixed-width block tables in `BC.Fn`, single-step transition via safe recursion on notation (`stepCfgBC`), $T$-step iteration (`runCfgBC`), output extraction (`outputCfgBC`), **Completeness** (`bc_completeness : ∀ f, FP f → BCDefinable f`), and the **Headline Equivalence** (`defFun_eq_FP`). |
 
 ---
 
@@ -29,11 +29,12 @@ $$\forall f : \mathrm{Word} \to \mathrm{Word},\quad \bigl(\exists\,\mathrm{prog}
 
 ### 1. Syntactic Polynomial Length Bound ([`Syntax.lean`](./Syntax.lean))
 
-Every `f : Fn n m` has a syntactically synthesized multivariate polynomial `f.sizePoly : MPoly n` (constructed by structural recursion on `f`, never by running `f`) such that for all normal inputs `xs` and safe inputs `ys`:
+Every `f : Fn n m` has a syntactically synthesized polynomial `f.sizePoly : Poly` (constructed by structural recursion on `f`, never by running `f`) such that for all normal inputs `xs` with `∀ x ∈ xs, x.length ≤ N` and safe inputs `ys`:
 
 ```lean
-theorem Fn.eval_length_le_sizePoly (f : Fn n m) (xs : List Word) (ys : List Word) :
-    (f.eval xs ys).length ≤ f.sizePoly.eval (fun i => (xs.getD i.val []).length) + maxLen m ys
+theorem Fn.eval_length_le_sizePoly {n m : Nat} (f : Fn n m) (xs ys : List Word)
+    {N : Nat} (hxs : ∀ x ∈ xs, x.length ≤ N) :
+    (f.eval xs ys).length ≤ f.sizePoly.eval N + maxLen ys
 ```
 
 In particular, for normal-only functions (`m = 0`), $|f(\vec{x}; [])| \le q_f(|\vec{x}|)$ (`Fn.eval_normal_length_le`), and for unary functions `f : Fn 1 0`, $|f([x]; [])| \le p_f(|x|)$ (`Fn.eval_one_length_le`).

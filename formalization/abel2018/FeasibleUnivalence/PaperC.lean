@@ -120,33 +120,82 @@ def decodeWordBool (w : Word) : Word × Bool :=
 @[simp] theorem length_encodeWordBool (p : Word × Bool) :
     (encodeWordBool p).length = p.1.length + 1 := rfl
 
+/-- Closed Bellantoni–Cook program `headBitBC : BC.Fn 1 0` that extracts the leading bit
+    of its input word as a 1-bit word `[w.headD false]`. -/
+def headBitBC : BC.Fn 1 0 :=
+  .comp .cond Fin.elim0
+    (BC.vec4 (.projN ⟨0, Nat.zero_lt_one⟩)
+      (.comp (BC.constWord [false]) Fin.elim0 Fin.elim0)
+      (.comp (BC.constWord [false]) Fin.elim0 Fin.elim0)
+      (.comp (BC.constWord [true]) Fin.elim0 Fin.elim0))
+
+theorem eval_headBitBC (w : Word) :
+    headBitBC.eval [w] [] = [w.headD false] := by
+  cases w with
+  | nil => simp [headBitBC, BC.condW]
+  | cons b u => cases b <;> simp [headBitBC, BC.condW]
+
+/-- Given a `FeasibleProg` `P` implementing `eh h`, `extractHProg P` prepends `false`,
+    runs `P`, and extracts the leading bit `[h x]`. -/
+def extractHProg (P : FeasibleProg) : FeasibleProg :=
+  .compProg (.bcProg headBitBC) (.compProg P (.consBit false))
+
 /-- **Boundary Obstruction Theorem (`transport_obstruction_xor`, `docs/proof-ideas.md` §4)**:
     For any total Boolean function `h : Word → Bool`:
     1. `eh h` is a self-inverse bijection (`eh h (eh h p) = p`),
     2. `(eh h (x, false)).2 = h x`,
     3. If `P : FeasibleProg` (`BCSafeDerivation P`) implements `eh h` under
-       `(encodeWordBool, decodeWordBool)`, then `P` applied to `false :: x` computes
-       `h x` as its output head bit in at most `(synthTimePoly P).eval (x.length + 1)` steps.
-       Contrapositively, if `h` cannot be computed within `(synthTimePoly P).eval (|x| + 1)`
-       steps, then `eh h` **cannot** be realized as a runtime transport by `P`! -/
+       `(encodeWordBool, decodeWordBool)`, then `(fun x => [h x]) ∈ BC.FP` and `P` applied
+       to `false :: x` computes `h x` as its output head bit in at most
+       `(synthTimePoly P).eval (x.length + 1)` steps.
+    4. Likewise, if a Bellantoni–Cook program `prog : BC.Fn 1 0` implements `eh h`, then
+       `(fun x => [h x]) ∈ BC.FP`.
+       Contrapositively, if `(fun x => [h x]) ∉ BC.FP`, then `eh h` **cannot** be realized
+       by any `BCSafeDerivation` or `BC.Fn 1 0` program! -/
 theorem transport_obstruction_xor (h : Word → Bool) :
     (∀ p : Word × Bool, eh h (eh h p) = p) ∧
     (∀ x : Word, (eh h (x, false)).2 = h x) ∧
     (∀ (P : FeasibleProg),
       BCSafeDerivation P →
       (∀ p : Word × Bool, decodeWordBool (evalProg P (encodeWordBool p)).output = eh h p) →
+      BC.FP (fun x => [h x]) ∧
       ∀ x : Word,
         ((evalProg P (false :: x)).output.headD false = h x) ∧
-        (evalProg P (false :: x)).steps ≤ (synthTimePoly P).eval (x.length + 1)) := by
-  refine ⟨eh_involution h, eh_recovers_h h, ?_⟩
-  intro P hP hImpl x
-  have h1 := hImpl (x, false)
-  simp only [encodeWordBool, decodeWordBool] at h1
-  have h2 : (evalProg P (false :: x)).output.headD false = (eh h (x, false)).2 :=
-    congrArg Prod.snd h1
-  rw [eh_recovers_h] at h2
-  have hbound := (paper_B_polytime_soundness hP (false :: x) (Nat.le_refl (x.length + 1))).1
-  exact ⟨h2, hbound⟩
+        (evalProg P (false :: x)).steps ≤ (synthTimePoly P).eval (x.length + 1)) ∧
+    (∀ (prog : BC.Fn 1 0),
+      (∀ p : Word × Bool, decodeWordBool (prog.eval [encodeWordBool p] []) = eh h p) →
+      BC.FP (fun x => [h x])) := by
+  have hMain : ∀ (P : FeasibleProg),
+      BCSafeDerivation P →
+      (∀ p : Word × Bool, decodeWordBool (evalProg P (encodeWordBool p)).output = eh h p) →
+      BC.FP (fun x => [h x]) ∧
+      ∀ x : Word,
+        ((evalProg P (false :: x)).output.headD false = h x) ∧
+        (evalProg P (false :: x)).steps ≤ (synthTimePoly P).eval (x.length + 1) := by
+    intro P hP hImpl
+    have hPointwise : ∀ x : Word,
+        ((evalProg P (false :: x)).output.headD false = h x) ∧
+        (evalProg P (false :: x)).steps ≤ (synthTimePoly P).eval (x.length + 1) := by
+      intro x
+      have h1 := hImpl (x, false)
+      simp only [encodeWordBool, decodeWordBool] at h1
+      have h2 : (evalProg P (false :: x)).output.headD false = (eh h (x, false)).2 :=
+        congrArg Prod.snd h1
+      rw [eh_recovers_h] at h2
+      have hbound := (paper_B_polytime_soundness hP (false :: x) (Nat.le_refl (x.length + 1))).1
+      exact ⟨h2, hbound⟩
+    have hExtSafe : BCSafeDerivation (extractHProg P) :=
+      .compProg (.bcProg headBitBC) (.compProg hP (.consBit false))
+    have hExtOut : ∀ x : Word, (evalProg (extractHProg P) x).output = [h x] := by
+      intro x
+      simp only [extractHProg, evalProg, runBCProg, eval_headBitBC]
+      rw [(hPointwise x).1]
+    rcases (paper_B_tm_soundness hExtSafe).1 with ⟨M, p, hM⟩
+    have hFP : BC.FP (fun x => [h x]) := ⟨M, p, fun x => by dsimp only; rw [← hExtOut x]; exact hM x⟩
+    exact ⟨hFP, hPointwise⟩
+  refine ⟨eh_involution h, eh_recovers_h h, hMain, ?_⟩
+  intro prog hImpl
+  exact (hMain (.bcProg prog) (.bcProg prog) hImpl).1
 
 end BoundaryObstruction
 
@@ -435,7 +484,7 @@ theorem cubical_certs_substDim_eq (σ : DimSubst) (t : CubicalTerm) :
   | pathLam _ ih => exact ih
   | pathApp _ _ ih =>
     rcases ih with ⟨hs, ht⟩
-    exact ⟨hs, congrArg (fun p ↦ Poly.add p (.const 1)) ht⟩
+    exact ⟨hs, congrArg (fun p ↦ BC.Poly.add p (.const 1)) ht⟩
   | vIn _ _ _ iha ihb =>
     rcases iha with ⟨hsa, hta⟩
     rcases ihb with ⟨hsb, htb⟩
@@ -511,12 +560,12 @@ theorem evalCoeLine_bounds (r r' : Dim) (line : CubicalType) (res : ExecResult)
     (evalCoeLine r r' line res).output.length ≤ (synthLineSize line s_in).eval n := by
   induction line generalizing r r' res with
   | wordTy =>
-    simp only [evalCoeLine, synthLineTime, synthLineSize, Poly.eval_add, Poly.eval_const]
+    simp only [evalCoeLine, synthLineTime, synthLineSize, BC.Poly.eval_add, BC.Poly.eval_const]
     exact ⟨Nat.add_le_add_right ht 1, hs⟩
   | vType rv A B g eqv ihA ihB =>
     simp only [evalCoeLine, synthLineTime, synthLineSize,
       QuantEquiv.fwdTime, QuantEquiv.fwdSize, QuantEquiv.bwdTime, QuantEquiv.bwdSize,
-      Poly.eval_add, Poly.eval_comp, Poly.eval_const]
+      BC.Poly.eval_add, BC.Poly.eval_comp, BC.Poly.eval_const]
     rcases ihA .d0 .d1 res ht hs with ⟨htA, hsA⟩
     rcases ihB .d1 .d0 res ht hs with ⟨htB, hsB⟩
     rcases paper_B_polytime_soundness eqv.fwdSafe (evalCoeLine .d0 .d1 A res).output hsA with
@@ -554,12 +603,12 @@ theorem paper_C_quantitative_transport_soundness
     exact ih w hn
   | pathApp _ _ ih =>
     rcases ih w hn with ⟨ht_p, hs_p⟩
-    simp only [evalCubical, synthCubicalTime, synthCubicalSize, Poly.eval_add, Poly.eval_const]
+    simp only [evalCubical, synthCubicalTime, synthCubicalSize, BC.Poly.eval_add, BC.Poly.eval_const]
     exact ⟨Nat.add_le_add_right ht_p 1, hs_p⟩
   | vIn r _ _ iha ihb =>
     rcases iha w hn with ⟨hta, hsa⟩
     rcases ihb w hn with ⟨htb, hsb⟩
-    simp only [evalCubical, synthCubicalTime, synthCubicalSize, Poly.eval_add, Poly.eval_const]
+    simp only [evalCubical, synthCubicalTime, synthCubicalSize, BC.Poly.eval_add, BC.Poly.eval_const]
     by_cases hr : r = .d0
     · rw [if_pos hr]; dsimp only; exact ⟨by omega, by omega⟩
     · rw [if_neg hr]; dsimp only; exact ⟨by omega, by omega⟩
@@ -567,7 +616,7 @@ theorem paper_C_quantitative_transport_soundness
     rcases ih w hn with ⟨htv, hsv⟩
     simp only [evalCubical, synthCubicalTime, synthCubicalSize,
       QuantEquiv.fwdTime, QuantEquiv.fwdSize,
-      Poly.eval_add, Poly.eval_comp, Poly.eval_const]
+      BC.Poly.eval_add, BC.Poly.eval_comp, BC.Poly.eval_const]
     rcases paper_B_polytime_soundness eqv.fwdSafe (evalCubical _ w).output hsv with ⟨ht_fwd, hs_fwd, _⟩
     by_cases hr : r = .d0
     · rw [if_pos hr]; dsimp only; exact ⟨by omega, by omega⟩
@@ -578,7 +627,7 @@ theorem paper_C_quantitative_transport_soundness
   | hcomp r r' _ _ _ ihc iht =>
     rcases ihc w hn with ⟨htc, hsc⟩
     rcases iht (evalCubical _ w).output hsc with ⟨htt, hst⟩
-    simp only [evalCubical, synthCubicalTime, synthCubicalSize, Poly.eval_add, Poly.eval_comp, Poly.eval_const]
+    simp only [evalCubical, synthCubicalTime, synthCubicalSize, BC.Poly.eval_add, BC.Poly.eval_comp, BC.Poly.eval_const]
     by_cases hr : r = r'
     · rw [if_pos hr]; dsimp only; exact ⟨by omega, by omega⟩
     · rw [if_neg hr]; dsimp only; exact ⟨by omega, by omega⟩
@@ -653,6 +702,8 @@ theorem evalProg_steps_pos (P : FeasibleProg) (w : Word) :
   cases P with
   | idProg | constWord _ | consBit _ | tailWord =>
     simp [evalProg]
+  | bcProg prog =>
+    simp [evalProg, runBCProg]
   | wordIter _ step base =>
     simp only [evalProg]
     have h := (runSafeIter_bounds step w (evalProg base w).output (evalProg base w).steps).1

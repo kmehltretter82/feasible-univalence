@@ -77,11 +77,19 @@ open FeasibleUnivalence.Synthesis
 #print axioms FeasibleUnivalence.affine_duplication_counterexample
 #print axioms FeasibleUnivalence.linear_discard_counterexample
 
+-- Bellantoni–Cook Library (`FeasibleUnivalence.BC`): Soundness, Completeness, & FP Equivalence
+#print axioms FeasibleUnivalence.BC.Fn.eval_length_le_sizePoly
+#print axioms FeasibleUnivalence.BC.bc_soundness
+#print axioms FeasibleUnivalence.BC.bc_completeness
+#print axioms FeasibleUnivalence.BC.defFun_eq_FP
+
 -- Paper B (Gate G4): Feasible Dependent Types without Equality Reflection
 #print axioms FeasibleUnivalence.PaperB.comp_certificate_formula
 #print axioms FeasibleUnivalence.PaperB.paper_B_polytime_soundness
+#print axioms FeasibleUnivalence.PaperB.paper_B_tm_soundness
 #print axioms FeasibleUnivalence.PaperB.paper_B_intensional_idJ_soundness
 #print axioms FeasibleUnivalence.PaperB.paper_B_FP_completeness
+#print axioms FeasibleUnivalence.PaperB.paper_B_defFun_eq_FP
 #print axioms FeasibleUnivalence.PaperB.two_traversals_and_composition_cert
 #print axioms FeasibleUnivalence.PaperB.dependent_iterator_with_idJ_example
 #print axioms FeasibleUnivalence.PaperB.exponential_duplication_counterexample
