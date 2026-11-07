@@ -1,0 +1,6 @@
+name = "atkey2024"
+version = "0.1.0"
+defaultTargets = ["Atkey2024"]
+
+[[lean_lib]]
+name = "Atkey2024"

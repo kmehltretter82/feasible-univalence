@@ -43,8 +43,6 @@ def rename (ρ : Nat → Nat) : Term → Term
   | .natrec A z s n =>
       .natrec (rename (liftRen ρ) A) (rename ρ z) (rename ρ s) (rename ρ n)
 
-def wk1 : Term → Term := rename Nat.succ
-
 /-- Syntactic weakenings from the source, retaining its inductive presentation. -/
 inductive Wk where
   | id : Wk
@@ -58,7 +56,19 @@ def wkVar : Wk → Nat → Nat
   | .lift _, 0 => 0
   | .lift ρ, n + 1 => wkVar ρ n + 1
 
-def wk (ρ : Wk) : Term → Term := rename (wkVar ρ)
+def wk (ρ : Wk) : Term → Term
+  | .univ => .univ
+  | .pi A B => .pi (wk ρ A) (wk (.lift ρ) B)
+  | .nat => .nat
+  | .var x => .var (wkVar ρ x)
+  | .lam t => .lam (wk (.lift ρ) t)
+  | .app t u => .app (wk ρ t) (wk ρ u)
+  | .zero => .zero
+  | .succ t => .succ (wk ρ t)
+  | .natrec A z s n =>
+      .natrec (wk (.lift ρ) A) (wk ρ z) (wk ρ s) (wk ρ n)
+
+def wk1 : Term → Term := wk (.step .id)
 
 def compWk : Wk → Wk → Wk
   | .id, ρ' => ρ'
@@ -91,6 +101,10 @@ def consSubst (σ : Subst) (a : Term) : Subst
 
 def idSubst : Subst := Term.var
 
+def sgSubst (a : Term) : Subst := consSubst idSubst a
+
+def toSubst (ρ : Wk) : Subst := fun x ↦ .var (wkVar ρ x)
+
 def headSubst (σ : Subst) : Term := σ 0
 
 def tailSubst (σ : Subst) : Subst := fun n ↦ σ (n + 1)
@@ -98,6 +112,10 @@ def tailSubst (σ : Subst) : Subst := fun n ↦ σ (n + 1)
 def wk1Subst (σ : Subst) : Subst := fun n ↦ wk1 (σ n)
 
 def compSubst (σ τ : Subst) : Subst := fun n ↦ subst σ (τ n)
+
+def wkSubst (ρ : Wk) (σ : Subst) : Subst := fun n ↦ wk ρ (σ n)
+
+def substWk (σ : Subst) (ρ : Wk) : Subst := fun n ↦ σ (wkVar ρ n)
 
 /-- Replace index zero and remove its binder, corresponding to source t [ a ]. -/
 def subst0 (t a : Term) : Term := subst (consSubst idSubst a) t
@@ -142,5 +160,52 @@ inductive SmallTypeView : Term → Prop where
 inductive FunctionView : Term → Prop where
   | lam {t} : FunctionView (.lam t)
   | neutral {n} : Neutral n → FunctionView n
+
+theorem NaturalView.toWhnf {n : Term} : NaturalView n → Whnf n
+  | .zero => .zero
+  | .succ => .succ
+  | .neutral h => .neutral h
+
+theorem SmallTypeView.toWhnf {A : Term} : SmallTypeView A → Whnf A
+  | .pi => .pi
+  | .nat => .nat
+  | .neutral h => .neutral h
+
+theorem FunctionView.toWhnf {f : Term} : FunctionView f → Whnf f
+  | .lam => .lam
+  | .neutral h => .neutral h
+
+theorem Neutral.rename {t : Term} (ρ : Nat → Nat) : Neutral t → Neutral (Abel2018.rename ρ t)
+  | .var n => .var (ρ n)
+  | .app h => .app (h.rename ρ)
+  | .natrec h => .natrec (h.rename ρ)
+
+theorem Neutral.wk {t : Term} (ρ : Wk) : Neutral t → Neutral (Abel2018.wk ρ t)
+  | .var n => .var (wkVar ρ n)
+  | .app h => .app (h.wk ρ)
+  | .natrec h => .natrec (h.wk ρ)
+
+theorem Whnf.wk {t : Term} (ρ : Wk) : Whnf t → Whnf (Abel2018.wk ρ t)
+  | .univ => .univ
+  | .pi => .pi
+  | .nat => .nat
+  | .lam => .lam
+  | .zero => .zero
+  | .succ => .succ
+  | .neutral h => .neutral (h.wk ρ)
+
+theorem NaturalView.wk {t : Term} (ρ : Wk) : NaturalView t → NaturalView (Abel2018.wk ρ t)
+  | .zero => .zero
+  | .succ => .succ
+  | .neutral h => .neutral (h.wk ρ)
+
+theorem SmallTypeView.wk {t : Term} (ρ : Wk) : SmallTypeView t → SmallTypeView (Abel2018.wk ρ t)
+  | .pi => .pi
+  | .nat => .nat
+  | .neutral h => .neutral (h.wk ρ)
+
+theorem FunctionView.wk {t : Term} (ρ : Wk) : FunctionView t → FunctionView (Abel2018.wk ρ t)
+  | .lam => .lam
+  | .neutral h => .neutral (h.wk ρ)
 
 end Abel2018

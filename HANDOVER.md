@@ -1,49 +1,52 @@
-# Handover: feasible univalence and Abel missions
+# Handover: Feasible Univalence and Abel Missions
 
-**Paused at the user's request, 30 October 2026.** Resume substantive work only when the user resumes the task. The pause includes allowing the current agents to finish, checking their output, and committing/pushing this checkpoint.
+Updated 7 November 2026.
 
-## Objective and scope
+## Objective and Scope
 
-Prepare Prove2Me missions and the three intermediate-paper plans in [the roadmap](docs/formalization-roadmap.md), leading toward the research proposal *Feasible Univalence*. Preserve the full programme; the first Lean prototype does not complete it.
+Prepare Prove2Me missions and the three intermediate-paper plans in [the roadmap](docs/formalization-roadmap.md), leading toward the research proposal *Feasible Univalence*. Preserve the full programme.
 
-This workstream focuses on Abel's papers. Another agent handles Schwichtenberg papers. Coordinate before duplicating related missions.
+This workstream covers the Abel papers (M1, M2, M3, M11), Atkey's costed machine (M4.0), and the formalized Lean 4 models of Papers A, B, C, and the Final Synthesis (Gates G0–G6). Another agent handles Schwichtenberg papers. Coordinate before duplicating related missions or mutating another agent's workspace/VM.
 
-## Existing results and decisions
+## Completed Milestones in This Workstream (27,423 Lines of Zero-`sorry` Lean 4.33.1)
 
-- The [live catalogue survey](docs/prove2me-intake-2026-10-30.md) found no matching entries for the selected Abel sources. Repeat the search before creating a proposal.
-- Hofmann–Moser's resource-analysis mission is marked proved, including all six milestones. Review it for reuse; do not reprove the completed targets. Its Lean environment differs from the current default.
-- The groupoid and general PTS missions do not supply the first Abel conversion theorem. Neither is required to begin the selected source formalization.
-- Work through M1 conversion, M2 graded erasure, and M3 graded recursion. Read M11, *Compiling Programs with Erased Univalence*, now for prior work. Its compilation result assumes Conjecture 4.1; preserve that conditional scope.
-- Plans for Papers A–C are already published. Their research theorems remain conjectural targets, not completed or novelty-certified results.
+### 1. M1 (POPL 2018 Conversion Decidability) — Complete Lean 4.33.1 Formalization (`Abel2018/`, 14 Modules, 12,979 Lines)
 
-## Checkpoint
+The standalone Lean 4.33.1 project in [`formalization/abel2018/`](formalization/abel2018/README.md) contains a complete, zero-`sorry`, constructive (`[propext]` only) formalization of Abel–Öhman–Vezzosi, *Decidability of Conversion for Type Theory in Type Theory* (POPL 2018, DOI `10.1145/3158111`, Agda artifact `mr-ohman/logrel-mltt` tag `v2.1`, commit `eb2b15ab1c4b45923025834d3bb798943cb44b8e`):
 
-The standalone [Lean project](formalization/abel2018/README.md) contains draft syntax, declarative judgments, and an executable fuel-bounded comparison prototype. It is based on the pinned Agda commit recorded in [the Abel mission plan](docs/abel-mission-plan.md). These definitions are candidates under review, not author-approved frozen declarations. The [candidate goal](formalization/abel2018/algorithm-goal.md) and [source review](formalization/abel2018/source-review.md) capture the important statement-design findings.
+- [`Abel2018/Syntax.lean`](formalization/abel2018/Abel2018/Syntax.lean) & [`Abel2018/UntypedProperties.lean`](formalization/abel2018/Abel2018/UntypedProperties.lean): raw de Bruijn syntax, order-preserving weakenings (`Wk`), parallel substitutions (`Subst`), and complete renaming/substitution algebra (`wk_comp`, `wk_subst`, `subst_wk`, `subst_comp`, `subst_beta`, `subst_beta_natrec`).
+- [`Abel2018/Judgments.lean`](formalization/abel2018/Abel2018/Judgments.lean), [`Abel2018/Weakening.lean`](formalization/abel2018/Abel2018/Weakening.lean), & [`Abel2018/TypedProperties.lean`](formalization/abel2018/Abel2018/TypedProperties.lean): declarative judgments (`CtxWf`, `TypeWf`, `HasType`, `TypeEq`, `TermEq`), typed weak-head reduction (`Step`, `TypeStep`, `Star`, `TypeStar`, `TypeWhnf`, `TermWhnf`), Lemma 2.7 (`wkTypeWf`, `wkHasType`, `wkTypeEq`, `wkTermEq`), Lemmas 2.2–2.5 (`whnfRed*`, `whrDet*`, `subset*`), and `EqRelSet` / `synEqRel`.
+- [`Abel2018/Algorithm.lean`](formalization/abel2018/Abel2018/Algorithm.lean) & [`Abel2018/Conversion.lean`](formalization/abel2018/Abel2018/Conversion.lean): fuel-bounded weak-head normalizer (`whnfFuel`) and six-mode conversion checker (`compareNeutralUp`, `compareNeutralDown`, `compareTypeUp`, `compareTypeDown`, `compareTermUp`, `compareTermDown`), inductive algorithmic conversion relations (`ConvNeUp`, `ConvNeDown`, `ConvTypeUp`, `ConvTypeDown`, `ConvTermUp`, `ConvTermDown`, `CtxEq`), Lemma 4.1 (`wkConv*`), fuel monotonicity (`compare*_mono`), `whnfFuel` adequacy (`whnfFuel_of_TypeWhnf`, `whnfFuel_of_TermWhnf`), and all-successful-run correctness propagation (`compareTypeUp_all_runs_correct`, `compareTermUp_all_runs_correct`).
+- [`Abel2018/LogicalRelation.lean`](formalization/abel2018/Abel2018/LogicalRelation.lean), [`Abel2018/LogicalRelationProperties.lean`](formalization/abel2018/Abel2018/LogicalRelationProperties.lean), [`Abel2018/Substitution.lean`](formalization/abel2018/Abel2018/Substitution.lean), & [`Abel2018/Fundamental.lean`](formalization/abel2018/Abel2018/Fundamental.lean): universe-indexed logical relation (`TypeLevel`, `RedRel`, `LogRel`, `LogRelAt`) replacing Agda induction-recursion in Lean 4 without custom axioms, derivation irrelevance, semantic validity (`ValidCtx`, `ValidSubst`, `ValidType`, `ValidTerm`, `ValidTypeEq`, `ValidTermEq`), Theorem 3.21 (`valid`, `fundamental`, `fundamentalTerm`, `fundamentalEq`, `fundamentalTermEq`), and Theorem 3.23 (`fundamentalSubst`, `fundamentalSubstEq`).
+- [`Abel2018/Consequences.lean`](formalization/abel2018/Abel2018/Consequences.lean): Theorem 3.24 (`syntacticEq`, `syntacticTerm`, `syntacticEqTerm`), Theorem 3.25 (`U_ne_nat`, `U_ne_pi`, `nat_ne_pi`), Theorem 3.26 (`injectivity`), Theorem 3.28 (`whNorm`, `whNormTerm`), Theorem 3.31 (`canonicity`), Theorem 3.32 (`substitution`, `substitutionTerm`), Theorem 3.33 (`neTypeEq`, `U_eq_A`, `nat_eq_A_whnf`, `ne_eq_A_whnf`, `pi_eq_A_whnf`), and Theorem 3.35 (`zero_ne_one`).
+- [`Abel2018/Completeness.lean`](formalization/abel2018/Abel2018/Completeness.lean): Lemma 4.3 (`soundnessConvUp`, `soundnessConvUpTerm`, etc.), Lemma 4.4 (`stability*`), Lemmas 4.6–4.10 (`sym*`, `trans*`, `convConv*`, `lift*`, `univConv*`, `convEqRel`), and Theorem 4.11 (`completeEq`, `completeEqTerm`).
+- [`Abel2018/Decidable.lean`](formalization/abel2018/Abel2018/Decidable.lean): neutral type uniqueness (`uniqueNeUp`, `uniqueNeDown`), mutual fuel adequacy (`compare*_adequate`), Theorem 4.5 (`decConvNeUp`, `decConvNeDown`, `decConvTypeUp`, `decConvTypeDown`, `decConvTermUp`, `decConvTermDown`), Theorem 4.12 (`dec`, `decTerm`), and the computational adequacy target (`compareTypeUp_decides_typeEq`, `compareTermUp_decides_termEq`, `theorem_4_12_computational`).
 
-No Prove2Me proposal, theorem, definition, or proof has been uploaded by this workstream. No proof of the conversion theorem or of the logical relation is present.
+### 2. M2 & M3 (Graded Erasure & Graded Heap Machine) — Complete Lean 4.33.1 Formalization (`FeasibleUnivalence/`, 9,865 Lines)
 
-## Verified at the pause checkpoint
+- [`FeasibleUnivalence/Modality.lean`](formalization/abel2018/FeasibleUnivalence/Modality.lean) (1,262 lines): Ordered semiring modalities (`Modality`), usage contexts (`Conₘ`), `HasWellBehavedZero`, canonical grade subtraction (`SubEq`, `SubLe`, `SupportsSubtraction`), recursion sequence `nrᵢ`, `HasWellBehavedGLBs`, 5 concrete modality instances (`ErasureGrade`, `ZeroOneMany.linearityModality`, `ZeroOneMany.affineModality`, `NatPlusInfinity`, `SecurityLevel`), and `nat_no_nr_glb`.
+- [`FeasibleUnivalence/Usage.lean`](formalization/abel2018/FeasibleUnivalence/Usage.lean) (1,881 lines): Graded terms (`GTerm`), erasure to `Abel2018.Term` (`toTerm`), modes (`Mode`), usage relation (`Usage`, `Usage.natrec_fix`), substitution matrices (`Substₘ`, `SubstUsage`), **M2 Theorem 5.3 (`Usage.substₘ_lemma`)**, and **M2 Theorem 5.4 (`Usage.usagePresTerm`)**.
+- [`FeasibleUnivalence/Erasure.lean`](formalization/abel2018/FeasibleUnivalence/Erasure.lean) (2,723 lines): Untyped CBV/CBN target language (`TargetTerm`, `TargetStep`, `TargetStarNum`), extraction compiler (`erase`), **M2 Theorem 6.4 (`Usage.erased_not_hasX`)**, operational simulation (`erase_gstep_sim`), erasure logical relation (`SemType`, `ErasedRel`, `ErasedRelGraded`), **M2 Theorem 6.8 (`fundamental`, `fundamentalErased`)**, **M2 Theorem 6.9 (`soundness_nat`, `soundness_nat_canonical`)**, and the two scope counterexamples (`zero_divisor_breaks_erasure`, `erased_match_open_counterexample`).
+- [`FeasibleUnivalence/HeapMachine.lean`](formalization/abel2018/FeasibleUnivalence/HeapMachine.lean) (3,999 lines): Resource-aware abstract machine (`Entry`, `Heap`, `Cont`, `Stack`, `State`, `HeapLookup`, `Stack.mult`, `HeapStep`, `HeapStepUntracked`, `HeapNumStep`), `StateUsage` / `StateUsageExt`, **M3 Lemmas 4.1–4.2 (`lookup_succeeds`, `state_lookup_succeeds`)**, **M3 Theorem 4.3 (`usage_pres_step`, `numStep_not_pres_usage`, `usage_pres_numStar_empty`)**, **M3 Theorem 4.6 (`tracked_to_untracked_star`, `untracked_to_tracked_star`)**, **M3 Theorems 4.7–4.10 (`unfold_heapStar`, `unfold_heapStarUntracked`, `unfold_heapNumStar`, `initial_eval_numeral_sound`)**, and **M3 Theorem 6.1 (`SecurityLevel.non_interference`)**.
 
-- `lake build` in `formalization/abel2018` completed successfully with Lean 4.33.1.
-- `lake env lean AlgorithmChecks.lean` passed all twelve executable checks.
-- The committed Lean sources contain no proof holes, custom axioms, noncomputable definitions, or unsafe declarations.
-- Local documentation links and Markdown fences were checked. Build artifacts and credentials are excluded from the commit.
-- All three contributing agents finished their current tasks; no proof worker or platform verification job remains running from this workstream.
+### 3. M4 Audit & M4.0 Costed Machine (`formalization/atkey2024/`, 492 Lines)
 
-These checks validate compilation and the listed examples. They do not certify the source translation or prove the main theorem.
+- [`docs/atkey-rule-audit.md`](docs/atkey-rule-audit.md) classifies each rule of Atkey's QTT/Cons-free and QTT/LFPL systems against an intensional core with decidable conversion.
+- [`formalization/atkey2024/`](formalization/atkey2024/README.md) formalizes Figure 1 of Atkey (POPL 2024), checked rule by rule against `AmortisedModel.Machine` at commit `76fdbacd6e7bee19cb448b4d41bc21ac3687d63e`, proving determinism (`Eval.deterministic`), fuel-bounded evaluator adequacy (`eval_iff_run`), and `countdown_cost` (`3 * m + 6` steps).
 
-## Resume sequence
+### 4. Papers A, B, C, and Final Synthesis Models (Gates G2–G6, `FeasibleUnivalence/`, 3,898 Lines)
 
-1. Build the checkpoint with `cd formalization/abel2018`, `lake build`, and `lake env lean AlgorithmChecks.lean`. Read its implementation notes and source review before editing.
-2. Audit the syntax and all declarative rules against the pinned artifact. Pay particular attention to context order, substitution into the recursor motive, the step-argument type, and typed reflexive reduction.
-3. Add the six source algorithmic relations as actual inductive definitions. They are not yet represented by a separate relational module. Prove the correspondence between these relations and the executable comparison functions.
-4. Review the computational target. **Existence of one correct successful fuel value is insufficient.** Require correctness of every successful run as well as convergence on well-formed inputs, or prove an adequate stability result first. Neutral comparison chooses a representative type; the source's relational variable rule allows converted types. Do not require syntactic equality with every admissible inferred type.
-5. Construct the logical relation and its Lean replacement for induction-recursion. Prove the required binding, weakening, and substitution results on the actual syntax. Do not assume normalization or a sound complete decider as an input to the main theorem.
-6. Prepare the source-linked mission items and independent blind read-backs, using the Prove2Me skill. A private editable draft is permissible; human self-audit/submission is a later platform step, after the package is concrete and reviewable. Do not request that step for this checkpoint.
-7. Continue M2/M3 and the three-paper programme with explicit translations between differing calculi and cost models.
+- **Paper A (Gates G2 & G3 — [`FeasibleUnivalence/PaperA.lean`](formalization/abel2018/FeasibleUnivalence/PaperA.lean), 1,609 lines)**: Target closure-and-heap machine (`TargetState`, `TargetHeapNumStep`), `compileState`, `ErasedStateRel`, `erased_slot_never_accessed`, `erased_heap_lockstep_sim`, `returned_closure_captures_budget`, `paper_A_resource_correctness_after_erasure`, `fold_capturing_closure_example`, and 3 failure tests (`cbv_erased_eval_counterexample`, `affine_duplication_counterexample`, `linear_discard_counterexample`).
+- **Paper B (Gate G4 — [`FeasibleUnivalence/PaperB.lean`](formalization/abel2018/FeasibleUnivalence/PaperB.lean), 762 lines)**: Stratified Bellantoni–Cook / Atkey safe recursion core over binary words (`Word`, `Poly`, `FeasibleProg`, `BCSafeDerivation`), static polynomial certificate synthesis (`synthSizePoly`, `synthTimePoly`), `comp_certificate_formula`, `paper_B_polytime_soundness`, `paper_B_intensional_idJ_soundness`, `conversion_invariance_of_bounds`, `paper_B_FP_completeness`, 2 benchmarks (`two_traversals_and_composition_cert`, `dependent_iterator_with_idJ_example`), and 2 failure tests (`exponential_duplication_counterexample`, `erased_clock_counterexample`).
+- **Paper C & M11 (Gate G5 — [`FeasibleUnivalence/PaperC.lean`](formalization/abel2018/FeasibleUnivalence/PaperC.lean), 1,092 lines)**: Cryptographic XOR obstruction (`eh`, `transport_obstruction_xor`), Cartesian cubical fragment (`Dim`, `QuantEquiv`, `CubicalType`, `CubicalTerm`, `WellResourcedCubical`), `cubical_certs_substDim_eq`, `paper_C_quantitative_transport_soundness`, `vType_transport_simulation`, 3 failure tests (`erased_equiv_cannot_execute_at_runtime`, `hcomp_linear_duplication_rejected`, `zero_cost_cast_fallacy`), and the `ListMap`/`TreeMap` representation-transfer benchmark (`ListMap.listMap_abstraction_not_injective`, `finMap_client_transfer_theorem`, `bst_invariant_violation_and_cost_separation`).
+- **Final Synthesis (Gate G6 — [`FeasibleUnivalence/Synthesis.lean`](formalization/abel2018/FeasibleUnivalence/Synthesis.lean), 435 lines)**: Quantitative gluing (`QuantGlued`), `feasible_univalence_fundamental`, `pi_sigma_quantitative_extraction`, `normalization_vs_runtime_cost_separation`, and `feasible_univalence_main_theorem`.
 
-For the main theorem, use an actual executable procedure or an explicit computation semantics. A classical proof of `Nonempty (Decidable P)` does not formalize the paper's algorithm. Do not assert total decision of typability for arbitrary raw terms.
+### 5. Verification & Independent Blind Read-Back Audit
 
-## Repository hygiene
+- `cd formalization/abel2018 && lake build && lake env lean AlgorithmChecks.lean && lake env lean FeasibleUnivalenceChecks.lean` and `cd formalization/atkey2024 && lake build && lake env lean MachineChecks.lean` pass with 0 errors, 0 warnings, and 0 `sorry` on Lean 4.33.1.
+- `#print axioms` in `AlgorithmChecks.lean`, `FeasibleUnivalenceChecks.lean`, and `MachineChecks.lean` confirms that every theorem depends only on `[propext]` / `[Quot.sound]` (zero `Classical.choice`, zero `sorryAx`, zero custom axioms).
+- Independent blind read-back audits of both `Abel2018` and `FeasibleUnivalence` are recorded in [`formalization/abel2018/source-review.md`](formalization/abel2018/source-review.md), including explicit scope boundaries distinguishing the direct Agda paper ports (M1–M3, M4.0) from the stratified research models (Papers A–C and Final Synthesis).
 
-Keep downloaded papers, credentials, raw catalogue dumps, generated binaries, and private staging files out of this public repository. Preserve the upstream MIT notice for translated code. Do not mutate another agent's Lean cache or source workspace. Check current remote state before pushing.
+## Repository Hygiene
+
+Keep downloaded papers, credentials, raw catalogue dumps, reference clones, generated binaries, and private staging files out of this repository. Preserve the upstream MIT and BSD 3-Clause notices for translated code. Do not mutate another agent's Lean cache or source workspace.

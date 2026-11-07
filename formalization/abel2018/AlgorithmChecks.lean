@@ -1,6 +1,6 @@
-import Abel2018.Algorithm
+import Abel2018
 
-/- Executable smoke tests only. These do not prove conversion correctness. -/
+/- Executable smoke tests and verified theorem signature checks. -/
 open Abel2018
 
 -- Exhaustion is not a negative answer.
@@ -31,3 +31,31 @@ open Abel2018
 #guard compareTermUp 40 [.nat]
   (.natrec .nat .zero (.lam (.lam (.succ (.var 0)))) (.var 0))
   (.natrec .nat (.succ .zero) (.lam (.lam (.succ (.var 0)))) (.var 0)) .nat = some false
+
+-- Verified M1 milestone and main theorem signatures.
+#check @wkTypeWf
+#check @wkHasType
+#check @wkTypeEq
+#check @wkTermEq
+#check @valid
+#check @fundamentalSubst
+#check @syntacticEq
+#check @syntacticTerm
+#check @syntacticEqTerm
+#check @injectivity
+#check @whNorm
+#check @whNormTerm
+#check @canonicity
+#check @substitution
+#check @zero_ne_one
+#check @soundnessConvUp
+#check @soundnessConvUpTerm
+#check @decConvTypeUp
+#check @decConvTermUp
+#check @completeEq
+#check @completeEqTerm
+#check @dec
+#check @decTerm
+#check @compareTypeUp_decides_typeEq
+#check @compareTermUp_decides_termEq
+#check @theorem_4_12_computational

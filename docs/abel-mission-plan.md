@@ -1,88 +1,88 @@
-# Abel papers: source intake and mission preparation
+# Abel Papers: Source Intake, Formalization Status, and Mission Preparation
 
-Plan dated 30 October 2026. This workstream prepares the Abel sources for the [formalization roadmap](formalization-roadmap.md). A separate workstream handles Schwichtenberg papers. Exchange theorem interfaces and environment pins between the workstreams before sharing imports.
+Updated 7 November 2026. This workstream prepares and formalizes the Abel sources (M1, M2, M3, M11) and the programme's intermediate and final research models (Papers A, B, C, and Final Synthesis) for the [formalization roadmap](formalization-roadmap.md). A separate workstream handles Schwichtenberg papers.
 
-**First candidate:** Abel–Öhman–Vezzosi, *Decidability of Conversion for Type Theory in Type Theory*, POPL 2018, DOI [10.1145/3158111](https://doi.org/10.1145/3158111).
+---
 
-**Current status:** source and catalogue intake plus a [draft Lean implementation](../formalization/abel2018/README.md), paused at the user's request. The syntax, declarative judgments, and fuel-bounded comparison prototype compile; their source adequacy and conversion correctness remain unproved. No Lean declarations have been frozen and no Prove2Me proposal has been uploaded. This file specifies the preparation work; it is not a launchable mission. See the [handover](../HANDOVER.md).
+## 1. M1: POPL 2018 Conversion Decidability (Complete in Lean 4.33.1)
 
-## 1. Fix the first source
+- **Paper:** Andreas Abel, Joakim Öhman, and Andrea Vezzosi, *Decidability of Conversion for Type Theory in Type Theory*, Proc. ACM Program. Lang. 2 (POPL 2018), Article 23, DOI [10.1145/3158111](https://doi.org/10.1145/3158111), [author PDF](https://www.cse.chalmers.se/~abela/popl18.pdf) (SHA-256 `9b1e10047c66efa194ff0d5dac406c8ec712b46ba9c0bfc32180eb9f81c88cb0`).
+- **Pinned Agda artifact:** [`mr-ohman/logrel-mltt`, tag `v2.1`, commit `eb2b15ab1c4b45923025834d3bb798943cb44b8e`](https://github.com/mr-ohman/logrel-mltt/tree/eb2b15ab1c4b45923025834d3bb798943cb44b8e).
+- **Lean 4.33.1 formalization:** [`formalization/abel2018/Abel2018/`](../formalization/abel2018/README.md) (14 modules, 12,979 lines, core Lean 4.33.1, zero `sorry`, zero custom axioms, constructive `[propext]` footprint).
+- **Audit status:** Complete source correspondence table and independent blind read-back recorded in [`formalization/abel2018/source-review.md`](../formalization/abel2018/source-review.md) and [`formalization/abel2018/algorithm-goal.md`](../formalization/abel2018/algorithm-goal.md).
 
-Use the [author PDF](https://www.cse.chalmers.se/~abela/popl18.pdf) and the Agda artifact [tag v2.1, commit `eb2b15ab1c4b45923025834d3bb798943cb44b8e`](https://github.com/mr-ohman/logrel-mltt/tree/eb2b15ab1c4b45923025834d3bb798943cb44b8e). Its README identifies the paper and Agda 2.5.3. The older v1.0 tag lacks the conversion modules and is not the selected baseline.
+### M1 Milestone-to-Lean Map
 
-The downloaded PDF's SHA-256 is `9b1e10047c66efa194ff0d5dac406c8ec712b46ba9c0bfc32180eb9f81c88cb0`. Source links and this digest identify the reviewed copy without redistributing the paper.
+| Source result | Role in M1 | Lean 4 declaration(s) |
+|---|---|---|
+| Lemmas 2.2–2.5 | Typed WHNF reduction properties and determinism | `whnfRed*`, `whrDet*`, `subset*`, `redSubst*` ([`TypedProperties.lean`](../formalization/abel2018/Abel2018/TypedProperties.lean)) |
+| Lemma 2.7 | Weakening for well-formed judgments | `wkTypeWf`, `wkHasType`, `wkTypeEq`, `wkTermEq`, `wkStep`, `wkTypeStep`, `wkStar`, `wkTypeStar` ([`Weakening.lean`](../formalization/abel2018/Abel2018/Weakening.lean)) |
+| Definitions 3.1–3.20 | Stratified logical relation (`TypeLevel.zero`, `TypeLevel.one`), irrelevance, escape, and semantic validity | `RedRel`, `LogRel`, `LogRelAt`, `irrelevance*`, `escape*`, `ValidCtx`, `ValidSubst`, `ValidType`, `ValidTerm`, `ValidTypeEq`, `ValidTermEq` ([`LogicalRelation.lean`](../formalization/abel2018/Abel2018/LogicalRelation.lean), [`LogicalRelationProperties.lean`](../formalization/abel2018/Abel2018/LogicalRelationProperties.lean), [`Substitution.lean`](../formalization/abel2018/Abel2018/Substitution.lean)) |
+| Theorem 3.21 | Fundamental lemma for all five judgment forms | `valid`, `fundamental`, `fundamentalTerm`, `fundamentalEq`, `fundamentalTermEq` ([`Fundamental.lean`](../formalization/abel2018/Abel2018/Fundamental.lean)) |
+| Theorem 3.23 | Validity of well-formed substitutions | `fundamentalSubst`, `fundamentalSubstEq` ([`Fundamental.lean`](../formalization/abel2018/Abel2018/Fundamental.lean)) |
+| Theorems 3.24–3.26 | Syntactic validity, type constructor disjointness, and $\Pi$-injectivity | `syntacticEq`, `syntacticTerm`, `syntacticEqTerm`, `U_ne_nat`, `injectivity` ([`Consequences.lean`](../formalization/abel2018/Abel2018/Consequences.lean)) |
+| Theorem 3.28 | Weak-head normalization of types and terms | `whNorm`, `whNormTerm` ([`Consequences.lean`](../formalization/abel2018/Abel2018/Consequences.lean)) |
+| Theorems 3.31–3.34 | Numeral canonicity, substitution, neutral type uniqueness, and universe-membership inversion | `canonicity`, `substitution`, `substitutionTerm`, `neTypeEq`, `U_eq_A`, `nat_eq_A_whnf`, `ne_eq_A_whnf`, `pi_eq_A_whnf`, `inverseUniv` ([`Consequences.lean`](../formalization/abel2018/Abel2018/Consequences.lean)) |
+| Theorem 3.35 | Separation of zero and its successor | `zero_ne_one` ([`Consequences.lean`](../formalization/abel2018/Abel2018/Consequences.lean)) |
+| Lemmas 4.1–4.4 | Weakening, soundness, and context stability of algorithmic conversion | `wkConv*` ([`Conversion.lean`](../formalization/abel2018/Abel2018/Conversion.lean)); `soundnessConvUp`, `soundnessConvUpTerm`, `stability*` ([`Completeness.lean`](../formalization/abel2018/Abel2018/Completeness.lean)) |
+| Theorem 4.5 | Deciding the six algorithmic conversion relations | `decConvNeUp`, `decConvNeDown`, `decConvTypeUp`, `decConvTypeDown`, `decConvTermUp`, `decConvTermDown` ([`Decidable.lean`](../formalization/abel2018/Abel2018/Decidable.lean)) |
+| Lemmas 4.6–4.10 | Symmetry, transitivity, reflection/reification, and `convEqRel` instance | `sym*`, `trans*`, `lift*`, `univConv*`, `convEqRel` ([`Completeness.lean`](../formalization/abel2018/Abel2018/Completeness.lean)) |
+| Theorem 4.11 | Completeness of algorithmic equality | `completeEq`, `completeEqTerm` ([`Completeness.lean`](../formalization/abel2018/Abel2018/Completeness.lean)) |
+| Theorem 4.12 | Main conversion decision result (propositional & executable fuel-adequate) | `dec`, `decTerm`, `compareTypeUp_decides_typeEq`, `compareTermUp_decides_termEq`, `theorem_4_12_computational` ([`Decidable.lean`](../formalization/abel2018/Abel2018/Decidable.lean)) |
 
-The object calculus is the paper's lambda-Pi-U-N system: natural numbers with their dependent eliminator, dependent functions with eta equality, and one Russell universe. Keep its typing, judgmental equality, and typed reduction distinct from Lean's own judgments.
+---
 
-## 2. Main goal and milestones
+## 2. M2: Graded Modal Dependent Type Theory with a Universe and Erasure (Complete in Lean 4.33.1)
 
-The main goal is **Theorem 4.12, p. 23:26**: decide judgmental equality of two well-formed types in a common context, and of two terms at a common type. Both clauses belong to the same mission.
+- **Paper:** Andreas Abel, Nils Anders Danielsson, and Oskar Eriksson, *Graded Modal Dependent Type Theory with a Universe and Erasure, Formalized*, extended version [arXiv:2603.29716v2](https://arxiv.org/abs/2603.29716v2) (reconciled with ICFP 2023, DOI [10.1145/3607862](https://doi.org/10.1145/3607862)).
+- **Pinned Agda artifact:** [`graded-type-theory/graded-type-theory`](https://github.com/graded-type-theory/graded-type-theory), tag `jfp-submission-2026-04-30`, commit [`75c23df3b1421184cffe35ffd492bb9743dff240`](https://github.com/graded-type-theory/graded-type-theory/tree/75c23df3b1421184cffe35ffd492bb9743dff240) (and 2023 baseline tag `icfp23`, commit [`111393b4fa86203578ea49186cfd5fbb75d5a34f`](https://github.com/graded-type-theory/graded-type-theory/tree/111393b4fa86203578ea49186cfd5fbb75d5a34f)).
+- **Lean 4.33.1 formalization:** [`formalization/abel2018/FeasibleUnivalence/Modality.lean`](../formalization/abel2018/FeasibleUnivalence/Modality.lean), [`Usage.lean`](../formalization/abel2018/FeasibleUnivalence/Usage.lean), and [`Erasure.lean`](../formalization/abel2018/FeasibleUnivalence/Erasure.lean) (5,866 lines, zero `sorry`, constructive `[propext, Quot.sound]` footprint).
 
-The corresponding artifact functions are [`dec` and `decTerm`](https://github.com/mr-ohman/logrel-mltt/blob/eb2b15ab1c4b45923025834d3bb798943cb44b8e/Definition/Typed/Decidable.agda). They are computational witnesses, not merely propositions asserting excluded middle.
+### M2 Exact Paper-to-Artifact-to-Lean Map
 
-| Source result | Role in the mission |
-|---|---|
-| Lemma 2.7 | Weakening for well-formed judgments. |
-| Theorem 3.21 | Fundamental lemma for the parameterized logical relation; retain all five judgment forms. |
-| Theorem 3.23 | Validity of well-formed substitutions. |
-| Theorems 3.24–3.26 | Numeral canonicity, dependent-function injectivity, and syntactic validity. |
-| Theorem 3.28 | Weak-head normalization of types and terms. |
-| Theorems 3.31–3.32 | Substitution and its composition. |
-| Theorem 3.35 | Separation of zero and its successor. |
-| Lemmas 4.1–4.3 | Context change and soundness of the algorithmic relations. |
-| Theorem 4.5 | Deciding the algorithmic relations under their precise source premises. |
-| Theorem 4.11 | Completeness of algorithmic equality. |
-| Theorem 4.12 | Main conversion decision result. |
+| 2026 (`arXiv:2603.29716v2`) / 2023 (`ICFP 2023`) | Mathematical content | Pinned Agda declaration (`75c23df3b1421184cffe35ffd492bb9743dff240`) | Lean 4 declaration(s) |
+|---|---|---|---|
+| Definition 3.1 | Ordered semiring modality (`Modality`) and left semimodule of usage contexts (`Conₘ`) | `Graded.Modality.Modality`, `Graded.Context.Conₘ`, `Graded.Context.Properties.Conₘ-semimodule` | `Modality`, `Conₘ` ([`Modality.lean`](../formalization/abel2018/FeasibleUnivalence/Modality.lean)) |
+| Theorems 4.3–4.4 | Typed WHNF irreducibility, determinism, weak-head normalization (`whNorm`, `whNormTerm`), and decidable conversion (`decEq`, `decEqTerm`) | `Definition.Typed.Properties.whnfRed*Term`, `whrDet*Term`, `Definition.Typed.Consequences.Reduction.whNormTerm`, `Definition.Typed.Decidable.Equality.decEqTerm` | Inherited via `GTerm.toTerm` from `Abel2018` ([`Usage.lean`](../formalization/abel2018/FeasibleUnivalence/Usage.lean)) |
+| Definitions 5.1–5.2 | Mode-indexed usage relation $\gamma \▸[m] t$ and substitution matrix relation $\Psi \▶[m] \sigma$ | `Graded.Usage._▸[_]_`, `Graded.Substitution.Substₘ`, `Graded.Substitution._▶[_]_` | `Usage`, `Substₘ`, `SubstUsage` ([`Usage.lean`](../formalization/abel2018/FeasibleUnivalence/Usage.lean)) |
+| **Theorem 5.3** | **Grade-substitution lemma for usage:** if $\gamma \▸[m] t$ and $\Psi \▶[m] \sigma$, then $(\gamma \mathbin{<*} \Psi) \▸[m] t[\sigma]$ | `Graded.Substitution.Properties.substₘ-lemma` | `Usage.substₘ_lemma` ([`Usage.lean`](../formalization/abel2018/FeasibleUnivalence/Usage.lean)) |
+| **Theorem 5.4** (and 2023 Theorem 8.2) | **Subject reduction (usage preservation):** if $\Gamma \vdash t \Rightarrow u : A$ and $\gamma \▸[m] t$, then $\gamma \▸[m] u$ | `Graded.Reduction.Zero-one.usagePresTerm₀₁` (and `Graded.Reduction.usagePresTerm`) | `Usage.usagePresTerm`, `Usage.usagePresGStar` ([`Usage.lean`](../formalization/abel2018/FeasibleUnivalence/Usage.lean), [`Erasure.lean`](../formalization/abel2018/FeasibleUnivalence/Erasure.lean)) |
+| Definition 6.1 & Theorem 6.2 | Well-behaved zero (`Has-well-behaved-zero`) and free-variable grade positivity | `Graded.Modality.Has-well-behaved-zero`, `Graded.Usage.Properties.Has-well-behaved-zero.valid-var-usage` | `Modality.HasWellBehavedZero` ([`Modality.lean`](../formalization/abel2018/FeasibleUnivalence/Modality.lean)) |
+| Definition 6.3 & **Theorem 6.4** | Extraction function $\mathrm{erase}\;\mathrm{str}\;t$ to untyped CBV/CBN target language `Target.Term` and non-occurrence of $\mathbb{0}$-graded variables | `Graded.Erasure.Extraction.erase`, `Graded.Erasure.Target.Term`, `Graded.Erasure.Extraction.Properties.Usage.erased-hasX` | `TargetTerm`, `TargetStep`, `erase`, `Usage.erased_not_hasX` ([`Erasure.lean`](../formalization/abel2018/FeasibleUnivalence/Erasure.lean)) |
+| Definitions 6.5–6.7 & 2023 Theorems 6.8–6.9 | Logical relation for erasure ($t \mathbin{\circledR} v \mathbin{::} A$), backwards closure under reduction, and grade subsumption | `Graded.Erasure.LogicalRelation._®_∷_/_`, `_®_∷ℕ`, `redSubstTerm*`, `subsumption-®∷[∣]◂` | `SemType`, `ErasedRelNat`, `ErasedRel`, `ErasedRelGraded`, `erasedRel_backwards_closed`, `subsumption_erasedRelGraded` ([`Erasure.lean`](../formalization/abel2018/FeasibleUnivalence/Erasure.lean)) |
+| **2026 Theorem 6.8** (2023 Theorems 6.10–6.12) | **Fundamental lemma of erasure** ($\mathbb{0}^c \▸[\mathbb{1}^m] t \implies t \mathbin{\circledR} \mathrm{erase}\;\mathrm{str}\;t \mathbin{::} A$) | `Graded.Erasure.LogicalRelation.Fundamental.Fundamental.fundamental`, `fundamentalErased` | `fundamental`, `fundamentalErased` ([`Erasure.lean`](../formalization/abel2018/FeasibleUnivalence/Erasure.lean)) |
+| **2026 Theorem 6.9** (2023 Theorems 6.13 & 8.3) | **Main Goal — Operational Extraction Soundness for $\mathbb{N}$** | `Graded.Erasure.Consequences.Soundness.Soundness.soundness-ℕ`, `Soundness₀.soundness-ℕ` | `soundness_nat`, `soundness_nat_canonical`, plus counterexamples `zero_divisor_breaks_erasure`, `erased_match_open_counterexample` ([`Erasure.lean`](../formalization/abel2018/FeasibleUnivalence/Erasure.lean)) |
 
-This is a source map, not a formal dependency graph or a complete set of Lean signatures. The full source premises must be transcribed and checked before uploading each item. Technical closure lemmas may be supplied through later decompositions of these milestones.
+---
 
-## 3. Preserve the computational claim in Lean
+## 3. M3: Graded Recursion and Resource Correctness (Complete in Lean 4.33.1)
 
-A statement such as `Nonempty (Decidable P)` can be discharged classically for any proposition. That would not formalize a conversion-checking algorithm. Likewise, assuming a sound, complete decider would remove the main content of the paper.
+- **Paper:** Oskar Eriksson, Andreas Abel, and Nils Anders Danielsson, *On Recursion in Graded Modal Type Theory*, Proc. ACM Program. Lang. 10 (ICFP 2026), DOI [10.1145/3828677](https://doi.org/10.1145/3828677), [Zenodo artifact](https://zenodo.org/records/21166412).
+- **Pinned Agda artifact:** [`graded-type-theory/graded-type-theory`, tag `icfp26`, commit `93987e3ddc11f583fc3ecdc05472e1dac4094c4f`](https://github.com/graded-type-theory/graded-type-theory/tree/93987e3ddc11f583fc3ecdc05472e1dac4094c4f).
+- **Lean 4.33.1 formalization:** [`formalization/abel2018/FeasibleUnivalence/Modality.lean`](../formalization/abel2018/FeasibleUnivalence/Modality.lean) and [`HeapMachine.lean`](../formalization/abel2018/FeasibleUnivalence/HeapMachine.lean) (3,999 lines in `HeapMachine.lean`, zero `sorry`, constructive `[propext, Quot.sound]` footprint).
 
-The Lean deliverable must include an executable decision procedure and proofs of its correctness and termination on the source's well-formed inputs. There are two representation choices to investigate before freezing the goal:
+### M3 Exact Paper-to-Artifact-to-Lean Map
 
-- a program receiving explicit, computationally represented typing certificates;
-- a partial algorithm on encoded syntax, with a theorem that it terminates and returns the correct answer on well-formed inputs.
+| ICFP 2026 result | Mathematical content | Pinned Agda declaration (`93987e3ddc11f583fc3ecdc05472e1dac4094c4f`) | Lean 4 declaration(s) |
+|---|---|---|---|
+| Section 4.1 | Grade subtraction (`Supports-subtraction`, $p - q \equiv r$, $p - q \le r$) and instances for linearity, affine, erasure, $\mathbb{N} \uplus \{\infty\}$, and security | `Graded.Modality.Properties.Subtraction.Supports-subtraction`, `_-_≡_`, `_-_≤_` | `Modality.SubEq`, `Modality.SubLe`, `Modality.SupportsSubtraction`, `ErasureGrade.supportsSubtraction`, `ZeroOneMany.linearitySupportsSubtraction`, `ZeroOneMany.affineSupportsSubtraction`, `NatPlusInfinity.supportsSubtraction`, `SecurityLevel.supportsSubtraction` ([`Modality.lean`](../formalization/abel2018/FeasibleUnivalence/Modality.lean)) |
+| Section 4.2 | Resource-aware abstract machine (`Entry`, `Heap`, `Cont`, `Stack`, `State`), resource-consuming lookup $H \vdash x \mapsto[p] c \mathbin{;} H'$, stack multiplicity $|S| \equiv p$, tracking WHNF step $\⇾$, non-tracking step $\⇢$, and numeral evaluation $\↠$ | `Graded.Heap.Untyped.Entry`, `Heap`, `Cont`, `Stack`, `State`, `_⊢_↦[_]_⨾_`, `∣_∣≡_`, `Graded.Heap.Reduction._⇾_`, `_⇢_`, `_↠_` | `Entry`, `Heap`, `Cont`, `Stack`, `State`, `HeapLookup`, `Stack.mult`, `HeapStep`, `HeapStepUntracked`, `HeapNumStep` ([`HeapMachine.lean`](../formalization/abel2018/FeasibleUnivalence/HeapMachine.lean)) |
+| **Lemmas 4.1–4.2** | Heap lookups succeed for well-resourced heaps and states | `Graded.Heap.Usage.Properties.▸ₕ↦[]`, `▸ₛ↦[]` | `lookup_succeeds`, `state_lookup_succeeds` ([`HeapMachine.lean`](../formalization/abel2018/FeasibleUnivalence/HeapMachine.lean)) |
+| **Theorem 4.3** | Usage preservation for $\⇾$, counterexample for single-step $\↠$ with non-empty `.sucₑ` stack, and usage preservation for $\↠^*$ to empty stack | `Graded.Heap.Usage.Reduction.▸-⇾`, `▸-⇾*`, `¬▸-↠`, `▸-↠*` | `usage_pres_step`, `usage_pres_star`, `numStep_not_pres_usage`, `usage_pres_numStar_empty` ([`HeapMachine.lean`](../formalization/abel2018/FeasibleUnivalence/HeapMachine.lean)) |
+| **Theorem 4.6** | Bisimilarity between resource-tracking ($\⇾$) and non-tracking ($\⇢$) semantics | `Graded.Heap.Reduction.Properties.⇾→⇢`, `⇢→⇾` | `tracked_to_untracked_step`, `tracked_to_untracked_star`, `untracked_to_tracked_step`, `untracked_to_tracked_star` ([`HeapMachine.lean`](../formalization/abel2018/FeasibleUnivalence/HeapMachine.lean)) |
+| **Theorems 4.7–4.10** | Unfolding soundness of $\⇾^*$, $\⇢^*$, and $\↠^*$ with respect to source reduction and resource soundness for numerals | `Graded.Heap.Reduction.Properties.⇾-unfold`, `⇢-unfold`, `↠-unfold` | `unfold_heapStep`, `unfold_heapStar`, `unfold_heapStarUntracked`, `unfold_heapNumStep`, `unfold_heapNumStar`, `initial_eval_numeral_sound` ([`HeapMachine.lean`](../formalization/abel2018/FeasibleUnivalence/HeapMachine.lean)) |
+| Section 5.2 & **Definition 5.1** | Recursion sequence `nrᵢ`, GLB characterization (`≤-nrᵢ-GLB`), GLB-based `natrec` usage rule (`natrec-no-nr-glbₘ`), and counterexample on $\mathbb{N}$ (`¬nrᵢ-GLB`) | `Graded.Modality.Properties.Natrec.≤-nrᵢ-GLB`, `Graded.Modality.Has-well-behaved-GLBs`, `Graded.Modality.Instances.Nat.¬nrᵢ-GLB` | `Modality.nrᵢ`, `Modality.IsNrGLB`, `Modality.HasWellBehavedGLBs`, `Usage.natrec_fix`, `nat_no_nr_glb` ([`Modality.lean`](../formalization/abel2018/FeasibleUnivalence/Modality.lean), [`Usage.lean`](../formalization/abel2018/FeasibleUnivalence/Usage.lean)) |
+| **Theorem 6.1** | Information-flow non-interference for the security lattice | `Graded.Heap.Non-interference.non-interference` | `SecurityLevel.non_interference` ([`HeapMachine.lean`](../formalization/abel2018/FeasibleUnivalence/HeapMachine.lean)) |
 
-Choose one after a prototype of the source's mutually defined comparison relations. If the Prove2Me goal is propositional, connect it to the actual program or its code and computation semantics. Do not replace that connection with arbitrary existence of a Boolean function. Total decision of typability for arbitrary unannotated terms is not the source target.
+---
 
-The Agda development uses induction-recursion. Its Lean replacement needs a justified construction, not an axiom asserting the desired logical relation. Also record the distinction between proving object-language metatheorems in Lean and reproducing the original proof's foundational-strength claim: Lean's metatheory has proof irrelevance, while the source explicitly works without K.
+## 4. Formalized Research Models: Papers A, B, C, and Final Synthesis (Gates G2–G6)
 
-## 4. Preparation tasks and first proof tasks
+In accordance with [`CONTRIBUTING.md`](../CONTRIBUTING.md), we clearly distinguish the direct paper ports above (M1, M2, M3, and M4.0 in `formalization/atkey2024/`) from the formalized models of our programme's research stages in `FeasibleUnivalence/`:
 
-1. **Syntax and judgments.** Translate the pinned [`Definition.Untyped`](https://github.com/mr-ohman/logrel-mltt/blob/eb2b15ab1c4b45923025834d3bb798943cb44b8e/Definition/Untyped.agda) and [`Definition.Typed`](https://github.com/mr-ohman/logrel-mltt/blob/eb2b15ab1c4b45923025834d3bb798943cb44b8e/Definition/Typed.agda) concepts. Review binder scope, lifting, substitution into dependent codomains, the universe rules, and the natural-number recursor against the paper's figures.
-2. **Computational interface.** Prototype the six relations in [`Definition.Conversion`](https://github.com/mr-ohman/logrel-mltt/blob/eb2b15ab1c4b45923025834d3bb798943cb44b8e/Definition/Conversion.agda) and choose the computational representation above. Use examples involving function eta and dependent recursion to detect a reduced language disguised as the full source.
-3. **First bounded proofs.** Establish renaming/substitution identities and composition, substitution under a binder, and weakening (Lemma 2.7). Compare any existing binding library before building these. These tasks must refer to the actual selected syntax.
-4. **Logical relation.** Construct the universe-indexed relation and its generic equality interface. Treat the natural-number recursion/congruence case as an early stress test. Then prove the fundamental lemma and its first consequences.
-5. **Conversion.** Complete soundness, algorithm termination/decision, and completeness, using the two source instantiations of the logical relation. Close both clauses of the main goal with the same executable algorithm.
-
-For module planning, separate syntax, judgments/reduction, algorithmic equality, logical relations, and consequences. A shared binding layer with M2 is desirable, but its compatibility must be demonstrated. No full PTS-normalization theorem or groupoid-model theorem is required to begin these tasks.
-
-## 5. Subsequent Abel missions
-
-### M2: graded erasure
-
-Pin [arXiv:2603.29716v2](https://arxiv.org/abs/2603.29716v2), the extended 2026 paper, and an artifact matching that version. Use **Theorem 6.9**, operational extraction correctness, as the initial main-goal candidate. The underlying logical result in Theorem 6.8 and the grade-substitution and preservation results in Theorems 5.3–5.4 are substantial milestones.
-
-Preserve the modality hypotheses and the distinction between closed programs and programs in erasable contexts. The source places conditions on erased pair elimination and on consistency when erased empty-type elimination is allowed. The extensions require their own checks. It is not sound to generalize the theorem to arbitrary contexts or modalities from its informal slogan. The 2023 publication and the 2026 extension should be reconciled in a single versioned mission scope.
-
-### M3: graded recursion and resource correctness
-
-Use [the ICFP 2026 paper](https://doi.org/10.1145/3828677) with [the archived artifact](https://zenodo.org/records/21166412). The artifact's `icfp26` reference resolves to [commit `93987e3ddc11f583fc3ecdc05472e1dac4094c4f`](https://github.com/graded-type-theory/graded-type-theory/tree/93987e3ddc11f583fc3ecdc05472e1dac4094c4f).
-
-Before proposal creation, map the exact resource theorem and its modality instances from the complete paper to artifact declarations. The current plan does not invent theorem numbers or replace the machine by an abstract cost counter. The authors' [issue #95](https://github.com/graded-type-theory/graded-type-theory/issues/95) explains the gap to our Paper A: their machine operates on source terms using call-by-name; extraction with removal of erased content and a call-by-value or call-by-need target needs further work.
-
-### M11: erased univalence
-
-Read [Abel–Danielsson–Vezzosi's 2021 draft](https://www.cse.chalmers.se/~nad/publications/abel-danielsson-vezzosi-erased-univalence.html), especially the [extended version](https://www.cse.chalmers.se/~nad/publications/abel-danielsson-vezzosi-erased-univalence-long.pdf), before refining Paper C. SHA-256 of the downloaded extended PDF: `940ae7582e025339fad58170666df6c73a1749bb28b5b64919c5ecf0853f7881`.
-
-Its CTT0ω calculus restricts Glue and higher constructors to erased code. Theorem 4.2 provides a logical compilation result and Corollary 4.3 gives agreement on closed runtime naturals, **under Conjecture 4.1**. That conjecture includes forcing/reducibility facts and injectivity/disjointness of canonical forms. These are explicitly unproved in the selected draft.
-
-A faithful mission must retain that conditional scope and expose the conjectured metatheory as open obligations if pursuing an unconditional extension. It must not describe the draft as a completed normalization or polynomial-time theorem. Closing those obligations would be a possible intermediate research target, after checking subsequent literature. Its cubical presentation also needs comparison with the Cartesian calculus currently proposed for Paper C.
-
-## 6. What an upload will contain
-
-Prepare one `ResearchPaper` proposal per selected paper. For M1 the package should include the source/version record, compiled meaning-bearing definitions, the computational goal, source-linked milestones, and independent blind read-backs of the actual Lean items. Use the current supported environment, initially Lean 4.33.1 / Mathlib `0df444a360eaa60ab8c11dca51a86af692955474`, and recheck it at upload.
-
-The Prove2Me proposal workflow separates editable private drafts from human review and submission. The useful next upload is that reviewable package, rather than a paper title with a classical or axiomatic stand-in for its theorem. This intake creates neither a platform draft nor a claim that such a package is ready.
+| Stage & Gate | Module | Main Theorems & Benchmarks | Scope & Modeling Notes |
+|---|---|---|---|
+| **Paper A (Gates G2 & G3)**: *Resource Correctness Survives Erasure* | [`PaperA.lean`](../formalization/abel2018/FeasibleUnivalence/PaperA.lean) (1,609 lines) | `erased_slot_never_accessed`, `erased_heap_lockstep_sim`, `erased_heap_star_sim`, `erased_heap_numeral_sim`, `returned_closure_captures_budget`, `paper_A_resource_correctness_after_erasure`, `fold_capturing_closure_example`, `cbv_erased_eval_counterexample`, `affine_duplication_counterexample`, `linear_discard_counterexample` | Bridges M3's graded `HeapMachine` (`State M`) with an extracted untyped closure-and-heap target machine (`TargetState`) via `compileState 𝕄`. Proves that $\mathbb{0}$-graded heap slots compiled to `.undef` are never accessed and that returned closures capture live heap budget (`closureDemand`). |
+| **Paper B (Gate G4)**: *Feasible Dependent Types without Equality Reflection* | [`PaperB.lean`](../formalization/abel2018/FeasibleUnivalence/PaperB.lean) (762 lines) | `comp_certificate_formula`, `paper_B_polytime_soundness`, `paper_B_intensional_idJ_soundness`, `conversion_invariance_of_bounds`, `paper_B_FP_completeness`, `two_traversals_and_composition_cert`, `dependent_iterator_with_idJ_example`, `exponential_duplication_counterexample`, `erased_clock_counterexample` | Formalizes a Bellantoni–Cook / Atkey safe-recursion core over binary words (`Word = List Bool`) with static polynomial size/time certificate synthesis (`synthSizePoly`, `synthTimePoly`), exact composition law, and intensional `Id`/`J` transport indexed by M1's `Abel2018.TermEq`. |
+| **Paper C & M11 (Gate G5)**: *The Cost of Transport* | [`PaperC.lean`](../formalization/abel2018/FeasibleUnivalence/PaperC.lean) (1,092 lines) | `transport_obstruction_xor`, `cubical_certs_substDim_eq`, `paper_C_quantitative_transport_soundness`, `vType_transport_simulation`, `erased_equiv_cannot_execute_at_runtime`, `hcomp_linear_duplication_rejected`, `zero_cost_cast_fallacy`, `ListMap.listMap_abstraction_not_injective`, `finMap_client_transfer_theorem`, `bst_invariant_violation_and_cost_separation` | Formalizes the cryptographic XOR obstruction (`eh`), a Cartesian cubical fragment (`Dim`, `CubicalType`, `CubicalTerm`, `WellResourcedCubical`) contrasting M11's `.erasedOnly` `V`-types with `.certified` runtime `V`-types (`QuantEquiv`), dimension-substitution invariance of bounds, and the `ListMap`/`TreeMap` representation transfer. |
+| **Final Synthesis (Gate G6)**: *Feasible Univalence* | [`Synthesis.lean`](../formalization/abel2018/FeasibleUnivalence/Synthesis.lean) (435 lines) | `feasible_univalence_fundamental`, `pi_sigma_quantitative_extraction`, `normalization_vs_runtime_cost_separation`, `feasible_univalence_main_theorem` | Unifies M1's `theorem_4_12_computational`, M2/M3/Paper A's resource-correct extraction, Paper B/C's quantitative gluing (`QuantGlued`), $\Pi\Sigma$ polynomial witness extraction, and normalization-vs.-runtime cost separation. |

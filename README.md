@@ -4,7 +4,9 @@ Research notes, proof ideas, and a Lean 4 formalization roadmap for univalent re
 
 The central question is whether a single dependent type theory can support abstract univalent reasoning, decidable conversion, correct erasure, and extraction of programs with certified execution bounds.
 
-**Status:** paused at the user's request, October 2026. The combined theorem remains a proposed target. The repository contains research plans and a [draft Lean conversion implementation](formalization/abel2018/README.md); conversion correctness and the programme's research theorems remain unproved. No Prove2Me mission has been launched by this workstream. See the [handover](HANDOVER.md).
+**Status:** active, November 2026. The repository contains the research plans and **27,423 lines of zero-`sorry`, constructive (`[propext]` / `[Quot.sound]` only, zero `Classical.choice`) Lean 4.33.1 formalizations** across [`formalization/abel2018/`](formalization/abel2018/README.md) and [`formalization/atkey2024/`](formalization/atkey2024/README.md):
+- **Direct paper ports:** **M1** ([POPL 2018 conversion decidability](formalization/abel2018/README.md), 14 modules, 12,979 lines), **M2** ([graded dependent erasure](formalization/abel2018/FeasibleUnivalence/Erasure.lean), 3 modules, 5,866 lines), **M3** ([graded recursion and heap machine](formalization/abel2018/FeasibleUnivalence/HeapMachine.lean), 3,999 lines), and **M4.0** ([Atkey's POPL 2024 costed machine](formalization/atkey2024/README.md), 492 lines), alongside the [M4 rule audit](docs/atkey-rule-audit.md) and [Abel mission plan](docs/abel-mission-plan.md).
+- **Formalized models of the research stages (Gates G2–G6):** [**Paper A**](formalization/abel2018/FeasibleUnivalence/PaperA.lean) (target closure-and-heap machine simulation and resource conservation after erasure, 1,609 lines), [**Paper B**](formalization/abel2018/FeasibleUnivalence/PaperB.lean) (stratified Bellantoni–Cook / Atkey safe recursion core over binary words with static polynomial certificates and intensional `Id`/`J` transport, 762 lines), [**Paper C & M11**](formalization/abel2018/FeasibleUnivalence/PaperC.lean) (cryptographic transport obstruction, Cartesian cubical fragment with quantitative `V`-type equivalences, and `ListMap`/`TreeMap` representation transfer, 1,092 lines), and the [**Final Synthesis**](formalization/abel2018/FeasibleUnivalence/Synthesis.lean) (quantitative gluing and $\Pi\Sigma$ polynomial witness extraction, 435 lines). See the [handover](HANDOVER.md) and [source review & scope audit](formalization/abel2018/source-review.md) for the exact scope boundaries distinguishing the direct Agda ports from the stratified models.
 
 ## Read the programme
 
@@ -15,6 +17,7 @@ The central question is whether a single dependent type theory can support abstr
 | [Formalization roadmap](docs/formalization-roadmap.md) | Prioritized source-paper missions, three intermediate papers, and a Prove2Me workflow. |
 | [Live Prove2Me intake](docs/prove2me-intake-2026-10-30.md) | Existing missions, observed proof status, reuse limits, and missing Abel candidates. |
 | [Abel mission plan](docs/abel-mission-plan.md) | Pinned conversion source, main theorem, milestones, and preparation for the first upload. |
+| [M4 rule audit](docs/atkey-rule-audit.md) | Atkey's polynomial-time rules classified against an intensional core with decidable conversion, and the resulting constraints on Paper B. |
 | [Contributing](CONTRIBUTING.md) | How to propose statements, report obstacles, and distinguish ideas from checked results. |
 
 ## Proposed paper sequence
