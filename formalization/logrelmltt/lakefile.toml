@@ -1,0 +1,6 @@
+name = "logrelmltt"
+version = "0.1.0"
+defaultTargets = ["LogrelMLTT"]
+
+[[lean_lib]]
+name = "LogrelMLTT"
