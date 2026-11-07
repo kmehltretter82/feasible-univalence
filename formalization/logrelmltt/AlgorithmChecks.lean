@@ -24,6 +24,17 @@ open LogrelMLTT
 #guard compareTermUp 20 [.unit] (.var 0) .star .unit = some true
 -- Emptyrec comparison on a neutral of type Empty.
 #guard compareTermUp 20 [.empty] (.emptyrec .nat (.var 0)) (.emptyrec .nat (.var 0)) .nat = some true
+-- Identity type comparison and idrec beta reduction (idrec Nat Nat (succ zero) zero zero rfl = succ zero).
+#guard compareTypeUp 20 [] (.id .nat .zero .zero) (.id .nat .zero .zero) = some true
+#guard compareTypeUp 20 [] (.id .nat .zero .zero) (.id .nat .zero (.succ .zero)) = some false
+#guard compareTermUp 20 [] .rfl .rfl (.id .nat .zero .zero) = some true
+#guard compareTermUp 30 []
+  (.idrec .nat .nat (.succ .zero) .zero .zero .rfl)
+  (.succ .zero) .nat = some true
+-- Neutral idrec comparison on an open equality proof h : Id Nat zero zero.
+#guard compareTermUp 30 [.id .nat .zero .zero]
+  (.idrec .nat .nat (.succ .zero) .zero .zero (.var 0))
+  (.idrec .nat .nat (.succ .zero) .zero .zero (.var 0)) .nat = some true
 -- Distinct naturals.
 #guard compareTermUp 10 [] .zero (.succ .zero) .nat = some false
 -- Natural recursion computing the identity on the numeral two.
@@ -53,6 +64,13 @@ open LogrelMLTT
 #guard decideTermEq (HasType.succ (HasType.zero CtxWf.nil))
   (HasType.succ (HasType.zero CtxWf.nil)) = true
 #guard decideTermEq (HasType.star CtxWf.nil) (HasType.star CtxWf.nil) = true
+#guard decideTypeEq
+  (TypeWf.id (TypeWf.nat CtxWf.nil) (HasType.zero CtxWf.nil) (HasType.zero CtxWf.nil))
+  (TypeWf.id (TypeWf.nat CtxWf.nil) (HasType.zero CtxWf.nil)
+    (HasType.succ (HasType.zero CtxWf.nil))) = false
+#guard decideTermEq
+  (HasType.rfl (TypeWf.nat CtxWf.nil) (HasType.zero CtxWf.nil))
+  (HasType.rfl (TypeWf.nat CtxWf.nil) (HasType.zero CtxWf.nil)) = true
 
 -- Verified milestone and main theorem signatures.
 #check @wkTypeWf
@@ -66,11 +84,13 @@ open LogrelMLTT
 #check @syntacticEqTerm
 #check @injectivity
 #check @sigma_injectivity
+#check @id_injectivity
 #check @whNorm
 #check @whNormTerm
 #check @canonicity
 #check @canonicity_unit
 #check @canonicity_unit_red
+#check @canonicity_id
 #check @noEmpty
 #check @substitution
 #check @zero_ne_one

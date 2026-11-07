@@ -37,6 +37,17 @@ mutual
         ConvTypeUp Γ F G →
         ConvNeDown Γ k l .empty →
         ConvNeUp Γ (.emptyrec F k) (.emptyrec G l) F
+    | idrec {Γ A A' P P' r r' t t' u u' h h' A₀ t₀ u₀} :
+        TypeWf Γ A →
+        HasType Γ t A →
+        HasType Γ h (.id A t u) →
+        ConvTypeUp Γ A A' →
+        ConvTermUp Γ t t' A →
+        ConvTypeUp (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P P' →
+        ConvTermUp Γ r r' (subst2 P t .rfl) →
+        ConvTermUp Γ u u' A →
+        ConvNeDown Γ h h' (.id A₀ t₀ u₀) →
+        ConvNeUp Γ (.idrec A P r t u h) (.idrec A' P' r' t' u' h') (subst2 P u h)
 
   /-- Algorithmic equality of neutrals with type in WHNF (`Γ ⊢ k ~ l ↓ B`). -/
   inductive ConvNeDown : Context → Term → Term → Term → Prop where
@@ -73,6 +84,11 @@ mutual
         ConvTypeUp Γ F H →
         ConvTypeUp (F :: Γ) G E →
         ConvTypeDown Γ (.sigma F G) (.sigma H E)
+    | idCong {Γ A A' t t' u u'} :
+        ConvTypeUp Γ A A' →
+        ConvTermUp Γ t t' A →
+        ConvTermUp Γ u u' A →
+        ConvTypeDown Γ (.id A t u) (.id A' t' u')
 
   /-- Algorithmic equality of terms (`Γ ⊢ t [conv↑] u ∷ A`). -/
   inductive ConvTermUp : Context → Term → Term → Term → Prop where
@@ -127,6 +143,14 @@ mutual
         ConvTermUp Γ (.fst p) (.fst r) F →
         ConvTermUp Γ (.snd p) (.snd r) (subst0 G (.fst p)) →
         ConvTermDown Γ p r (.sigma F G)
+    | idIns {Γ k l A t u M} :
+        HasType Γ k (.id A t u) →
+        HasType Γ l (.id A t u) →
+        ConvNeDown Γ k l M →
+        ConvTermDown Γ k l (.id A t u)
+    | rflRefl {Γ A t u} :
+        HasType Γ .rfl (.id A t u) →
+        ConvTermDown Γ .rfl .rfl (.id A t u)
 end
 
 /-- Extraction of neutrality from `ConvNeUp` (`ne~↑`). -/
@@ -145,6 +169,7 @@ theorem neConvNeUp {Γ : Context} {t u A : Term} (d : ConvNeUp Γ t u A) :
     (fun _ ihp ↦ ⟨.fst ihp.2.1, .fst ihp.2.2⟩)
     (fun _ ihp ↦ ⟨.snd ihp.2.1, .snd ihp.2.2⟩)
     (fun _ _ _ ihk ↦ ⟨.emptyrec ihk.2.1, .emptyrec ihk.2.2⟩)
+    (fun _ _ _ _ _ _ _ _ _ _ _ _ _ _ ihh ↦ ⟨.idrec ihh.2.1, .idrec ihh.2.2⟩)
     (fun _ hw _ ih ↦ ⟨hw, ih⟩)
     (fun _ _ _ _ _ _ ↦ trivial)
     (fun _ ↦ trivial)
@@ -154,6 +179,7 @@ theorem neConvNeUp {Γ : Context} {t u A : Term} (d : ConvNeUp Γ t u A) :
     (fun _ _ ↦ trivial)
     (fun _ _ _ _ _ ↦ trivial)
     (fun _ _ _ _ _ ↦ trivial)
+    (fun _ _ _ _ _ _ ↦ trivial)
     (fun _ _ _ _ _ _ _ _ ↦ trivial)
     (fun _ _ ↦ trivial)
     (fun _ _ ↦ trivial)
@@ -164,6 +190,8 @@ theorem neConvNeUp {Γ : Context} {t u A : Term} (d : ConvNeUp Γ t u A) :
     (fun _ _ _ _ ↦ trivial)
     (fun _ _ _ _ _ _ _ ↦ trivial)
     (fun _ _ _ _ _ _ _ _ _ _ ↦ trivial)
+    (fun _ _ _ _ ↦ trivial)
+    (fun _ ↦ trivial)
     d
 
 /-- Extraction of WHNF and neutrality from `ConvNeDown` (`ne~↓`). -/
@@ -183,6 +211,7 @@ theorem whnfConvTypeDown {Γ : Context} {A B : Term} :
       ⟨.neutral neK, .neutral neL⟩
   | .piCong _ _ _ => ⟨.pi, .pi⟩
   | .sigmaCong _ _ _ => ⟨.sigma, .sigma⟩
+  | .idCong _ _ _ => ⟨.id, .id⟩
 
 /-- Extraction of WHNF from `ConvTermDown` (`whnfConv↓Term`). -/
 theorem whnfConvTermDown {Γ : Context} {t u A : Term} :
@@ -202,6 +231,10 @@ theorem whnfConvTermDown {Γ : Context} {t u A : Term} :
   | .etaUnit _ _ we we' => ⟨.unit, we, we'⟩
   | .etaEq _ _ _ wf wg _ => ⟨.pi, wf, wg⟩
   | .sigmaEta _ _ _ _ wp wr _ _ => ⟨.sigma, wp, wr⟩
+  | .idIns _ _ hne =>
+      let ⟨_, neK, neL⟩ := neConvNeDown hne
+      ⟨.id, .neutral neK, .neutral neL⟩
+  | .rflRefl _ => ⟨.id, .rfl, .rfl⟩
 
 /-- Weak-head expansion of algorithmic type equality (`reductionConv↑`). -/
 theorem reductionConvTypeUp {Γ : Context} {A A' B B' : Term}
@@ -306,6 +339,45 @@ private theorem wkConv_emptyrec_case {Γ : Context} {k l F G : Term}
     WkConvNeUpMotive Γ (.emptyrec F k) (.emptyrec G l) F :=
   fun hρ hΔ ↦ .emptyrec (ihFG hρ hΔ) (ihkl hρ hΔ)
 
+private theorem wkConv_idrec_case {Γ : Context} {A A' P P' r r' t t' u u' h h' A₀ t₀ u₀ : Term}
+    (hA : TypeWf Γ A) (ht : HasType Γ t A) (hh : HasType Γ h (.id A t u))
+    (_hAA' : ConvTypeUp Γ A A')
+    (_htt' : ConvTermUp Γ t t' A)
+    (_hPP' : ConvTypeUp (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P P')
+    (_hrr' : ConvTermUp Γ r r' (subst2 P t .rfl))
+    (_huu' : ConvTermUp Γ u u' A)
+    (_hhh' : ConvNeDown Γ h h' (.id A₀ t₀ u₀))
+    (ihAA' : WkConvTypeUpMotive Γ A A')
+    (ihtt' : WkConvTermUpMotive Γ t t' A)
+    (ihPP' : WkConvTypeUpMotive (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P P')
+    (ihrr' : WkConvTermUpMotive Γ r r' (subst2 P t .rfl))
+    (ihuu' : WkConvTermUpMotive Γ u u' A)
+    (ihhh' : WkConvNeDownMotive Γ h h' (.id A₀ t₀ u₀)) :
+    WkConvNeUpMotive Γ (.idrec A P r t u h) (.idrec A' P' r' t' u' h') (subst2 P u h) := by
+  intro Δ ρ hρ hΔ
+  have hρA : TypeWf Δ (wk ρ A) := wkTypeWf hρ hΔ hA
+  have hρt : HasType Δ (wk ρ t) (wk ρ A) := wkHasType hρ hΔ ht
+  have hρh : HasType Δ (wk ρ h) (.id (wk ρ A) (wk ρ t) (wk ρ u)) := wkHasType hρ hΔ hh
+  have hΔA : CtxWf (wk ρ A :: Δ) := .cons hΔ hρA
+  have hρA1 : TypeWf (wk ρ A :: Δ) (wk1 (wk ρ A)) := by
+    rw [wk1_wk]
+    exact wkTypeWf (.step hρ) hΔA hA
+  have hρt1 : HasType (wk ρ A :: Δ) (wk1 (wk ρ t)) (wk1 (wk ρ A)) := by
+    rw [wk1_wk, wk1_wk]
+    exact wkHasType (.step hρ) hΔA ht
+  have hIdWf : TypeWf (wk ρ A :: Δ) (.id (wk1 (wk ρ A)) (wk1 (wk ρ t)) (.var 0)) :=
+    .id hρA1 hρt1 (.var hΔA .here)
+  have hLift2 : WkCtx (.lift (.lift ρ))
+      (.id (wk1 (wk ρ A)) (wk1 (wk ρ t)) (.var 0) :: wk ρ A :: Δ)
+      (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) := by
+    rw [← id_wk1_wk1_0_wk_lift ρ A t]
+    exact .lift (.lift hρ)
+  have hρPP' := ihPP' hLift2 (.cons hΔA hIdWf)
+  have hρrr' := ihrr' hρ hΔ
+  rw [wk_beta_doubleSubst P t .rfl] at hρrr'
+  rw [wk, wk, wk_beta_doubleSubst P u h]
+  exact .idrec hρA hρt hρh (ihAA' hρ hΔ) (ihtt' hρ hΔ) hρPP' hρrr' (ihuu' hρ hΔ) (ihhh' hρ hΔ)
+
 private theorem wkConv_neDown_case {Γ : Context} {k l A B : Term}
     (D : TypeStar Γ A B) (hw : Whnf B) (_hkl : ConvNeUp Γ k l A)
     (ihkl : WkConvNeUpMotive Γ k l A) :
@@ -360,6 +432,14 @@ private theorem wkConv_sigmaCong_case {Γ : Context} {F G H E : Term}
     let hρF := wkTypeWf hρ hΔ hF
     .sigmaCong hρF (ihFH hρ hΔ) (ihGE (.lift hρ) (.cons hΔ hρF))
 
+private theorem wkConv_idCong_case {Γ : Context} {A A' t t' u u' : Term}
+    (_hAA' : ConvTypeUp Γ A A') (_htt' : ConvTermUp Γ t t' A) (_huu' : ConvTermUp Γ u u' A)
+    (ihAA' : WkConvTypeUpMotive Γ A A')
+    (ihtt' : WkConvTermUpMotive Γ t t' A)
+    (ihuu' : WkConvTermUpMotive Γ u u' A) :
+    WkConvTypeDownMotive Γ (.id A t u) (.id A' t' u') :=
+  fun hρ hΔ ↦ .idCong (ihAA' hρ hΔ) (ihtt' hρ hΔ) (ihuu' hρ hΔ)
+
 private theorem wkConv_termUp_case {Γ : Context} {t u A B t' u' : Term}
     (DA : TypeStar Γ A B) (dt : Star Γ t t' B) (du : Star Γ u u' B)
     (hwB : Whnf B) (hwt : Whnf t') (hwu : Whnf u')
@@ -379,6 +459,12 @@ private theorem wkConv_emptyIns_case {Γ : Context} {k l : Term}
     (_hkl : ConvNeDown Γ k l .empty) (ihkl : WkConvNeDownMotive Γ k l .empty) :
     WkConvTermDownMotive Γ k l .empty :=
   fun hρ hΔ ↦ .emptyIns (ihkl hρ hΔ)
+
+private theorem wkConv_idIns_case {Γ : Context} {k l A t u M : Term}
+    (hk : HasType Γ k (.id A t u)) (hl : HasType Γ l (.id A t u))
+    (_hkl : ConvNeDown Γ k l M) (ihkl : WkConvNeDownMotive Γ k l M) :
+    WkConvTermDownMotive Γ k l (.id A t u) :=
+  fun hρ hΔ ↦ .idIns (wkHasType hρ hΔ hk) (wkHasType hρ hΔ hl) (ihkl hρ hΔ)
 
 private theorem wkConv_neIns_case {Γ : Context} {k l M N : Term}
     (hk : HasType Γ k N) (hl : HasType Γ l N) (neN : Neutral N)
@@ -401,6 +487,11 @@ private theorem wkConv_succCong_case {Γ : Context} {m n : Term}
     (_hmn : ConvTermUp Γ m n .nat) (ihmn : WkConvTermUpMotive Γ m n .nat) :
     WkConvTermDownMotive Γ (.succ m) (.succ n) .nat :=
   fun hρ hΔ ↦ .succCong (ihmn hρ hΔ)
+
+private theorem wkConv_rflRefl_case {Γ : Context} {A t u : Term}
+    (hrfl : HasType Γ .rfl (.id A t u)) :
+    WkConvTermDownMotive Γ .rfl .rfl (.id A t u) :=
+  fun hρ hΔ ↦ .rflRefl (wkHasType hρ hΔ hrfl)
 
 private theorem wkConv_etaUnit_case {Γ : Context} {e e' : Term}
     (he : HasType Γ e .unit) (he' : HasType Γ e' .unit)
@@ -460,6 +551,8 @@ theorem wkConvNeUp {Γ Δ : Context} {t u A : Term} {ρ : Wk}
     (fun hpr ihpr ↦ wkConv_fst_case hpr ihpr)
     (fun hpr ihpr ↦ wkConv_snd_case hpr ihpr)
     (fun hFG hkl ihFG ihkl ↦ wkConv_emptyrec_case hFG hkl ihFG ihkl)
+    (fun hA ht hh hAA' htt' hPP' hrr' huu' hhh' ihAA' ihtt' ihPP' ihrr' ihuu' ihhh' ↦
+      wkConv_idrec_case hA ht hh hAA' htt' hPP' hrr' huu' hhh' ihAA' ihtt' ihPP' ihrr' ihuu' ihhh')
     (fun D hw hkl ihkl ↦ wkConv_neDown_case D hw hkl ihkl)
     (fun DA DB hwA hwB hAB ihAB ↦ wkConv_typeUp_case DA DB hwA hwB hAB ihAB)
     (fun hΓ ↦ wkConv_univRefl_case hΓ)
@@ -469,6 +562,7 @@ theorem wkConvNeUp {Γ Δ : Context} {t u A : Term} {ρ : Wk}
     (fun hKL ihKL ↦ wkConv_neType_case hKL ihKL)
     (fun hF hFH hGE ihFH ihGE ↦ wkConv_piCong_case hF hFH hGE ihFH ihGE)
     (fun hF hFH hGE ihFH ihGE ↦ wkConv_sigmaCong_case hF hFH hGE ihFH ihGE)
+    (fun hAA' htt' huu' ihAA' ihtt' ihuu' ↦ wkConv_idCong_case hAA' htt' huu' ihAA' ihtt' ihuu')
     (fun DA dt du hwB hwt hwu htu ihtu ↦
       wkConv_termUp_case DA dt du hwB hwt hwu htu ihtu)
     (fun hkl ihkl ↦ wkConv_natIns_case hkl ihkl)
@@ -481,6 +575,8 @@ theorem wkConvNeUp {Γ Δ : Context} {t u A : Term} {ρ : Wk}
     (fun hF hf hg hwf hwg hfg ihfg ↦ wkConv_etaEq_case hF hf hg hwf hwg hfg ihfg)
     (fun hF hG hp hr hwp hwr hfst hsnd ihfst ihsnd ↦
       wkConv_sigmaEta_case hF hG hp hr hwp hwr hfst hsnd ihfst ihsnd)
+    (fun hk hl hkl ihkl ↦ wkConv_idIns_case hk hl hkl ihkl)
+    (fun hrfl ↦ wkConv_rflRefl_case hrfl)
     d) hρ hΔ
 
 /-- Weakening of `ConvNeDown` (`wk~↓`). -/
@@ -507,6 +603,8 @@ theorem wkConvTypeDown {Γ Δ : Context} {A B : Term} {ρ : Wk}
     (fun hpr ihpr ↦ wkConv_fst_case hpr ihpr)
     (fun hpr ihpr ↦ wkConv_snd_case hpr ihpr)
     (fun hFG hkl ihFG ihkl ↦ wkConv_emptyrec_case hFG hkl ihFG ihkl)
+    (fun hA ht hh hAA' htt' hPP' hrr' huu' hhh' ihAA' ihtt' ihPP' ihrr' ihuu' ihhh' ↦
+      wkConv_idrec_case hA ht hh hAA' htt' hPP' hrr' huu' hhh' ihAA' ihtt' ihPP' ihrr' ihuu' ihhh')
     (fun D hw hkl ihkl ↦ wkConv_neDown_case D hw hkl ihkl)
     (fun DA DB hwA hwB hAB ihAB ↦ wkConv_typeUp_case DA DB hwA hwB hAB ihAB)
     (fun hΓ ↦ wkConv_univRefl_case hΓ)
@@ -516,6 +614,7 @@ theorem wkConvTypeDown {Γ Δ : Context} {A B : Term} {ρ : Wk}
     (fun hKL ihKL ↦ wkConv_neType_case hKL ihKL)
     (fun hF hFH hGE ihFH ihGE ↦ wkConv_piCong_case hF hFH hGE ihFH ihGE)
     (fun hF hFH hGE ihFH ihGE ↦ wkConv_sigmaCong_case hF hFH hGE ihFH ihGE)
+    (fun hAA' htt' huu' ihAA' ihtt' ihuu' ↦ wkConv_idCong_case hAA' htt' huu' ihAA' ihtt' ihuu')
     (fun DA dt du hwB hwt hwu htu ihtu ↦
       wkConv_termUp_case DA dt du hwB hwt hwu htu ihtu)
     (fun hkl ihkl ↦ wkConv_natIns_case hkl ihkl)
@@ -528,6 +627,8 @@ theorem wkConvTypeDown {Γ Δ : Context} {A B : Term} {ρ : Wk}
     (fun hF hf hg hwf hwg hfg ihfg ↦ wkConv_etaEq_case hF hf hg hwf hwg hfg ihfg)
     (fun hF hG hp hr hwp hwr hfst hsnd ihfst ihsnd ↦
       wkConv_sigmaEta_case hF hG hp hr hwp hwr hfst hsnd ihfst ihsnd)
+    (fun hk hl hkl ihkl ↦ wkConv_idIns_case hk hl hkl ihkl)
+    (fun hrfl ↦ wkConv_rflRefl_case hrfl)
     d) hρ hΔ
 
 /-- Weakening of `ConvTypeUp` (`wkConv↑`). -/
@@ -556,6 +657,8 @@ theorem wkConvTermDown {Γ Δ : Context} {t u A : Term} {ρ : Wk}
     (fun hpr ihpr ↦ wkConv_fst_case hpr ihpr)
     (fun hpr ihpr ↦ wkConv_snd_case hpr ihpr)
     (fun hFG hkl ihFG ihkl ↦ wkConv_emptyrec_case hFG hkl ihFG ihkl)
+    (fun hA ht hh hAA' htt' hPP' hrr' huu' hhh' ihAA' ihtt' ihPP' ihrr' ihuu' ihhh' ↦
+      wkConv_idrec_case hA ht hh hAA' htt' hPP' hrr' huu' hhh' ihAA' ihtt' ihPP' ihrr' ihuu' ihhh')
     (fun D hw hkl ihkl ↦ wkConv_neDown_case D hw hkl ihkl)
     (fun DA DB hwA hwB hAB ihAB ↦ wkConv_typeUp_case DA DB hwA hwB hAB ihAB)
     (fun hΓ ↦ wkConv_univRefl_case hΓ)
@@ -565,6 +668,7 @@ theorem wkConvTermDown {Γ Δ : Context} {t u A : Term} {ρ : Wk}
     (fun hKL ihKL ↦ wkConv_neType_case hKL ihKL)
     (fun hF hFH hGE ihFH ihGE ↦ wkConv_piCong_case hF hFH hGE ihFH ihGE)
     (fun hF hFH hGE ihFH ihGE ↦ wkConv_sigmaCong_case hF hFH hGE ihFH ihGE)
+    (fun hAA' htt' huu' ihAA' ihtt' ihuu' ↦ wkConv_idCong_case hAA' htt' huu' ihAA' ihtt' ihuu')
     (fun DA dt du hwB hwt hwu htu ihtu ↦
       wkConv_termUp_case DA dt du hwB hwt hwu htu ihtu)
     (fun hkl ihkl ↦ wkConv_natIns_case hkl ihkl)
@@ -577,6 +681,8 @@ theorem wkConvTermDown {Γ Δ : Context} {t u A : Term} {ρ : Wk}
     (fun hF hf hg hwf hwg hfg ihfg ↦ wkConv_etaEq_case hF hf hg hwf hwg hfg ihfg)
     (fun hF hG hp hr hwp hwr hfst hsnd ihfst ihsnd ↦
       wkConv_sigmaEta_case hF hG hp hr hwp hwr hfst hsnd ihfst ihsnd)
+    (fun hk hl hkl ihkl ↦ wkConv_idIns_case hk hl hkl ihkl)
+    (fun hrfl ↦ wkConv_rflRefl_case hrfl)
     d) hρ hΔ
 
 /-- Weakening of `ConvTermUp` (`wkConv↑Term`). -/
@@ -645,6 +751,16 @@ theorem neutralHead_iff_Neutral : ∀ t : Term, neutralHead t = true ↔ Neutral
         | emptyrec hk => exact (neutralHead_iff_Neutral k).mpr hk
   | .unit => ⟨fun h ↦ (by cases h), fun h ↦ (by cases h)⟩
   | .star => ⟨fun h ↦ (by cases h), fun h ↦ (by cases h)⟩
+  | .id _ _ _ => ⟨fun h ↦ (by cases h), fun h ↦ (by cases h)⟩
+  | .rfl => ⟨fun h ↦ (by cases h), fun h ↦ (by cases h)⟩
+  | .idrec _ _ _ _ _ k => by
+      dsimp [neutralHead]
+      constructor
+      · intro h
+        exact .idrec ((neutralHead_iff_Neutral k).mp h)
+      · intro h
+        cases h with
+        | idrec hk => exact (neutralHead_iff_Neutral k).mpr hk
 
 /-- `lookupType` characterizes `Member` exactly. -/
 theorem lookupType_iff_Member :
@@ -706,6 +822,8 @@ theorem whnfFuel_whnf : ∀ {fuel : Nat} {t u : Term},
   | fuel + 1, .empty, u, h => by cases h; exact .empty
   | fuel + 1, .unit, u, h => by cases h; exact .unit
   | fuel + 1, .star, u, h => by cases h; exact .star
+  | fuel + 1, .id _ _ _, u, h => by cases h; exact .id
+  | fuel + 1, .rfl, u, h => by cases h; exact .rfl
   | fuel + 1, .app f a, u, h => by
       dsimp [whnfFuel] at h
       cases hf : whnfFuel fuel f with
@@ -764,6 +882,18 @@ theorem whnfFuel_whnf : ∀ {fuel : Nat} {t u : Term},
           dsimp [Bind.bind, Option.bind] at h
           rcases whnfFuel_neutral_guard h with ⟨hne, rfl⟩
           exact .neutral (.emptyrec hne)
+  | fuel + 1, .idrec A P r t u e, v, h => by
+      dsimp [whnfFuel] at h
+      cases he : whnfFuel fuel e with
+      | none => rw [he] at h; cases h
+      | some e' =>
+          rw [he] at h
+          dsimp [Bind.bind, Option.bind] at h
+          cases e' with
+          | rfl => exact whnfFuel_whnf h
+          | _ =>
+              rcases whnfFuel_neutral_guard h with ⟨hne, rfl⟩
+              exact .neutral (.idrec hne)
 
 /-- Fuel monotonicity for `whnfFuel`: increasing fuel preserves any successful result. -/
 theorem whnfFuel_mono : ∀ {f₁ f₂ : Nat} {t u : Term},
@@ -782,6 +912,8 @@ theorem whnfFuel_mono : ∀ {f₁ f₂ : Nat} {t u : Term},
   | f₁ + 1, f₂ + 1, .empty, _, _, h => h
   | f₁ + 1, f₂ + 1, .unit, _, _, h => h
   | f₁ + 1, f₂ + 1, .star, _, _, h => h
+  | f₁ + 1, f₂ + 1, .id _ _ _, _, _, h => h
+  | f₁ + 1, f₂ + 1, .rfl, _, _, h => h
   | f₁ + 1, f₂ + 1, .app f a, u, hle, h => by
       have hle' : f₁ ≤ f₂ := Nat.le_of_succ_le_succ hle
       dsimp [whnfFuel] at h ⊢
@@ -840,6 +972,18 @@ theorem whnfFuel_mono : ∀ {f₁ f₂ : Nat} {t u : Term},
           rw [he] at h
           rw [whnfFuel_mono hle' he]
           exact h
+  | f₁ + 1, f₂ + 1, .idrec A P r t u e, v, hle, h => by
+      have hle' : f₁ ≤ f₂ := Nat.le_of_succ_le_succ hle
+      dsimp [whnfFuel] at h ⊢
+      cases he : whnfFuel f₁ e with
+      | none => rw [he] at h; cases h
+      | some e' =>
+          rw [he] at h
+          rw [whnfFuel_mono hle' he]
+          dsimp [Bind.bind, Option.bind] at h ⊢
+          cases e' with
+          | rfl => exact whnfFuel_mono hle' h
+          | _ => exact h
 
 /-- Every neutral term evaluates to itself under `whnfFuel` once fuel equals at least its spine depth. -/
 theorem whnfFuel_of_Neutral {t : Term} (hn : Neutral t) :
@@ -910,12 +1054,24 @@ theorem whnfFuel_of_Neutral {t : Term} (hn : Neutral t) :
           dsimp [Bind.bind, Option.bind]
           have hne : neutralHead k = true := (neutralHead_iff_Neutral k).mpr hk
           simp [hne]
+  | @idrec A P r t u k hk ih =>
+      rcases ih with ⟨f₀, ih⟩
+      refine ⟨f₀ + 1, fun f hf ↦ ?_⟩
+      cases f with
+      | zero => cases hf
+      | succ f =>
+          have hle : f₀ ≤ f := Nat.le_of_succ_le_succ hf
+          dsimp [whnfFuel]
+          rw [ih f hle]
+          dsimp [Bind.bind, Option.bind]
+          have hne : neutralHead k = true := (neutralHead_iff_Neutral k).mpr hk
+          cases hk <;> simp [hne]
 
 /-- Every WHNF term evaluates to itself under `whnfFuel` for sufficiently large fuel. -/
 theorem whnfFuel_of_Whnf {t : Term} (hw : Whnf t) :
     ∃ fuel, ∀ f, fuel ≤ f → whnfFuel f t = some t := by
   cases hw with
-  | univ | pi | nat | lam | zero | succ | sigma | prod | empty | unit | star =>
+  | univ | pi | nat | lam | zero | succ | sigma | prod | empty | unit | star | id | rfl =>
       refine ⟨1, fun f hf ↦ ?_⟩
       cases f with
       | zero => cases hf
@@ -1051,6 +1207,31 @@ theorem whnfFuel_step {Γ : Context} {t t' u A : Term} {fuel : Nat}
               dsimp [whnfFuel]
               rw [he]
               exact hu
+  | @idrec A P r t u h h' _ _ _ _ _ _ ih =>
+      cases fuel with
+      | zero => cases hu
+      | succ f₀ =>
+          dsimp [whnfFuel] at hu
+          cases hh' : whnfFuel f₀ h' with
+          | none => rw [hh'] at hu; cases hu
+          | some w =>
+              rw [hh'] at hu
+              have hh : whnfFuel (f₀ + 1) h = some w := ih hh'
+              dsimp [whnfFuel]
+              rw [hh]
+              dsimp [Bind.bind, Option.bind] at hu ⊢
+              cases w with
+              | rfl => exact whnfFuel_mono (Nat.le_succ f₀) hu
+              | _ => exact hu
+  | @idrecBeta A P r t u _ _ _ _ _ _ _ =>
+      dsimp [whnfFuel]
+      cases fuel with
+      | zero => cases hu
+      | succ f₀ =>
+          have hrfl : whnfFuel (f₀ + 1) .rfl = some .rfl := rfl
+          rw [hrfl]
+          dsimp [Bind.bind, Option.bind]
+          exact hu
 
 /-- Multi-step typed term reduction to WHNF (`TermWhnf`) is computed by `whnfFuel`. -/
 theorem whnfFuel_of_TermWhnf {Γ : Context} {t u A : Term} (h : TermWhnf Γ t u A) :
@@ -1207,7 +1388,65 @@ theorem compare_mono_bundle :
                        | some inf =>
                            rw [hi] at h
                            rw [ihNeDown hle' hi]
-                           exact h,
+                           exact h
+             case idrec A P r t u e A' P' r' t' u' e' =>
+               dsimp [compareNeutralUp] at h ⊢
+               cases hA : compareTypeUp f₁ Γ A A' with
+               | none => rw [hA] at h; cases h
+               | some bA =>
+                   rw [hA] at h
+                   rw [ihTyUp hle' hA]
+                   dsimp [Bind.bind, Option.bind] at h ⊢
+                   cases bA with
+                   | false => exact h
+                   | true =>
+                       dsimp at h ⊢
+                       cases ht : compareTermUp f₁ Γ t t' A with
+                       | none => rw [ht] at h; cases h
+                       | some bt =>
+                           rw [ht] at h
+                           rw [ihTmUp hle' ht]
+                           dsimp [Bind.bind, Option.bind] at h ⊢
+                           cases bt with
+                           | false => exact h
+                           | true =>
+                               dsimp at h ⊢
+                               cases hP : compareTypeUp f₁ (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P P' with
+                               | none => rw [hP] at h; cases h
+                               | some bP =>
+                                   rw [hP] at h
+                                   rw [ihTyUp hle' hP]
+                                   dsimp [Bind.bind, Option.bind] at h ⊢
+                                   cases bP with
+                                   | false => exact h
+                                   | true =>
+                                       dsimp at h ⊢
+                                       cases hr : compareTermUp f₁ Γ r r' (subst2 P t .rfl) with
+                                       | none => rw [hr] at h; cases h
+                                       | some br =>
+                                           rw [hr] at h
+                                           rw [ihTmUp hle' hr]
+                                           dsimp [Bind.bind, Option.bind] at h ⊢
+                                           cases br with
+                                           | false => exact h
+                                           | true =>
+                                               dsimp at h ⊢
+                                               cases hu : compareTermUp f₁ Γ u u' A with
+                                               | none => rw [hu] at h; cases h
+                                               | some bu =>
+                                                   rw [hu] at h
+                                                   rw [ihTmUp hle' hu]
+                                                   dsimp [Bind.bind, Option.bind] at h ⊢
+                                                   cases bu with
+                                                   | false => exact h
+                                                   | true =>
+                                                       dsimp at h ⊢
+                                                       cases hi : compareNeutralDown f₁ Γ e e' with
+                                                       | none => rw [hi] at h; cases h
+                                                       | some inf =>
+                                                           rw [hi] at h
+                                                           rw [ihNeDown hle' hi]
+                                                           exact h,
        -- compareNeutralDown
        fun {f₂ Γ k l res} hle h ↦ by
          cases f₂ with
@@ -1311,7 +1550,30 @@ theorem compare_mono_bundle :
                    | false => exact h
                    | true =>
                        dsimp at h ⊢
-                       exact ihTyUp hle' h,
+                       exact ihTyUp hle' h
+             case id.id A t u A' t' u' =>
+               dsimp [compareTypeDown] at h ⊢
+               cases hA : compareTypeUp f₁ Γ A A' with
+               | none => rw [hA] at h; cases h
+               | some bA =>
+                   rw [hA] at h
+                   rw [ihTyUp hle' hA]
+                   dsimp [Bind.bind, Option.bind] at h ⊢
+                   cases bA with
+                   | false => exact h
+                   | true =>
+                       dsimp at h ⊢
+                       cases ht : compareTermUp f₁ Γ t t' A with
+                       | none => rw [ht] at h; cases h
+                       | some bt =>
+                           rw [ht] at h
+                           rw [ihTmUp hle' ht]
+                           dsimp [Bind.bind, Option.bind] at h ⊢
+                           cases bt with
+                           | false => exact h
+                           | true =>
+                               dsimp at h ⊢
+                               exact ihTmUp hle' h,
        -- compareTermUp
        fun {f₂ Γ t u A b} hle h ↦ by
          cases f₂ with
@@ -1397,6 +1659,29 @@ theorem compare_mono_bundle :
                        exact h
                  · rw [if_neg hcond] at h ⊢
                    exact h
+             | id A₀ t₀ u₀ =>
+                 have hIdNeCase :
+                     (if neutralHead t && neutralHead u then do
+                       let inferred ← compareNeutralDown f₁ Γ t u
+                       some inferred.isSome
+                     else some false) = some b →
+                     (if neutralHead t && neutralHead u then do
+                       let inferred ← compareNeutralDown f₂ Γ t u
+                       some inferred.isSome
+                     else some false) = some b := by
+                   intro hne
+                   by_cases hcond : (neutralHead t && neutralHead u) = true
+                   · rw [if_pos hcond] at hne ⊢
+                     cases hi : compareNeutralDown f₁ Γ t u with
+                     | none => rw [hi] at hne; cases hne
+                     | some inf =>
+                         rw [hi] at hne
+                         rw [ihNeDown hle' hi]
+                         exact hne
+                   · rw [if_neg hcond] at hne ⊢
+                     exact hne
+                 cases t <;> cases u <;> try exact hIdNeCase h
+                 case rfl.rfl => exact h
              | nat =>
                  have hNatNeCase :
                      (if neutralHead t && neutralHead u then do
@@ -1427,8 +1712,8 @@ theorem compare_mono_bundle :
                  case succ.succ m n =>
                    dsimp [compareTermDown] at h ⊢
                    exact ihTmUp hle' h
-             | var _ | app _ _ | natrec _ _ _ _ | fst _ | snd _ | emptyrec _ _
-             | lam _ | zero | succ _ | prod _ _ | star =>
+             | var _ | app _ _ | natrec _ _ _ _ | fst _ | snd _ | emptyrec _ _ | idrec _ _ _ _ _ _
+             | lam _ | zero | succ _ | prod _ _ | star | rfl =>
                  exact hNeInsCase h⟩
 
 theorem compareNeutralUp_mono {f₁ f₂ : Nat} {Γ : Context} {k l : Term} {res : Option Term}

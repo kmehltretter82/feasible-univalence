@@ -59,6 +59,20 @@ theorem sigma_eq_A_whnf {Γ : Context} {F G B : Term}
   rcases sigma_eq_A h with ⟨H, E, D'⟩
   exact ⟨H, E, whnfRedStar D' hw⟩
 
+/-- If `Γ ⊢ Id A t u ≡ B` and `B` is in WHNF, then `B = Id A' t' u'` (`Id≡A`). -/
+theorem id_eq_A_whnf {Γ : Context} {A t u B : Term}
+    (h : TypeEq Γ (.id A t u) B) (hw : Whnf B) :
+    ∃ A' t' u', B = .id A' t' u' := by
+  rcases id_eq_A h with ⟨A', t', u', D'⟩
+  exact ⟨A', t', u', whnfRedStar D' hw⟩
+
+/-- Type equality for the base-case motive substitution `P[t, rfl] ≡ P'[t', rfl]`. -/
+theorem subst2RflTypeEq {Γ : Context} {A P P' t t' : Term}
+    (hPP' : TypeEq (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P P')
+    (hA : TypeWf Γ A) (ht : HasType Γ t A) (htt' : TermEq Γ t t' A) :
+    TypeEq Γ (subst2 P t .rfl) (subst2 P' t' .rfl) :=
+  subst2TypeEq hPP' ht htt' (.refl (.rfl hA ht))
+
 /-!
 ## Soundness of Algorithmic Equality (`Definition/Conversion/Soundness.agda`, Lemma 4.3)
 -/
@@ -85,6 +99,10 @@ theorem soundnessNeUp {Γ : Context} {k l A : Term} (d : ConvNeUp Γ k l A) :
       let ⟨hF, hG⟩ := syntacticSigma wfSigma
       .snd hF hG ihpr)
     (fun _ _ ihFG ihkl ↦ .emptyrec ihFG ihkl)
+    (fun hA ht hh _ _ _ _ _ hkl ihAA' ihtt' ihPP' ihrr' ihuu' ihhh' ↦
+      let ⟨_, neH, _⟩ := neConvNeDown hkl
+      let ⟨_, hh₀, _⟩ := syntacticEqTerm ihhh'
+      .idrec hA ihAA' ht ihtt' ihPP' ihrr' ihuu' (.conv ihhh' (neTypeEq neH hh₀ hh)))
     (fun D _ _ ih ↦ .conv ih (subsetStar D))
     (fun DA DB _ _ _ ih ↦ .trans (subsetStar DA) (.trans ih (.symm (subsetStar DB))))
     (fun hΓ ↦ .refl (.univ hΓ))
@@ -94,6 +112,7 @@ theorem soundnessNeUp {Γ : Context} {k l A : Term} (d : ConvNeUp Γ k l A) :
     (fun _ ih ↦ .fromUniv ih)
     (fun hF _ _ ihFH ihGE ↦ .pi hF ihFH ihGE)
     (fun hF _ _ ihFH ihGE ↦ .sigma hF ihFH ihGE)
+    (fun _ _ _ ihAA' ihtt' ihuu' ↦ .id ihAA' ihtt' ihuu')
     (fun DA dt du _ _ _ _ ih ↦
       .conv (.trans (subsetStarTerm dt) (.trans ih (.symm (subsetStarTerm du))))
         (.symm (subsetStar DA)))
@@ -109,6 +128,11 @@ theorem soundnessNeUp {Γ : Context} {k l A : Term} (d : ConvNeUp Γ k l A) :
     (fun he he' _ _ ↦ .etaUnit he he')
     (fun hF hf hg _ _ _ ih ↦ .eta hF hf hg ih)
     (fun hF hG hp hr _ _ _ _ ihfst ihsnd ↦ .sigmaEta hF hG hp hr ihfst ihsnd)
+    (fun hk _ hkl ihkl ↦
+      let ⟨_, neK, _⟩ := neConvNeDown hkl
+      let ⟨_, hkM, _⟩ := syntacticEqTerm ihkl
+      .conv ihkl (neTypeEq neK hkM hk))
+    (fun hrfl ↦ .refl hrfl)
     Γ k l A d
 
 /-- Soundness of `ConvNeDown` (`soundness~↓`). -/
@@ -138,6 +162,10 @@ theorem soundnessConvDown {Γ : Context} {A B : Term} (d : ConvTypeDown Γ A B) 
       let ⟨hF, hG⟩ := syntacticSigma wfSigma
       .snd hF hG ihpr)
     (fun _ _ ihFG ihkl ↦ .emptyrec ihFG ihkl)
+    (fun hA ht hh _ _ _ _ _ hkl ihAA' ihtt' ihPP' ihrr' ihuu' ihhh' ↦
+      let ⟨_, neH, _⟩ := neConvNeDown hkl
+      let ⟨_, hh₀, _⟩ := syntacticEqTerm ihhh'
+      .idrec hA ihAA' ht ihtt' ihPP' ihrr' ihuu' (.conv ihhh' (neTypeEq neH hh₀ hh)))
     (fun D _ _ ih ↦ .conv ih (subsetStar D))
     (fun DA DB _ _ _ ih ↦ .trans (subsetStar DA) (.trans ih (.symm (subsetStar DB))))
     (fun hΓ ↦ .refl (.univ hΓ))
@@ -147,6 +175,7 @@ theorem soundnessConvDown {Γ : Context} {A B : Term} (d : ConvTypeDown Γ A B) 
     (fun _ ih ↦ .fromUniv ih)
     (fun hF _ _ ihFH ihGE ↦ .pi hF ihFH ihGE)
     (fun hF _ _ ihFH ihGE ↦ .sigma hF ihFH ihGE)
+    (fun _ _ _ ihAA' ihtt' ihuu' ↦ .id ihAA' ihtt' ihuu')
     (fun DA dt du _ _ _ _ ih ↦
       .conv (.trans (subsetStarTerm dt) (.trans ih (.symm (subsetStarTerm du))))
         (.symm (subsetStar DA)))
@@ -162,6 +191,11 @@ theorem soundnessConvDown {Γ : Context} {A B : Term} (d : ConvTypeDown Γ A B) 
     (fun he he' _ _ ↦ .etaUnit he he')
     (fun hF hf hg _ _ _ ih ↦ .eta hF hf hg ih)
     (fun hF hG hp hr _ _ _ _ ihfst ihsnd ↦ .sigmaEta hF hG hp hr ihfst ihsnd)
+    (fun hk _ hkl ihkl ↦
+      let ⟨_, neK, _⟩ := neConvNeDown hkl
+      let ⟨_, hkM, _⟩ := syntacticEqTerm ihkl
+      .conv ihkl (neTypeEq neK hkM hk))
+    (fun hrfl ↦ .refl hrfl)
     Γ A B d
 
 /-- Soundness of `ConvTypeUp` (`soundnessConv↑`, Lemma 4.3). -/
@@ -192,6 +226,10 @@ theorem soundnessConvDownTerm {Γ : Context} {t u A : Term} (d : ConvTermDown Γ
       let ⟨hF, hG⟩ := syntacticSigma wfSigma
       .snd hF hG ihpr)
     (fun _ _ ihFG ihkl ↦ .emptyrec ihFG ihkl)
+    (fun hA ht hh _ _ _ _ _ hkl ihAA' ihtt' ihPP' ihrr' ihuu' ihhh' ↦
+      let ⟨_, neH, _⟩ := neConvNeDown hkl
+      let ⟨_, hh₀, _⟩ := syntacticEqTerm ihhh'
+      .idrec hA ihAA' ht ihtt' ihPP' ihrr' ihuu' (.conv ihhh' (neTypeEq neH hh₀ hh)))
     (fun D _ _ ih ↦ .conv ih (subsetStar D))
     (fun DA DB _ _ _ ih ↦ .trans (subsetStar DA) (.trans ih (.symm (subsetStar DB))))
     (fun hΓ ↦ .refl (.univ hΓ))
@@ -201,6 +239,7 @@ theorem soundnessConvDownTerm {Γ : Context} {t u A : Term} (d : ConvTermDown Γ
     (fun _ ih ↦ .fromUniv ih)
     (fun hF _ _ ihFH ihGE ↦ .pi hF ihFH ihGE)
     (fun hF _ _ ihFH ihGE ↦ .sigma hF ihFH ihGE)
+    (fun _ _ _ ihAA' ihtt' ihuu' ↦ .id ihAA' ihtt' ihuu')
     (fun DA dt du _ _ _ _ ih ↦
       .conv (.trans (subsetStarTerm dt) (.trans ih (.symm (subsetStarTerm du))))
         (.symm (subsetStar DA)))
@@ -216,6 +255,11 @@ theorem soundnessConvDownTerm {Γ : Context} {t u A : Term} (d : ConvTermDown Γ
     (fun he he' _ _ ↦ .etaUnit he he')
     (fun hF hf hg _ _ _ ih ↦ .eta hF hf hg ih)
     (fun hF hG hp hr _ _ _ _ ihfst ihsnd ↦ .sigmaEta hF hG hp hr ihfst ihsnd)
+    (fun hk _ hkl ihkl ↦
+      let ⟨_, neK, _⟩ := neConvNeDown hkl
+      let ⟨_, hkM, _⟩ := syntacticEqTerm ihkl
+      .conv ihkl (neTypeEq neK hkM hk))
+    (fun hrfl ↦ .refl hrfl)
     Γ t u A d
 
 /-- Soundness of `ConvTermUp` (`soundnessConv↑Term`, Lemma 4.3). -/
@@ -299,6 +343,26 @@ theorem stabilityTerm {Γ Δ : Context} {t A : Term}
   have q := substitutionTerm ht hσ wfΔ
   rwa [subst_id, subst_id] at q
 
+/-- Stability of term equality under `CtxEq` (`stabilityTermEq`). -/
+theorem stabilityTermEq {Γ Δ : Context} {t u A : Term}
+    (hΓΔ : CtxEq Γ Δ) (htu : TermEq Γ t u A) : TermEq Δ t u A := by
+  rcases contextConvSubst hΓΔ with ⟨_, wfΔ, hσ⟩
+  have q := substitutionEqTerm htu (substRefl hσ) wfΔ
+  rwa [subst_id, subst_id, subst_id] at q
+
+/-- Extended motive context equality for `Id` (`idMotiveCtxEq`). -/
+theorem idMotiveCtxEq {Γ Δ : Context} {A A' t t' : Term}
+    (hΓΔ : CtxEq Γ Δ) (hAA' : TypeEq Γ A A') (htt' : TermEq Γ t t' A) :
+    CtxEq (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ)
+      (.id (wk1 A') (wk1 t') (.var 0) :: A' :: Δ) := by
+  have wfΓ := (contextConvSubst hΓΔ).1
+  have hA := (syntacticEq hAA').1
+  have hΓA : CtxWf (A :: Γ) := .cons wfΓ hA
+  exact .cons (.cons hΓΔ hAA')
+    (.id (wkTypeEq (.step .id) hΓA hAA')
+      (wkTermEq (.step .id) hΓA htt')
+      (.refl (.var hΓA .here)))
+
 /-- Stability of single-step term reduction under `CtxEq` (`stabilityRedTerm`). -/
 theorem stabilityRedTerm {Γ Δ : Context} {t u A : Term}
     (hΓΔ : CtxEq Γ Δ) (d : Step Γ t u A) : Step Δ t u A := by
@@ -333,6 +397,16 @@ theorem stabilityRedTerm {Γ Δ : Context} {t u A : Term}
         (stabilityTerm hΓΔ ht) (stabilityTerm hΓΔ hu)
   | emptyrec hA _ ih =>
       exact .emptyrec (stability hΓΔ hA) (ih hΓΔ)
+  | idrec hA hP hr ht hu _ ih =>
+      exact .idrec (stability hΓΔ hA)
+        (stability (idMotiveCtxEq hΓΔ (.refl hA) (.refl ht)) hP)
+        (stabilityTerm hΓΔ hr) (stabilityTerm hΓΔ ht) (stabilityTerm hΓΔ hu)
+        (ih hΓΔ)
+  | idrecBeta hA hP hr ht hu htu hPP =>
+      exact .idrecBeta (stability hΓΔ hA)
+        (stability (idMotiveCtxEq hΓΔ (.refl hA) (.refl ht)) hP)
+        (stabilityTerm hΓΔ hr) (stabilityTerm hΓΔ ht) (stabilityTerm hΓΔ hu)
+        (stabilityTermEq hΓΔ htu) (stabilityEq hΓΔ hPP)
 
 /-- Stability of single-step type reduction under `CtxEq` (`stabilityRed`). -/
 theorem stabilityRed {Γ Δ : Context} {A B : Term}
@@ -384,6 +458,11 @@ theorem stabilityNeUp {Γ Δ : Context} {k l A : Term}
     (fun _ ihpr _ hΓΔ ↦ .fst (ihpr hΓΔ))
     (fun _ ihpr _ hΓΔ ↦ .snd (ihpr hΓΔ))
     (fun _ _ ihFG ihkl _ hΓΔ ↦ .emptyrec (ihFG hΓΔ) (ihkl hΓΔ))
+    (fun hA ht hh _ _ _ _ _ _ ihAA' ihtt' ihPP' ihrr' ihuu' ihhh' _ hΓΔ ↦
+      .idrec (stability hΓΔ hA) (stabilityTerm hΓΔ ht) (stabilityTerm hΓΔ hh)
+        (ihAA' hΓΔ) (ihtt' hΓΔ)
+        (ihPP' (idMotiveCtxEq hΓΔ (.refl hA) (.refl ht)))
+        (ihrr' hΓΔ) (ihuu' hΓΔ) (ihhh' hΓΔ))
     (fun D hw _ ih _ hΓΔ ↦ .mk (stabilityRedStar hΓΔ D) hw (ih hΓΔ))
     (fun DA DB hwA hwB _ ih _ hΓΔ ↦
       .mk (stabilityRedStar hΓΔ DA) (stabilityRedStar hΓΔ DB) hwA hwB (ih hΓΔ))
@@ -396,6 +475,8 @@ theorem stabilityNeUp {Γ Δ : Context} {k l A : Term}
       .piCong (stability hΓΔ hF) (ihFH hΓΔ) (ihGE (.cons hΓΔ (.refl hF))))
     (fun hF _ _ ihFH ihGE _ hΓΔ ↦
       .sigmaCong (stability hΓΔ hF) (ihFH hΓΔ) (ihGE (.cons hΓΔ (.refl hF))))
+    (fun _ _ _ ihAA' ihtt' ihuu' _ hΓΔ ↦
+      .idCong (ihAA' hΓΔ) (ihtt' hΓΔ) (ihuu' hΓΔ))
     (fun DA dt du hwB hwt hwu _ ih _ hΓΔ ↦
       .mk (stabilityRedStar hΓΔ DA) (stabilityRedStarTerm hΓΔ dt) (stabilityRedStarTerm hΓΔ du)
         hwB hwt hwu (ih hΓΔ))
@@ -415,6 +496,9 @@ theorem stabilityNeUp {Γ Δ : Context} {k l A : Term}
     (fun hF hG hp hr hwp hwr _ _ ihfst ihsnd _ hΓΔ ↦
       .sigmaEta (stability hΓΔ hF) (stability (.cons hΓΔ (.refl hF)) hG)
         (stabilityTerm hΓΔ hp) (stabilityTerm hΓΔ hr) hwp hwr (ihfst hΓΔ) (ihsnd hΓΔ))
+    (fun hk hl _ ih _ hΓΔ ↦
+      .idIns (stabilityTerm hΓΔ hk) (stabilityTerm hΓΔ hl) (ih hΓΔ))
+    (fun hrfl _ hΓΔ ↦ .rflRefl (stabilityTerm hΓΔ hrfl))
     Γ k l A d) hΓΔ
 
 /-- Stability of `ConvNeDown` under `CtxEq` (`stability~↓`). -/
@@ -440,6 +524,11 @@ theorem stabilityConvDown {Γ Δ : Context} {A B : Term}
     (fun _ ihpr _ hΓΔ ↦ .fst (ihpr hΓΔ))
     (fun _ ihpr _ hΓΔ ↦ .snd (ihpr hΓΔ))
     (fun _ _ ihFG ihkl _ hΓΔ ↦ .emptyrec (ihFG hΓΔ) (ihkl hΓΔ))
+    (fun hA ht hh _ _ _ _ _ _ ihAA' ihtt' ihPP' ihrr' ihuu' ihhh' _ hΓΔ ↦
+      .idrec (stability hΓΔ hA) (stabilityTerm hΓΔ ht) (stabilityTerm hΓΔ hh)
+        (ihAA' hΓΔ) (ihtt' hΓΔ)
+        (ihPP' (idMotiveCtxEq hΓΔ (.refl hA) (.refl ht)))
+        (ihrr' hΓΔ) (ihuu' hΓΔ) (ihhh' hΓΔ))
     (fun D hw _ ih _ hΓΔ ↦ .mk (stabilityRedStar hΓΔ D) hw (ih hΓΔ))
     (fun DA DB hwA hwB _ ih _ hΓΔ ↦
       .mk (stabilityRedStar hΓΔ DA) (stabilityRedStar hΓΔ DB) hwA hwB (ih hΓΔ))
@@ -452,6 +541,8 @@ theorem stabilityConvDown {Γ Δ : Context} {A B : Term}
       .piCong (stability hΓΔ hF) (ihFH hΓΔ) (ihGE (.cons hΓΔ (.refl hF))))
     (fun hF _ _ ihFH ihGE _ hΓΔ ↦
       .sigmaCong (stability hΓΔ hF) (ihFH hΓΔ) (ihGE (.cons hΓΔ (.refl hF))))
+    (fun _ _ _ ihAA' ihtt' ihuu' _ hΓΔ ↦
+      .idCong (ihAA' hΓΔ) (ihtt' hΓΔ) (ihuu' hΓΔ))
     (fun DA dt du hwB hwt hwu _ ih _ hΓΔ ↦
       .mk (stabilityRedStar hΓΔ DA) (stabilityRedStarTerm hΓΔ dt) (stabilityRedStarTerm hΓΔ du)
         hwB hwt hwu (ih hΓΔ))
@@ -471,6 +562,9 @@ theorem stabilityConvDown {Γ Δ : Context} {A B : Term}
     (fun hF hG hp hr hwp hwr _ _ ihfst ihsnd _ hΓΔ ↦
       .sigmaEta (stability hΓΔ hF) (stability (.cons hΓΔ (.refl hF)) hG)
         (stabilityTerm hΓΔ hp) (stabilityTerm hΓΔ hr) hwp hwr (ihfst hΓΔ) (ihsnd hΓΔ))
+    (fun hk hl _ ih _ hΓΔ ↦
+      .idIns (stabilityTerm hΓΔ hk) (stabilityTerm hΓΔ hl) (ih hΓΔ))
+    (fun hrfl _ hΓΔ ↦ .rflRefl (stabilityTerm hΓΔ hrfl))
     Γ A B d) hΓΔ
 
 /-- Stability of `ConvTypeUp` under `CtxEq` (`stabilityConv↑`). -/
@@ -501,6 +595,11 @@ theorem stabilityConvDownTerm {Γ Δ : Context} {t u A : Term}
     (fun _ ihpr _ hΓΔ ↦ .fst (ihpr hΓΔ))
     (fun _ ihpr _ hΓΔ ↦ .snd (ihpr hΓΔ))
     (fun _ _ ihFG ihkl _ hΓΔ ↦ .emptyrec (ihFG hΓΔ) (ihkl hΓΔ))
+    (fun hA ht hh _ _ _ _ _ _ ihAA' ihtt' ihPP' ihrr' ihuu' ihhh' _ hΓΔ ↦
+      .idrec (stability hΓΔ hA) (stabilityTerm hΓΔ ht) (stabilityTerm hΓΔ hh)
+        (ihAA' hΓΔ) (ihtt' hΓΔ)
+        (ihPP' (idMotiveCtxEq hΓΔ (.refl hA) (.refl ht)))
+        (ihrr' hΓΔ) (ihuu' hΓΔ) (ihhh' hΓΔ))
     (fun D hw _ ih _ hΓΔ ↦ .mk (stabilityRedStar hΓΔ D) hw (ih hΓΔ))
     (fun DA DB hwA hwB _ ih _ hΓΔ ↦
       .mk (stabilityRedStar hΓΔ DA) (stabilityRedStar hΓΔ DB) hwA hwB (ih hΓΔ))
@@ -513,6 +612,8 @@ theorem stabilityConvDownTerm {Γ Δ : Context} {t u A : Term}
       .piCong (stability hΓΔ hF) (ihFH hΓΔ) (ihGE (.cons hΓΔ (.refl hF))))
     (fun hF _ _ ihFH ihGE _ hΓΔ ↦
       .sigmaCong (stability hΓΔ hF) (ihFH hΓΔ) (ihGE (.cons hΓΔ (.refl hF))))
+    (fun _ _ _ ihAA' ihtt' ihuu' _ hΓΔ ↦
+      .idCong (ihAA' hΓΔ) (ihtt' hΓΔ) (ihuu' hΓΔ))
     (fun DA dt du hwB hwt hwu _ ih _ hΓΔ ↦
       .mk (stabilityRedStar hΓΔ DA) (stabilityRedStarTerm hΓΔ dt) (stabilityRedStarTerm hΓΔ du)
         hwB hwt hwu (ih hΓΔ))
@@ -532,6 +633,9 @@ theorem stabilityConvDownTerm {Γ Δ : Context} {t u A : Term}
     (fun hF hG hp hr hwp hwr _ _ ihfst ihsnd _ hΓΔ ↦
       .sigmaEta (stability hΓΔ hF) (stability (.cons hΓΔ (.refl hF)) hG)
         (stabilityTerm hΓΔ hp) (stabilityTerm hΓΔ hr) hwp hwr (ihfst hΓΔ) (ihsnd hΓΔ))
+    (fun hk hl _ ih _ hΓΔ ↦
+      .idIns (stabilityTerm hΓΔ hk) (stabilityTerm hΓΔ hl) (ih hΓΔ))
+    (fun hrfl _ hΓΔ ↦ .rflRefl (stabilityTerm hΓΔ hrfl))
     Γ t u A d) hΓΔ
 
 /-- Stability of `ConvTermUp` under `CtxEq` (`stabilityConv↑Term`). -/
@@ -568,6 +672,7 @@ theorem convConvDownTerm {Γ Δ : Context} {t u A B : Term}
     (fun _ _ ↦ trivial)
     (fun _ _ ↦ trivial)
     (fun _ _ _ _ ↦ trivial)
+    (fun _ _ _ _ _ _ _ _ _ _ _ _ _ _ _ ↦ trivial)
     (fun _ _ _ _ ↦ trivial)
     (fun _ _ _ _ _ _ ↦ trivial)
     (fun _ ↦ trivial)
@@ -577,6 +682,7 @@ theorem convConvDownTerm {Γ Δ : Context} {t u A B : Term}
     (fun _ _ ↦ trivial)
     (fun _ _ _ _ _ ↦ trivial)
     (fun _ _ _ _ _ ↦ trivial)
+    (fun _ _ _ _ _ _ ↦ trivial)
     -- ConvTermUp.mk
     (fun DA dt du _ hwt hwu _ ih _ _ hΓΔ hAB ↦ by
       have ⟨_, wfB⟩ := syntacticEq hAB
@@ -642,6 +748,17 @@ theorem convConvDownTerm {Γ Δ : Context} {t u A B : Term}
         hwp hwr
         (ihfst hΓΔ hFF')
         (ihsnd hΓΔ hGfstEq))
+    -- ConvTermDown.idIns
+    (fun hk hl hkl _ _ _ hΓΔ hAB hwB ↦ by
+      rcases id_eq_A_whnf hAB hwB with ⟨A', t', u', hB_eq⟩
+      subst hB_eq
+      exact .idIns (stabilityTerm hΓΔ (.conv hk hAB))
+        (stabilityTerm hΓΔ (.conv hl hAB)) (stabilityNeDown hΓΔ hkl))
+    -- ConvTermDown.rflRefl
+    (fun hrfl _ _ hΓΔ hAB hwB ↦ by
+      rcases id_eq_A_whnf hAB hwB with ⟨A', t', u', hB_eq⟩
+      subst hB_eq
+      exact .rflRefl (stabilityTerm hΓΔ (.conv hrfl hAB)))
     Γ t u A d) hΓΔ hAB hwB
 
 /-- Conversion of `ConvTermUp` (`convConv↑Term`). -/
@@ -763,6 +880,51 @@ private theorem sym_emptyrec_case {Γ : Context} {k l F G : Term}
   subst hB_eq
   exact ⟨G, soundnessConvUp hFG, .emptyrec (ihFG hΓΔ) hlk⟩
 
+private theorem sym_idrec_case {Γ : Context} {A A' P P' r r' t t' u u' h h' A₀ t₀ u₀ : Term}
+    (hA : TypeWf Γ A) (ht : HasType Γ t A) (hh : HasType Γ h (.id A t u))
+    (hAA' : ConvTypeUp Γ A A')
+    (htt' : ConvTermUp Γ t t' A)
+    (hPP' : ConvTypeUp (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P P')
+    (_hrr' : ConvTermUp Γ r r' (subst2 P t .rfl))
+    (huu' : ConvTermUp Γ u u' A)
+    (hhh' : ConvNeDown Γ h h' (.id A₀ t₀ u₀))
+    (ihAA' : SymTypeUpMotive Γ A A')
+    (ihtt' : SymTermUpMotive Γ t t' A)
+    (ihPP' : SymTypeUpMotive (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P P')
+    (ihrr' : SymTermUpMotive Γ r r' (subst2 P t .rfl))
+    (ihuu' : SymTermUpMotive Γ u u' A)
+    (ihhh' : SymNeDownMotive Γ h h' (.id A₀ t₀ u₀)) :
+    SymNeUpMotive Γ (.idrec A P r t u h) (.idrec A' P' r' t' u' h') (subst2 P u h) := by
+  intro Δ hΓΔ
+  rcases ihhh' hΓΔ with ⟨B, hwB, hIdB, hh'h⟩
+  rcases id_eq_A_whnf hIdB hwB with ⟨A₁, t₁, u₁, hB_eq⟩
+  subst hB_eq
+  have hAA'_eq : TypeEq Γ A A' := soundnessConvUp hAA'
+  have htt'_eq : TermEq Γ t t' A := soundnessConvUpTerm htt'
+  have huu'_eq : TermEq Γ u u' A := soundnessConvUpTerm huu'
+  have hPP'_eq : TypeEq (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P P' := soundnessConvUp hPP'
+  have hhh'_eq : TermEq Γ h h' (.id A t u) := by
+    have ⟨_, neH, _⟩ := neConvNeDown hhh'
+    have ihhh'_eq := soundnessNeDown hhh'
+    have ⟨_, hh₀, _⟩ := syntacticEqTerm ihhh'_eq
+    exact .conv ihhh'_eq (neTypeEq neH hh₀ hh)
+  have hA'_Δ : TypeWf Δ A' := stability hΓΔ (syntacticEq hAA'_eq).2
+  have ht'_Δ : HasType Δ t' A' :=
+    stabilityTerm hΓΔ (.conv (syntacticEqTerm htt'_eq).2.2 hAA'_eq)
+  have hh'_Δ : HasType Δ h' (.id A' t' u') :=
+    stabilityTerm hΓΔ (.conv (syntacticEqTerm hhh'_eq).2.2 (.id hAA'_eq htt'_eq huu'_eq))
+  have hP0_eq : TypeEq Δ (subst2 P t .rfl) (subst2 P' t' .rfl) :=
+    stabilityEq hΓΔ (subst2RflTypeEq hPP'_eq hA ht htt'_eq)
+  exact ⟨subst2 P' u' h',
+    subst2TypeEq hPP'_eq ht huu'_eq hhh'_eq,
+    .idrec hA'_Δ ht'_Δ hh'_Δ
+      (ihAA' hΓΔ)
+      (convConvTerm (ihtt' hΓΔ) (stabilityEq hΓΔ hAA'_eq))
+      (ihPP' (idMotiveCtxEq hΓΔ hAA'_eq htt'_eq))
+      (convConvTerm (ihrr' hΓΔ) hP0_eq)
+      (convConvTerm (ihuu' hΓΔ) (stabilityEq hΓΔ hAA'_eq))
+      hh'h⟩
+
 private theorem sym_neDown_case {Γ : Context} {k l A B : Term}
     (D : TypeStar Γ A B) (_hw : Whnf B) (_hkl : ConvNeUp Γ k l A)
     (ihkl : SymNeUpMotive Γ k l A) :
@@ -793,6 +955,20 @@ private theorem sym_sigmaCong_case {Γ : Context} {F G H E : Term}
   have ⟨_, wfH⟩ := syntacticEq (stabilityEq hΓΔ hFH_eq)
   exact .sigmaCong wfH (ihFH hΓΔ) (ihGE (.cons hΓΔ hFH_eq))
 
+private theorem sym_idCong_case {Γ : Context} {A A' t t' u u' : Term}
+    (hAA' : ConvTypeUp Γ A A')
+    (_htt' : ConvTermUp Γ t t' A)
+    (_huu' : ConvTermUp Γ u u' A)
+    (ihAA' : SymTypeUpMotive Γ A A')
+    (ihtt' : SymTermUpMotive Γ t t' A)
+    (ihuu' : SymTermUpMotive Γ u u' A) :
+    SymTypeDownMotive Γ (.id A t u) (.id A' t' u') := by
+  intro Δ hΓΔ
+  have hAA'_Δ : TypeEq Δ A A' := stabilityEq hΓΔ (soundnessConvUp hAA')
+  exact .idCong (ihAA' hΓΔ)
+    (convConvTerm (ihtt' hΓΔ) hAA'_Δ)
+    (convConvTerm (ihuu' hΓΔ) hAA'_Δ)
+
 /-- Symmetry of `ConvNeUp` (`sym~↑`). -/
 theorem symNeUp {Γ Δ : Context} {t u A : Term}
     (hΓΔ : CtxEq Γ Δ) (d : ConvNeUp Γ t u A) :
@@ -811,6 +987,8 @@ theorem symNeUp {Γ Δ : Context} {t u A : Term}
     (fun hpr ihpr ↦ sym_fst_case hpr ihpr)
     (fun hpr ihpr ↦ sym_snd_case hpr ihpr)
     (fun hFG hkl ihFG ihkl ↦ sym_emptyrec_case hFG hkl ihFG ihkl)
+    (fun hA ht hh hAA' htt' hPP' hrr' huu' hhh' ihAA' ihtt' ihPP' ihrr' ihuu' ihhh' ↦
+      sym_idrec_case hA ht hh hAA' htt' hPP' hrr' huu' hhh' ihAA' ihtt' ihPP' ihrr' ihuu' ihhh')
     (fun D hw hkl ihkl ↦ sym_neDown_case D hw hkl ihkl)
     (fun DA DB hwA hwB _ ih _ hΓΔ ↦
       .mk (stabilityRedStar hΓΔ DB) (stabilityRedStar hΓΔ DA) hwB hwA (ih hΓΔ))
@@ -824,6 +1002,7 @@ theorem symNeUp {Γ Δ : Context} {t u A : Term}
       exact .ne hBA)
     (fun hF hFH hGE ihFH ihGE ↦ sym_piCong_case hF hFH hGE ihFH ihGE)
     (fun hF hFH hGE ihFH ihGE ↦ sym_sigmaCong_case hF hFH hGE ihFH ihGE)
+    (fun hAA' htt' huu' ihAA' ihtt' ihuu' ↦ sym_idCong_case hAA' htt' huu' ihAA' ihtt' ihuu')
     (fun DA dt du hwB hwt hwu _ ih _ hΓΔ ↦
       .mk (stabilityRedStar hΓΔ DA) (stabilityRedStarTerm hΓΔ du) (stabilityRedStarTerm hΓΔ dt)
         hwB hwu hwt (ih hΓΔ))
@@ -853,6 +1032,10 @@ theorem symNeUp {Γ Δ : Context} {t u A : Term}
       let hGfst_eq := substTypeEq (.refl hG_Δ) (soundnessConvUpTerm (stabilityConvUpTerm hΓΔ hfst))
       .sigmaEta hF_Δ hG_Δ (stabilityTerm hΓΔ hr) (stabilityTerm hΓΔ hp)
         hwr hwp (ihfst hΓΔ) (convConvTerm (ihsnd hΓΔ) hGfst_eq))
+    (fun hk hl _ ih _ hΓΔ ↦ by
+      rcases ih hΓΔ with ⟨_, _, _, hlk⟩
+      exact .idIns (stabilityTerm hΓΔ hl) (stabilityTerm hΓΔ hk) hlk)
+    (fun hrfl _ hΓΔ ↦ .rflRefl (stabilityTerm hΓΔ hrfl))
     Γ t u A d) hΓΔ
 
 /-- Symmetry of `ConvNeDown` (`sym~↓`). -/
@@ -878,6 +1061,8 @@ theorem symConvDown {Γ Δ : Context} {A B : Term}
     (fun hpr ihpr ↦ sym_fst_case hpr ihpr)
     (fun hpr ihpr ↦ sym_snd_case hpr ihpr)
     (fun hFG hkl ihFG ihkl ↦ sym_emptyrec_case hFG hkl ihFG ihkl)
+    (fun hA ht hh hAA' htt' hPP' hrr' huu' hhh' ihAA' ihtt' ihPP' ihrr' ihuu' ihhh' ↦
+      sym_idrec_case hA ht hh hAA' htt' hPP' hrr' huu' hhh' ihAA' ihtt' ihPP' ihrr' ihuu' ihhh')
     (fun D hw hkl ihkl ↦ sym_neDown_case D hw hkl ihkl)
     (fun DA DB hwA hwB _ ih _ hΓΔ ↦
       .mk (stabilityRedStar hΓΔ DB) (stabilityRedStar hΓΔ DA) hwB hwA (ih hΓΔ))
@@ -891,6 +1076,7 @@ theorem symConvDown {Γ Δ : Context} {A B : Term}
       exact .ne hBA)
     (fun hF hFH hGE ihFH ihGE ↦ sym_piCong_case hF hFH hGE ihFH ihGE)
     (fun hF hFH hGE ihFH ihGE ↦ sym_sigmaCong_case hF hFH hGE ihFH ihGE)
+    (fun hAA' htt' huu' ihAA' ihtt' ihuu' ↦ sym_idCong_case hAA' htt' huu' ihAA' ihtt' ihuu')
     (fun DA dt du hwB hwt hwu _ ih _ hΓΔ ↦
       .mk (stabilityRedStar hΓΔ DA) (stabilityRedStarTerm hΓΔ du) (stabilityRedStarTerm hΓΔ dt)
         hwB hwu hwt (ih hΓΔ))
@@ -920,6 +1106,10 @@ theorem symConvDown {Γ Δ : Context} {A B : Term}
       let hGfst_eq := substTypeEq (.refl hG_Δ) (soundnessConvUpTerm (stabilityConvUpTerm hΓΔ hfst))
       .sigmaEta hF_Δ hG_Δ (stabilityTerm hΓΔ hr) (stabilityTerm hΓΔ hp)
         hwr hwp (ihfst hΓΔ) (convConvTerm (ihsnd hΓΔ) hGfst_eq))
+    (fun hk hl _ ih _ hΓΔ ↦ by
+      rcases ih hΓΔ with ⟨_, _, _, hlk⟩
+      exact .idIns (stabilityTerm hΓΔ hl) (stabilityTerm hΓΔ hk) hlk)
+    (fun hrfl _ hΓΔ ↦ .rflRefl (stabilityTerm hΓΔ hrfl))
     Γ A B d) hΓΔ
 
 /-- Symmetry of `ConvTypeUp` (`symConv↑`). -/
@@ -946,6 +1136,8 @@ theorem symConvDownTerm {Γ Δ : Context} {t u A : Term}
     (fun hpr ihpr ↦ sym_fst_case hpr ihpr)
     (fun hpr ihpr ↦ sym_snd_case hpr ihpr)
     (fun hFG hkl ihFG ihkl ↦ sym_emptyrec_case hFG hkl ihFG ihkl)
+    (fun hA ht hh hAA' htt' hPP' hrr' huu' hhh' ihAA' ihtt' ihPP' ihrr' ihuu' ihhh' ↦
+      sym_idrec_case hA ht hh hAA' htt' hPP' hrr' huu' hhh' ihAA' ihtt' ihPP' ihrr' ihuu' ihhh')
     (fun D hw hkl ihkl ↦ sym_neDown_case D hw hkl ihkl)
     (fun DA DB hwA hwB _ ih _ hΓΔ ↦
       .mk (stabilityRedStar hΓΔ DB) (stabilityRedStar hΓΔ DA) hwB hwA (ih hΓΔ))
@@ -959,6 +1151,7 @@ theorem symConvDownTerm {Γ Δ : Context} {t u A : Term}
       exact .ne hBA)
     (fun hF hFH hGE ihFH ihGE ↦ sym_piCong_case hF hFH hGE ihFH ihGE)
     (fun hF hFH hGE ihFH ihGE ↦ sym_sigmaCong_case hF hFH hGE ihFH ihGE)
+    (fun hAA' htt' huu' ihAA' ihtt' ihuu' ↦ sym_idCong_case hAA' htt' huu' ihAA' ihtt' ihuu')
     (fun DA dt du hwB hwt hwu _ ih _ hΓΔ ↦
       .mk (stabilityRedStar hΓΔ DA) (stabilityRedStarTerm hΓΔ du) (stabilityRedStarTerm hΓΔ dt)
         hwB hwu hwt (ih hΓΔ))
@@ -988,6 +1181,10 @@ theorem symConvDownTerm {Γ Δ : Context} {t u A : Term}
       let hGfst_eq := substTypeEq (.refl hG_Δ) (soundnessConvUpTerm (stabilityConvUpTerm hΓΔ hfst))
       .sigmaEta hF_Δ hG_Δ (stabilityTerm hΓΔ hr) (stabilityTerm hΓΔ hp)
         hwr hwp (ihfst hΓΔ) (convConvTerm (ihsnd hΓΔ) hGfst_eq))
+    (fun hk hl _ ih _ hΓΔ ↦ by
+      rcases ih hΓΔ with ⟨_, _, _, hlk⟩
+      exact .idIns (stabilityTerm hΓΔ hl) (stabilityTerm hΓΔ hk) hlk)
+    (fun hrfl _ hΓΔ ↦ .rflRefl (stabilityTerm hΓΔ hrfl))
     Γ t u A d) hΓΔ
 
 /-- Symmetry of `ConvTermUp` (`symConv↑Term`). -/
@@ -1130,6 +1327,49 @@ private theorem trans_emptyrec_case {Γ : Context} {k l F G : Term}
       exact ⟨.emptyrec (ihFG hΓΔ hGH) (ihkl hΓΔ hlm).1, soundnessConvUp hFG⟩
   | _ => cases hu'
 
+private theorem trans_idrec_case {Γ : Context} {A A' P P' r r' t t' u u' h h' A₀ t₀ u₀ : Term}
+    (hA : TypeWf Γ A) (ht : HasType Γ t A) (hh : HasType Γ h (.id A t u))
+    (hAA' : ConvTypeUp Γ A A')
+    (htt' : ConvTermUp Γ t t' A)
+    (hPP' : ConvTypeUp (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P P')
+    (_hrr' : ConvTermUp Γ r r' (subst2 P t .rfl))
+    (huu' : ConvTermUp Γ u u' A)
+    (hhh' : ConvNeDown Γ h h' (.id A₀ t₀ u₀))
+    (ihAA' : TransTypeUpMotive Γ A A')
+    (ihtt' : TransTermUpMotive Γ t t' A)
+    (ihPP' : TransTypeUpMotive (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P P')
+    (ihrr' : TransTermUpMotive Γ r r' (subst2 P t .rfl))
+    (ihuu' : TransTermUpMotive Γ u u' A)
+    (ihhh' : TransNeDownMotive Γ h h' (.id A₀ t₀ u₀)) :
+    TransNeUpMotive Γ (.idrec A P r t u h) (.idrec A' P' r' t' u' h') (subst2 P u h) := by
+  intro Δ w B hΓΔ hlw
+  generalize hu' : Term.idrec A' P' r' t' u' h' = u₀ at hlw
+  cases hlw with
+  | @idrec _ A₁ A'' P₁ P'' r₁ r'' t₁ t'' u₁ u'' h₁ h'' A₂ t₂ u₂
+      _ _ _ hA'A'' ht't'' hP'P'' hr'r'' hu'u'' hh'h'' =>
+      injection hu' with hA'_eq hP'_eq hr'_eq ht'_eq hu'_eq hh'_eq
+      subst hA'_eq hP'_eq hr'_eq ht'_eq hu'_eq hh'_eq
+      have hAA'_eq : TypeEq Γ A A' := soundnessConvUp hAA'
+      have htt'_eq : TermEq Γ t t' A := soundnessConvUpTerm htt'
+      have huu'_eq : TermEq Γ u u' A := soundnessConvUpTerm huu'
+      have hPP'_eq : TypeEq (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P P' := soundnessConvUp hPP'
+      have hhh'_eq : TermEq Γ h h' (.id A t u) := by
+        have ⟨_, neH, _⟩ := neConvNeDown hhh'
+        have ihhh'_eq := soundnessNeDown hhh'
+        have ⟨_, hh₀, _⟩ := syntacticEqTerm ihhh'_eq
+        exact .conv ihhh'_eq (neTypeEq neH hh₀ hh)
+      have hP0_eq : TypeEq Γ (subst2 P t .rfl) (subst2 P' t' .rfl) :=
+        subst2RflTypeEq hPP'_eq hA ht htt'_eq
+      exact ⟨.idrec hA ht hh
+          (ihAA' hΓΔ hA'A'')
+          (ihtt' hΓΔ hAA'_eq ht't'')
+          (ihPP' (idMotiveCtxEq hΓΔ hAA'_eq htt'_eq) hP'P'')
+          (ihrr' hΓΔ hP0_eq hr'r'')
+          (ihuu' hΓΔ hAA'_eq hu'u'')
+          (ihhh' hΓΔ hh'h'').1,
+        subst2TypeEq hPP'_eq ht huu'_eq hhh'_eq⟩
+  | _ => cases hu'
+
 private theorem trans_neDown_case {Γ : Context} {k l A B : Term}
     (D : TypeStar Γ A B) (hw : Whnf B) (_hkl : ConvNeUp Γ k l A)
     (ihkl : TransNeUpMotive Γ k l A) :
@@ -1217,6 +1457,7 @@ private theorem trans_typeDown_ne_case {Γ : Context} {K L : Term}
   | ne hLC_ne => exact .ne (ihKL hΓΔ hLC_ne).1
   | piCong _ _ _ => cases neL
   | sigmaCong _ _ _ => cases neL
+  | idCong _ _ _ => cases neL
 
 private theorem trans_typeDown_pi_case {Γ : Context} {F G H E : Term}
     (hF : TypeWf Γ F) (hFH : ConvTypeUp Γ F H) (_hGE : ConvTypeUp (F :: Γ) G E)
@@ -1250,6 +1491,30 @@ private theorem trans_typeDown_sigma_case {Γ : Context} {F G H E : Term}
       injection hB with hH_eq hE_eq
       subst hH_eq hE_eq
       exact .sigmaCong hF (ihFH hΓΔ hHK) (ihGE (.cons hΓΔ (soundnessConvUp hFH)) hEK)
+  | _ => cases hB
+
+private theorem trans_typeDown_id_case {Γ : Context} {A A' t t' u u' : Term}
+    (hAA' : ConvTypeUp Γ A A')
+    (_htt' : ConvTermUp Γ t t' A)
+    (_huu' : ConvTermUp Γ u u' A)
+    (ihAA' : TransTypeUpMotive Γ A A')
+    (ihtt' : TransTermUpMotive Γ t t' A)
+    (ihuu' : TransTermUpMotive Γ u u' A) :
+    TransTypeDownMotive Γ (.id A t u) (.id A' t' u') := by
+  intro Δ C hΓΔ hBC
+  generalize hB : Term.id A' t' u' = B₀ at hBC
+  cases hBC with
+  | ne hne =>
+      subst hB
+      have ⟨_, neK, _⟩ := neConvNeDown hne
+      cases neK
+  | idCong hA'A'' ht't'' hu'u'' =>
+      injection hB with hA'_eq ht'_eq hu'_eq
+      subst hA'_eq ht'_eq hu'_eq
+      have hAA'_eq : TypeEq Γ A A' := soundnessConvUp hAA'
+      exact .idCong (ihAA' hΓΔ hA'A'')
+        (ihtt' hΓΔ hAA'_eq ht't'')
+        (ihuu' hΓΔ hAA'_eq hu'u'')
   | _ => cases hB
 
 private theorem trans_termUp_case {Γ : Context} {t u A B₁ t' u' : Term}
@@ -1287,6 +1552,8 @@ private theorem trans_termDown_natIns_case {Γ : Context} {k l : Term}
   | etaUnit _ _ _ _ => exact False.elim (nat_ne_unit hAB)
   | etaEq _ _ _ _ _ _ => exact False.elim (nat_ne_pi hAB)
   | sigmaEta _ _ _ _ _ _ _ _ => exact False.elim (nat_ne_sigma hAB)
+  | idIns _ _ _ => exact False.elim (nat_ne_id hAB)
+  | rflRefl _ => cases neL
 
 private theorem trans_termDown_emptyIns_case {Γ : Context} {k l : Term}
     (_hkl : ConvNeDown Γ k l .empty) (ihkl : TransNeDownMotive Γ k l .empty) :
@@ -1302,6 +1569,8 @@ private theorem trans_termDown_emptyIns_case {Γ : Context} {k l : Term}
   | etaUnit _ _ _ _ => exact False.elim (empty_ne_unit hAB)
   | etaEq _ _ _ _ _ _ => exact False.elim (empty_ne_pi hAB)
   | sigmaEta _ _ _ _ _ _ _ _ => exact False.elim (empty_ne_sigma hAB)
+  | idIns _ _ _ => exact False.elim (empty_ne_id hAB)
+  | rflRefl _ => exact False.elim (empty_ne_id hAB)
 
 private theorem trans_termDown_neIns_case {Γ : Context} {k l M N : Term}
     (hk : HasType Γ k N) (_hl : HasType Γ l N) (neN : Neutral N)
@@ -1321,6 +1590,8 @@ private theorem trans_termDown_neIns_case {Γ : Context} {k l M N : Term}
   | etaUnit _ _ _ _ => exact False.elim (unit_ne_ne neN (.symm hAB))
   | etaEq _ _ _ _ _ _ => exact False.elim (pi_ne_ne neN (.symm hAB))
   | sigmaEta _ _ _ _ _ _ _ _ => exact False.elim (sigma_ne_ne neN (.symm hAB))
+  | idIns _ _ _ => exact False.elim (id_ne_ne neN (.symm hAB))
+  | rflRefl _ => cases neL
 
 private theorem trans_termDown_univ_case {Γ : Context} {A B : Term}
     (hA : HasType Γ A .univ) (_hB : HasType Γ B .univ)
@@ -1338,6 +1609,8 @@ private theorem trans_termDown_univ_case {Γ : Context} {A B : Term}
   | etaUnit _ _ _ _ => exact False.elim (U_ne_unit hUC)
   | etaEq _ _ _ _ _ _ => exact False.elim (U_ne_pi hUC)
   | sigmaEta _ _ _ _ _ _ _ _ => exact False.elim (U_ne_sigma hUC)
+  | idIns _ _ _ => exact False.elim (U_ne_id hUC)
+  | rflRefl _ => exact False.elim (U_ne_id hUC)
 
 private theorem trans_termDown_zero_case {Γ : Context} (hΓ : CtxWf Γ) :
     TransTermDownMotive Γ .zero .zero .nat := by
@@ -1359,6 +1632,8 @@ private theorem trans_termDown_zero_case {Γ : Context} (hΓ : CtxWf Γ) :
   | etaUnit _ _ _ _ => exact False.elim (nat_ne_unit hAB)
   | etaEq _ _ _ _ _ _ => exact False.elim (nat_ne_pi hAB)
   | sigmaEta _ _ _ _ _ _ _ _ => exact False.elim (nat_ne_sigma hAB)
+  | idIns _ _ _ => exact False.elim (nat_ne_id hAB)
+  | rflRefl _ => cases hz
 
 private theorem trans_termDown_succ_case {Γ : Context} {m n : Term}
     (_hmn : ConvTermUp Γ m n .nat) (ihmn : TransTermUpMotive Γ m n .nat) :
@@ -1384,6 +1659,8 @@ private theorem trans_termDown_succ_case {Γ : Context} {m n : Term}
   | etaUnit _ _ _ _ => exact False.elim (nat_ne_unit hAB)
   | etaEq _ _ _ _ _ _ => exact False.elim (nat_ne_pi hAB)
   | sigmaEta _ _ _ _ _ _ _ _ => exact False.elim (nat_ne_sigma hAB)
+  | idIns _ _ _ => exact False.elim (nat_ne_id hAB)
+  | rflRefl _ => cases hs
 
 private theorem trans_termDown_etaUnit_case {Γ : Context} {e e' : Term}
     (he : HasType Γ e .unit) (_he' : HasType Γ e' .unit)
@@ -1401,6 +1678,8 @@ private theorem trans_termDown_etaUnit_case {Γ : Context} {e e' : Term}
       exact .etaUnit he (stabilityTerm (symConEq hΓΔ) hv) hwe hwv
   | etaEq _ _ _ _ _ _ => exact False.elim (unit_ne_pi hAB)
   | sigmaEta _ _ _ _ _ _ _ _ => exact False.elim (unit_ne_sigma hAB)
+  | idIns _ _ _ => exact False.elim (unit_ne_id hAB)
+  | rflRefl _ => exact False.elim (unit_ne_id hAB)
 
 private theorem trans_termDown_eta_case {Γ : Context} {f g F G : Term}
     (hF : TypeWf Γ F) (hf : HasType Γ f (.pi F G)) (_hg : HasType Γ g (.pi F G))
@@ -1422,6 +1701,8 @@ private theorem trans_termDown_eta_case {Γ : Context} {f g F G : Term}
       exact .etaEq hF hf (.conv (stabilityTerm (symConEq hΓΔ) hv) (.symm hAB))
         hwf hwv (ihfg (.cons hΓΔ hFF') hGG' hgv_up)
   | sigmaEta _ _ _ _ _ _ _ _ => exact False.elim (pi_ne_sigma hAB)
+  | idIns _ _ _ => exact False.elim (pi_ne_id hAB)
+  | rflRefl _ => exact False.elim (pi_ne_id hAB)
 
 private theorem trans_termDown_sigma_case {Γ : Context} {p r F G : Term}
     (hF : TypeWf Γ F) (hG : TypeWf (F :: Γ) G)
@@ -1448,6 +1729,50 @@ private theorem trans_termDown_sigma_case {Γ : Context} {p r F G : Term}
         substTypeEq hGG' (soundnessConvUpTerm hfst)
       exact .sigmaEta hF hG hp (.conv (stabilityTerm (symConEq hΓΔ) hv) (.symm hAB))
         hwp hwv (ihfst hΓΔ hFF' hfst_rv) (ihsnd hΓΔ hGfstEq hsnd_rv)
+  | idIns _ _ _ => exact False.elim (sigma_ne_id hAB)
+  | rflRefl _ => exact False.elim (sigma_ne_id hAB)
+
+private theorem trans_termDown_idIns_case {Γ : Context} {k l A t u M : Term}
+    (hk : HasType Γ k (.id A t u)) (_hl : HasType Γ l (.id A t u))
+    (hkl : ConvNeDown Γ k l M)
+    (ihkl : TransNeDownMotive Γ k l M) :
+    TransTermDownMotive Γ k l (.id A t u) := by
+  intro Δ v B hΓΔ hAB hlv
+  have ⟨_, _, neL⟩ := neConvNeDown hkl
+  cases hlv with
+  | natIns _ => exact False.elim (nat_ne_id (.symm hAB))
+  | emptyIns _ => exact False.elim (empty_ne_id (.symm hAB))
+  | neIns _ _ neB _ => exact False.elim (id_ne_ne neB hAB)
+  | univ _ _ _ => exact False.elim (U_ne_id (.symm hAB))
+  | zeroRefl _ => cases neL
+  | succCong _ => cases neL
+  | etaUnit _ _ _ _ => exact False.elim (unit_ne_id (.symm hAB))
+  | etaEq _ _ _ _ _ _ => exact False.elim (pi_ne_id (.symm hAB))
+  | sigmaEta _ _ _ _ _ _ _ _ => exact False.elim (sigma_ne_id (.symm hAB))
+  | idIns _ hv hlv_ne =>
+      exact .idIns hk (.conv (stabilityTerm (symConEq hΓΔ) hv) (.symm hAB)) (ihkl hΓΔ hlv_ne).1
+  | rflRefl _ => cases neL
+
+private theorem trans_termDown_rfl_case {Γ : Context} {A t u : Term}
+    (hrfl : HasType Γ .rfl (.id A t u)) :
+    TransTermDownMotive Γ .rfl .rfl (.id A t u) := by
+  intro Δ v B _ hAB hrv
+  generalize hr : Term.rfl = r₀ at hrv
+  cases hrv with
+  | natIns _ => exact False.elim (nat_ne_id (.symm hAB))
+  | emptyIns _ => exact False.elim (empty_ne_id (.symm hAB))
+  | neIns _ _ neB _ => exact False.elim (id_ne_ne neB hAB)
+  | univ _ _ _ => exact False.elim (U_ne_id (.symm hAB))
+  | zeroRefl _ => cases hr
+  | succCong _ => cases hr
+  | etaUnit _ _ _ _ => exact False.elim (unit_ne_id (.symm hAB))
+  | etaEq _ _ _ _ _ _ => exact False.elim (pi_ne_id (.symm hAB))
+  | sigmaEta _ _ _ _ _ _ _ _ => exact False.elim (sigma_ne_id (.symm hAB))
+  | idIns _ _ hne =>
+      subst hr
+      have ⟨_, neR, _⟩ := neConvNeDown hne
+      cases neR
+  | rflRefl _ => exact .rflRefl hrfl
 
 /-- Transitivity of `ConvNeUp` (`trans~↑`). -/
 theorem transNeUp {Γ Δ : Context} {t u v A B : Term}
@@ -1467,6 +1792,8 @@ theorem transNeUp {Γ Δ : Context} {t u v A B : Term}
     (fun hpr ihpr ↦ trans_fst_case hpr ihpr)
     (fun hpr ihpr ↦ trans_snd_case hpr ihpr)
     (fun hFG hkl ihFG ihkl ↦ trans_emptyrec_case hFG hkl ihFG ihkl)
+    (fun hA ht hh hAA' htt' hPP' hrr' huu' hhh' ihAA' ihtt' ihPP' ihrr' ihuu' ihhh' ↦
+      trans_idrec_case hA ht hh hAA' htt' hPP' hrr' huu' hhh' ihAA' ihtt' ihPP' ihrr' ihuu' ihhh')
     (fun D hw hkl ihkl ↦ trans_neDown_case D hw hkl ihkl)
     (fun DA DB hwA hwB hAB ihAB ↦ trans_typeUp_case DA DB hwA hwB hAB ihAB)
     (fun hΓ ↦ trans_typeDown_univ_case hΓ)
@@ -1476,6 +1803,8 @@ theorem transNeUp {Γ Δ : Context} {t u v A B : Term}
     (fun hKL ihKL ↦ trans_typeDown_ne_case hKL ihKL)
     (fun hF hFH hGE ihFH ihGE ↦ trans_typeDown_pi_case hF hFH hGE ihFH ihGE)
     (fun hF hFH hGE ihFH ihGE ↦ trans_typeDown_sigma_case hF hFH hGE ihFH ihGE)
+    (fun hAA' htt' huu' ihAA' ihtt' ihuu' ↦
+      trans_typeDown_id_case hAA' htt' huu' ihAA' ihtt' ihuu')
     (fun DA dt du hwB hwt hwu htu ihtu ↦
       trans_termUp_case DA dt du hwB hwt hwu htu ihtu)
     (fun hkl ihkl ↦ trans_termDown_natIns_case hkl ihkl)
@@ -1489,6 +1818,8 @@ theorem transNeUp {Γ Δ : Context} {t u v A B : Term}
       trans_termDown_eta_case hF hf hg hwf hwg hfg ihfg)
     (fun hF hG hp hr hwp hwr hfst hsnd ihfst ihsnd ↦
       trans_termDown_sigma_case hF hG hp hr hwp hwr hfst hsnd ihfst ihsnd)
+    (fun hk hl hkl ihkl ↦ trans_termDown_idIns_case hk hl hkl ihkl)
+    (fun hrfl ↦ trans_termDown_rfl_case hrfl)
     Γ t u A d₁) hΓΔ d₂
 
 /-- Transitivity of `ConvNeDown` (`trans~↓`). -/
@@ -1516,6 +1847,8 @@ theorem transConvDown {Γ Δ : Context} {A B C : Term}
     (fun hpr ihpr ↦ trans_fst_case hpr ihpr)
     (fun hpr ihpr ↦ trans_snd_case hpr ihpr)
     (fun hFG hkl ihFG ihkl ↦ trans_emptyrec_case hFG hkl ihFG ihkl)
+    (fun hA ht hh hAA' htt' hPP' hrr' huu' hhh' ihAA' ihtt' ihPP' ihrr' ihuu' ihhh' ↦
+      trans_idrec_case hA ht hh hAA' htt' hPP' hrr' huu' hhh' ihAA' ihtt' ihPP' ihrr' ihuu' ihhh')
     (fun D hw hkl ihkl ↦ trans_neDown_case D hw hkl ihkl)
     (fun DA DB hwA hwB hAB ihAB ↦ trans_typeUp_case DA DB hwA hwB hAB ihAB)
     (fun hΓ ↦ trans_typeDown_univ_case hΓ)
@@ -1525,6 +1858,8 @@ theorem transConvDown {Γ Δ : Context} {A B C : Term}
     (fun hKL ihKL ↦ trans_typeDown_ne_case hKL ihKL)
     (fun hF hFH hGE ihFH ihGE ↦ trans_typeDown_pi_case hF hFH hGE ihFH ihGE)
     (fun hF hFH hGE ihFH ihGE ↦ trans_typeDown_sigma_case hF hFH hGE ihFH ihGE)
+    (fun hAA' htt' huu' ihAA' ihtt' ihuu' ↦
+      trans_typeDown_id_case hAA' htt' huu' ihAA' ihtt' ihuu')
     (fun DA dt du hwB hwt hwu htu ihtu ↦
       trans_termUp_case DA dt du hwB hwt hwu htu ihtu)
     (fun hkl ihkl ↦ trans_termDown_natIns_case hkl ihkl)
@@ -1538,6 +1873,8 @@ theorem transConvDown {Γ Δ : Context} {A B C : Term}
       trans_termDown_eta_case hF hf hg hwf hwg hfg ihfg)
     (fun hF hG hp hr hwp hwr hfst hsnd ihfst ihsnd ↦
       trans_termDown_sigma_case hF hG hp hr hwp hwr hfst hsnd ihfst ihsnd)
+    (fun hk hl hkl ihkl ↦ trans_termDown_idIns_case hk hl hkl ihkl)
+    (fun hrfl ↦ trans_termDown_rfl_case hrfl)
     Γ A B d₁) hΓΔ d₂
 
 /-- Transitivity of `ConvTypeUp` (`transConv↑`). -/
@@ -1567,6 +1904,8 @@ theorem transConvDownTerm {Γ Δ : Context} {t u v A B : Term}
     (fun hpr ihpr ↦ trans_fst_case hpr ihpr)
     (fun hpr ihpr ↦ trans_snd_case hpr ihpr)
     (fun hFG hkl ihFG ihkl ↦ trans_emptyrec_case hFG hkl ihFG ihkl)
+    (fun hA ht hh hAA' htt' hPP' hrr' huu' hhh' ihAA' ihtt' ihPP' ihrr' ihuu' ihhh' ↦
+      trans_idrec_case hA ht hh hAA' htt' hPP' hrr' huu' hhh' ihAA' ihtt' ihPP' ihrr' ihuu' ihhh')
     (fun D hw hkl ihkl ↦ trans_neDown_case D hw hkl ihkl)
     (fun DA DB hwA hwB hAB ihAB ↦ trans_typeUp_case DA DB hwA hwB hAB ihAB)
     (fun hΓ ↦ trans_typeDown_univ_case hΓ)
@@ -1576,6 +1915,8 @@ theorem transConvDownTerm {Γ Δ : Context} {t u v A B : Term}
     (fun hKL ihKL ↦ trans_typeDown_ne_case hKL ihKL)
     (fun hF hFH hGE ihFH ihGE ↦ trans_typeDown_pi_case hF hFH hGE ihFH ihGE)
     (fun hF hFH hGE ihFH ihGE ↦ trans_typeDown_sigma_case hF hFH hGE ihFH ihGE)
+    (fun hAA' htt' huu' ihAA' ihtt' ihuu' ↦
+      trans_typeDown_id_case hAA' htt' huu' ihAA' ihtt' ihuu')
     (fun DA dt du hwB hwt hwu htu ihtu ↦
       trans_termUp_case DA dt du hwB hwt hwu htu ihtu)
     (fun hkl ihkl ↦ trans_termDown_natIns_case hkl ihkl)
@@ -1589,6 +1930,8 @@ theorem transConvDownTerm {Γ Δ : Context} {t u v A B : Term}
       trans_termDown_eta_case hF hf hg hwf hwg hfg ihfg)
     (fun hF hG hp hr hwp hwr hfst hsnd ihfst ihsnd ↦
       trans_termDown_sigma_case hF hG hp hr hwp hwr hfst hsnd ihfst ihsnd)
+    (fun hk hl hkl ihkl ↦ trans_termDown_idIns_case hk hl hkl ihkl)
+    (fun hrfl ↦ trans_termDown_rfl_case hrfl)
     Γ t u A d₁) hΓΔ hAB d₂
 
 /-- Transitivity of `ConvTermUp` (`transConv↑Term`). -/
@@ -1773,6 +2116,17 @@ theorem liftNeToConv_step {l : TypeLevel}
               rwa [wk_lift_id] at q
             exact .sigmaEta hF hG wft wfu (.neutral neT) (.neutral neU) hFstConv hSndConv
       exact ⟨hDown, toUp D.source hDown⟩
+  | @id Γ₀ A₀ Ty lhs rhs _ D _ _ _ _ _ _ _ =>
+      have hDown : ∀ {t u A}, TypeStar Γ₀ A₀ A → ConvNeDown Γ₀ t u A → ConvTermDown Γ₀ t u A := by
+        intro t u A D₁ hkl
+        cases hkl with
+        | mk D₂ hwB k_l =>
+            have hA : Term.id Ty lhs rhs = A := whrDetStar ⟨D.reduction, .id⟩ ⟨D₁, hwB⟩
+            subst hA
+            have ⟨_, wft, wfu⟩ := syntacticEqTerm (soundnessNeUp k_l)
+            have hAId := subsetStar D₂
+            exact .idIns (.conv wft hAId) (.conv wfu hAId) (.mk D₂ .id k_l)
+      exact ⟨hDown, toUp D.source hDown⟩
   | emb hlt hA₀ => exact ihRec _ hlt hA₀
 
 theorem liftNeToConvAt {l : TypeLevel} {Γ : Context} {A' : Term}
@@ -1906,6 +2260,29 @@ theorem convNeEq_emptyrec {Γ : Context} {n n' F F' : Term}
   have ⟨wfF, _⟩ := syntacticEq (soundnessConvUp hFF')
   exact ⟨.refl wfF, .emptyrec hFF' hnn'_down⟩
 
+theorem convNeEq_idrec {Γ : Context} {A A' P P' r r' t t' u u' h h' : Term}
+    (hA : TypeWf Γ A) (ht : HasType Γ t A)
+    (hAA' : ConvTypeUp Γ A A')
+    (hPP' : ConvTypeUp (.id (wk1 A) (wk1 t) (.var 0) :: A :: Γ) P P')
+    (hrr' : ConvTermUp Γ r r' (subst2 P t .rfl))
+    (htt' : ConvTermUp Γ t t' A)
+    (huu' : ConvTermUp Γ u u' A)
+    (hhh' : ConvNeEq Γ h h' (.id A t u)) :
+    ConvNeEq Γ (.idrec A P r t u h) (.idrec A' P' r' t' u' h') (subst2 P u h) := by
+  rcases hhh' with ⟨hIdB, hhh'_up⟩
+  have ⟨_, wfB⟩ := syntacticEq hIdB
+  rcases whNorm wfB with ⟨B', hwB', D⟩
+  have hIdB' : TypeEq Γ (.id A t u) B' := .trans hIdB (subsetStar D.reduction)
+  rcases id_eq_A_whnf hIdB' hwB' with ⟨A₀, t₀, u₀, hB'_eq⟩
+  subst hB'_eq
+  have hhh'_down : ConvNeDown Γ h h' (.id A₀ t₀ u₀) := .mk D.reduction .id hhh'_up
+  have ⟨wfP, _⟩ := syntacticEq (soundnessConvUp hPP')
+  have ⟨_, wfu, _⟩ := syntacticEqTerm (soundnessConvUpTerm huu')
+  have ⟨_, wfh₀, _⟩ := syntacticEqTerm (soundnessNeDown hhh'_down)
+  have wfh : HasType Γ h (.id A t u) := .conv wfh₀ (.symm hIdB')
+  exact ⟨.refl (subst2Type wfP ht wfu wfh),
+    .idrec hA ht wfh hAA' htt' hPP' hrr' huu' hhh'_down⟩
+
 theorem convNeEq_symm {Γ : Context} {k l A : Term} :
     ConvNeEq Γ k l A → ConvNeEq Γ l k A
   | ⟨hAB, hkl⟩ => by
@@ -1991,6 +2368,19 @@ def convEqRel : EqRelSet where
   fstCong _ _ hpr := convNeEq_fst hpr
   sndCong _ _ hpr := convNeEq_snd hpr
   emptyrecCong hFF' hnn' := convNeEq_emptyrec hFF' hnn'
+  idCong hAA' htt' huu' := liftConv (.idCong hAA' htt' huu')
+  idTermCong hAA'_u htt' huu' := by
+    have ⟨_, hAU, hA'U⟩ := syntacticEqTerm (soundnessConvUpTerm hAA'_u)
+    have ⟨_, ht, ht'⟩ := syntacticEqTerm (soundnessConvUpTerm htt')
+    have ⟨_, hu, hu'⟩ := syntacticEqTerm (soundnessConvUpTerm huu')
+    have hAA' := univConvUp hAA'_u
+    have hAA'_eq := soundnessConvUp hAA'
+    exact liftConvTerm (.univ (.id hAU ht hu)
+      (.id hA'U (.conv ht' hAA'_eq) (.conv hu' hAA'_eq))
+      (.idCong hAA' htt' huu'))
+  rflRefl hA ht := liftConvTerm (.rflRefl (.rfl hA ht))
+  idrecCong hA hAA' ht htt' hPP' hrr' huu' hhh' :=
+    convNeEq_idrec hA ht hAA' hPP' hrr' htt' huu' hhh'
 
 /-!
 ## Completeness of Algorithmic Equality (`Definition/Conversion/Consequences/Completeness.agda`, Theorem 4.11)
