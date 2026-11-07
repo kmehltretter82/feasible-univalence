@@ -135,6 +135,225 @@ theorem eval_srec {n m : Nat} (g : Fn n m) (h0 h1 : Fn (n + 1) (m + 1)) (xs ys :
       (if b then h1 else h0).eval (w :: xs) ((Fn.srec g h0 h1).eval (w :: xs) ys :: ys) := by
   cases b <;> simp [eval_srec]
 
+/-! ## Syntactic Polynomial Max-Output-Length Bound (Bellantoni–Cook Lemma 2.1) -/
+
+/-- Maximum bit-length among a list of words: $\max_{y \in ys} |y|$. -/
+def maxLen : List Word → Nat
+  | [] => 0
+  | y :: ys => max y.length (maxLen ys)
+
+@[simp] theorem maxLen_nil : maxLen [] = 0 := rfl
+@[simp] theorem maxLen_cons (y : Word) (ys : List Word) :
+    maxLen (y :: ys) = max y.length (maxLen ys) := rfl
+
+theorem length_getD_le_maxLen (ys : List Word) (j : Nat) :
+    (ys.getD j []).length ≤ maxLen ys := by
+  induction ys generalizing j with
+  | nil => simp [List.getD]
+  | cons y ys ih =>
+    cases j with
+    | zero =>
+      simp only [List.getD, maxLen_cons]
+      exact Nat.le_max_left y.length (maxLen ys)
+    | succ j' =>
+      simp only [List.getD, maxLen_cons]
+      exact Nat.le_trans (ih j') (Nat.le_max_right y.length (maxLen ys))
+
+theorem maxLen_le_of_forall {ys : List Word} {B : Nat} (h : ∀ y ∈ ys, y.length ≤ B) :
+    maxLen ys ≤ B := by
+  induction ys with
+  | nil => exact Nat.zero_le B
+  | cons y ys ih =>
+    simp only [maxLen_cons]
+    have hy : y.length ≤ B := h y (.head ys)
+    have hys : maxLen ys ≤ B := ih (fun z hz => h z (.tail y hz))
+    omega
+
+theorem maxLen_ofFn_le {l : Nat} (f : Fin l → Word) {B : Nat}
+    (h : ∀ j : Fin l, (f j).length ≤ B) :
+    maxLen (List.ofFn f) ≤ B := by
+  apply maxLen_le_of_forall
+  intro y hy
+  rcases List.mem_ofFn.mp hy with ⟨j, rfl⟩
+  exact h j
+
+theorem length_condW_le (a b c d : Word) {B : Nat}
+    (hb : b.length ≤ B) (hc : c.length ≤ B) (hd : d.length ≤ B) :
+    (condW a b c d).length ≤ B := by
+  cases a with
+  | nil => exact hb
+  | cons bit _ =>
+    cases bit
+    · exact hc
+    · exact hd
+
+/-- Syntactic polynomial `q_f : Poly` bounding the contribution of the normal inputs to the
+    output length of `f : Fn n m`:
+    $$|f(\vec{x}; \vec{y})| \le q_f(\max_i |x_i|) + \max_j |y_j|.$$
+    Computed purely by structural recursion on the BC syntax `f`. -/
+def sizePoly : {n m : Nat} → Fn n m → Poly
+  | _, _, .zero => .const 0
+  | _, _, .projN _ => .var
+  | _, _, .projS _ => .const 0
+  | _, _, .s0 => .const 1
+  | _, _, .s1 => .const 1
+  | _, _, .pred => .const 0
+  | _, _, .cond => .const 0
+  | _, _, .comp h rs ts =>
+      .add (h.sizePoly.comp (Poly.sumFin fun i => (rs i).sizePoly))
+           (Poly.sumFin fun j => (ts j).sizePoly)
+  | _, _, .srec g h0 h1 =>
+      .add (.mul .var (.add h0.sizePoly h1.sizePoly)) g.sizePoly
+
+/-- Combined size polynomial when all normal and safe arguments have length at most `K`. -/
+def fullSizePoly {n m : Nat} (f : Fn n m) : Poly :=
+  .add f.sizePoly .var
+
+/-- Helper lemma for the `srec` case of `eval_length_le_sizePoly`. -/
+theorem recIter_length_le {n m : Nat} (g : Fn n m) (h0 h1 : Fn (n + 1) (m + 1))
+    (w : Word) (xs ys : List Word) {N : Nat}
+    (hw : w.length ≤ N) (hxs : ∀ x ∈ xs, x.length ≤ N)
+    (ihg : (g.eval xs ys).length ≤ g.sizePoly.eval N + maxLen ys)
+    (ih0 : ∀ (xs' ys' : List Word), (∀ x ∈ xs', x.length ≤ N) →
+      (h0.eval xs' ys').length ≤ h0.sizePoly.eval N + maxLen ys')
+    (ih1 : ∀ (xs' ys' : List Word), (∀ x ∈ xs', x.length ≤ N) →
+      (h1.eval xs' ys').length ≤ h1.sizePoly.eval N + maxLen ys') :
+    (recIter (g.eval xs ys)
+      (fun b u r => if b then h1.eval (u :: xs) (r :: ys) else h0.eval (u :: xs) (r :: ys))
+      w).length ≤
+      w.length * (h0.sizePoly.eval N + h1.sizePoly.eval N) + g.sizePoly.eval N + maxLen ys := by
+  induction w with
+  | nil =>
+    simp only [recIter_nil, List.length_nil, Nat.zero_mul, Nat.zero_add]
+    exact ihg
+  | cons b u ih =>
+    simp only [recIter_cons, List.length_cons]
+    have hu : u.length ≤ N := by
+      simp only [List.length_cons] at hw
+      omega
+    have huxs : ∀ x ∈ (u :: xs), x.length ≤ N := by
+      intro x hx
+      cases hx with
+      | head => exact hu
+      | tail _ hmem => exact hxs x hmem
+    have ih_u := ih hu
+    have hmax : maxLen (recIter (g.eval xs ys)
+        (fun b' u' r' => if b' then h1.eval (u' :: xs) (r' :: ys) else h0.eval (u' :: xs) (r' :: ys)) u :: ys) ≤
+        u.length * (h0.sizePoly.eval N + h1.sizePoly.eval N) + g.sizePoly.eval N + maxLen ys := by
+      simp only [maxLen_cons]
+      omega
+    have hmul : (u.length + 1) * (h0.sizePoly.eval N + h1.sizePoly.eval N) =
+        u.length * (h0.sizePoly.eval N + h1.sizePoly.eval N) + (h0.sizePoly.eval N + h1.sizePoly.eval N) :=
+      Nat.succ_mul u.length _
+    cases b
+    · simp only [Bool.false_eq_true, ↓reduceIte]
+      have hstep := ih0 (u :: xs)
+        (recIter (g.eval xs ys) (fun b' u' r' => if b' then h1.eval (u' :: xs) (r' :: ys) else h0.eval (u' :: xs) (r' :: ys)) u :: ys)
+        huxs
+      omega
+    · simp only [↓reduceIte]
+      have hstep := ih1 (u :: xs)
+        (recIter (g.eval xs ys) (fun b' u' r' => if b' then h1.eval (u' :: xs) (r' :: ys) else h0.eval (u' :: xs) (r' :: ys)) u :: ys)
+        huxs
+      omega
+
+/-- **Bellantoni–Cook Max-Output-Length Bound (Lemma 2.1)**:
+    For every BC program `f : Fn n m`, normal arguments `xs` with `∀ x ∈ xs, x.length ≤ N`,
+    and safe arguments `ys`:
+    $$|f(\vec{x}; \vec{y})| \le q_f(N) + \max_{y \in \vec{y}} |y|.$$ -/
+theorem eval_length_le_sizePoly {n m : Nat} (f : Fn n m) (xs ys : List Word)
+    {N : Nat} (hxs : ∀ x ∈ xs, x.length ≤ N) :
+    (f.eval xs ys).length ≤ f.sizePoly.eval N + maxLen ys := by
+  induction f generalizing xs ys N with
+  | zero =>
+    simp [eval, sizePoly]
+  | projN i =>
+    simp only [eval_projN, sizePoly, Poly.eval_var]
+    have h1 := length_getD_le_maxLen xs i.val
+    have h2 : maxLen xs ≤ N := maxLen_le_of_forall hxs
+    omega
+  | projS j =>
+    simp only [eval_projS, sizePoly, Poly.eval_const, Nat.zero_add]
+    exact length_getD_le_maxLen ys j.val
+  | s0 =>
+    simp only [eval_s0, List.length_cons, sizePoly, Poly.eval_const]
+    have h1 := length_getD_le_maxLen ys 0
+    omega
+  | s1 =>
+    simp only [eval_s1, List.length_cons, sizePoly, Poly.eval_const]
+    have h1 := length_getD_le_maxLen ys 0
+    omega
+  | pred =>
+    simp only [eval_pred, List.length_tail, sizePoly, Poly.eval_const, Nat.zero_add]
+    have h1 := length_getD_le_maxLen ys 0
+    omega
+  | cond =>
+    simp only [eval_cond, sizePoly, Poly.eval_const, Nat.zero_add]
+    exact length_condW_le _ _ _ _
+      (length_getD_le_maxLen ys 1)
+      (length_getD_le_maxLen ys 2)
+      (length_getD_le_maxLen ys 3)
+  | comp h rs ts ihh ihrs ihts =>
+    simp only [eval_comp, sizePoly, Poly.eval_add, Poly.eval_comp]
+    have hrs_bound : ∀ x ∈ List.ofFn (fun i => (rs i).eval xs []),
+        x.length ≤ (Poly.sumFin fun i => (rs i).sizePoly).eval N := by
+      intro x hx
+      rcases List.mem_ofFn.mp hx with ⟨i, rfl⟩
+      have h_i := ihrs i xs [] hxs
+      simp only [maxLen_nil, Nat.add_zero] at h_i
+      exact Nat.le_trans h_i (Poly.le_eval_sumFin (fun i' => (rs i').sizePoly) i N)
+    have hts_bound : maxLen (List.ofFn (fun j => (ts j).eval xs ys)) ≤
+        (Poly.sumFin fun j => (ts j).sizePoly).eval N + maxLen ys := by
+      apply maxLen_ofFn_le
+      intro j
+      have h_j := ihts j xs ys hxs
+      have h_le := Poly.le_eval_sumFin (fun j' => (ts j').sizePoly) j N
+      omega
+    have hh := ihh (List.ofFn fun i => (rs i).eval xs []) (List.ofFn fun j => (ts j).eval xs ys) hrs_bound
+    omega
+  | srec g h0 h1 ihg ih0 ih1 =>
+    simp only [eval_srec, sizePoly, Poly.eval_add, Poly.eval_mul, Poly.eval_var]
+    have hhead : (xs.headD []).length ≤ N := by
+      cases xs with
+      | nil => exact Nat.zero_le N
+      | cons x xs' => exact hxs x (.head xs')
+    have htail : ∀ x ∈ xs.tail, x.length ≤ N := by
+      cases xs with
+      | nil => intro _ h; cases h
+      | cons x xs' => intro z hz; exact hxs z (.tail x hz)
+    have hrec := recIter_length_le g h0 h1 (xs.headD []) xs.tail ys hhead htail
+      (ihg xs.tail ys htail)
+      (fun xs' ys' hxs' => ih0 xs' ys' hxs')
+      (fun xs' ys' hxs' => ih1 xs' ys' hxs')
+    have hmul : (xs.headD []).length * (h0.sizePoly.eval N + h1.sizePoly.eval N) ≤
+        N * (h0.sizePoly.eval N + h1.sizePoly.eval N) :=
+      Nat.mul_le_mul_right _ hhead
+    omega
+
+/-- When `f : Fn n 0` has no safe arguments (`ys = []`), its output length is bounded by
+    `f.sizePoly.eval N` alone. -/
+theorem eval_normal_length_le {n : Nat} (f : Fn n 0) (xs : List Word)
+    {N : Nat} (hxs : ∀ x ∈ xs, x.length ≤ N) :
+    (f.eval xs []).length ≤ f.sizePoly.eval N := by
+  have h := f.eval_length_le_sizePoly xs [] hxs
+  simpa using h
+
+/-- For a unary BC function `f : Fn 1 0`, `|f(x;)| ≤ q_f(|x|)`. -/
+theorem eval_one_length_le (f : Fn 1 0) (x : Word) :
+    (f.eval [x] []).length ≤ f.sizePoly.eval x.length := by
+  apply f.eval_normal_length_le [x]
+  intro z hz
+  cases hz with
+  | head => exact Nat.le_refl _
+  | tail _ h => cases h
+
+/-- When all normal and safe arguments have length at most `K`, `(f.eval xs ys).length ≤ f.fullSizePoly.eval K`. -/
+theorem eval_length_le_fullSizePoly {n m : Nat} (f : Fn n m) (xs ys : List Word)
+    {K : Nat} (hxs : ∀ x ∈ xs, x.length ≤ K) (hys : ∀ y ∈ ys, y.length ≤ K) :
+    (f.eval xs ys).length ≤ f.fullSizePoly.eval K := by
+  simp only [fullSizePoly, Poly.eval_add, Poly.eval_var]
+  exact Nat.le_trans (f.eval_length_le_sizePoly xs ys hxs) (Nat.add_le_add_left (maxLen_le_of_forall hys) _)
+
 end Fn
 
 /-- A word function is **BC-definable** if it is the denotation of a closed BC program

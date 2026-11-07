@@ -70,6 +70,21 @@ theorem le_refl (p : Poly) : p.le p :=
 theorem le_trans {p q r : Poly} (h₁ : p.le q) (h₂ : q.le r) : p.le r :=
   fun n ↦ Nat.le_trans (h₁ n) (h₂ n)
 
+/-- Sum of a finite family of polynomials. -/
+def sumFin : {k : Nat} → (Fin k → Poly) → Poly
+  | 0, _ => .const 0
+  | _ + 1, ps => .add (ps ⟨0, Nat.zero_lt_succ _⟩) (sumFin fun i => ps i.succ)
+
+theorem le_eval_sumFin : {k : Nat} → (ps : Fin k → Poly) → (i : Fin k) → (n : Nat) →
+    (ps i).eval n ≤ (sumFin ps).eval n
+  | _ + 1, ps, ⟨0, _⟩, n => by
+    simp only [sumFin, eval_add]
+    exact Nat.le_add_right _ _
+  | _ + 1, ps, ⟨i + 1, hi⟩, n => by
+    simp only [sumFin, eval_add]
+    have ih := le_eval_sumFin (fun j => ps j.succ) ⟨i, Nat.lt_of_succ_lt_succ hi⟩ n
+    exact Nat.le_trans ih (Nat.le_add_left _ _)
+
 end Poly
 
 end FeasibleUnivalence.BC
