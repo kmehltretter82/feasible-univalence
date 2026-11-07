@@ -5,12 +5,13 @@
   *"Feasible Dependent Types without Equality Reflection"*
 
   This module builds on the graded modal infrastructure (`Modality`, `Usage`, `Erasure`,
-  `HeapMachine`), the erasing closure-machine compiler of `PaperA`, and the decidable
-  algorithmic conversion judgment of M1 (`Abel2018.theorem_4_12_computational`)
+  `HeapMachine`), the erasing closure-machine compiler of `PaperA`, the decidable
+  algorithmic conversion judgment of M1 (`Abel2018.theorem_4_12_computational`), and the
+  standalone Bellantoni–Cook / multi-tape Turing machine library (`FeasibleUnivalence.BC`)
   to formalize the core mathematical results of **Paper B** (`docs/research-proposal.md`
   and `docs/proof-ideas.md` §§2–3):
 
-  1. **Explicit Polynomial Certificate Algebra (`Poly`)**:
+  1. **Explicit Polynomial Certificate Algebra (`Poly := BC.Poly`)**:
      - Inductive syntax of univariate polynomials with natural-number coefficients
        (`const`, `var`, `add`, `mul`, `comp`),
      - Evaluation `Poly.eval : Poly → Nat → Nat`, monotonicity `Poly.eval_mono`, and
@@ -21,19 +22,21 @@
        and a proved interpretation. Defining the feasible terms as those already known
        to have polynomial runtime would make the central soundness claim circular"*),
        we define an explicit inductive syntax `FeasibleProg` over binary words (`Word := List Bool`)
-       featuring:
-       * Bellantoni–Cook / Atkey tiered safe word recursion (`safeIter`), where the
+       with **no oracle primitives** (R2: every primitive is from a fixed finite syntactic set):
+       * Closed Bellantoni–Cook safe recursion programs (`bcProg : BC.Fn 1 0 → FeasibleProg`),
+       * Bellantoni–Cook / Atkey tiered safe word iteration (`wordIter`), where the
          recursion clock is required to be a **live (non-erased)** input (`clockGrade ≠ 0`)
-         and the step operation is **affine/safe** in the recursive accumulator (preventing
-         accumulator duplication `acc ++ acc`),
+         and the step operation (`SafeStepOp`) is one of the fixed affine primitives
+         (`pushBit`, `pushNegClockBit`, `pushClockBit`, `idStep`), preventing accumulator
+         duplication `acc ++ acc`,
        * Intensional identity elimination (`idJ`), where the motive and equality proof
          carry grade `0` (erased at runtime) and only the `refl` computation branch carries
          live runtime grade `1`,
-       * Erased specification annotations (`erasedAnnot`), which live at grade `0` and
+       * Erased specification annotations (`erasedSpec`), which live at grade `0` and
          are stripped during extraction.
      - Static polynomial certificate synthesis `synthSizePoly : FeasibleProg → Poly` and
        `synthTimePoly : FeasibleProg → Poly` defined **purely by structural recursion on
-       program syntax** without executing the program (`docs/proof-ideas.md` §3).
+       program syntax** without executing the program (R3, `docs/proof-ideas.md` §3).
 
   3. **Composition & Iteration Certificate Bounds (`docs/proof-ideas.md` §3)**:
      - Proves the exact machine-derived composition inequality:
@@ -41,21 +44,23 @@
        together with output-size composition $s_{g \circ f}(n) = s_g(s_f(n))$.
 
   4. **Main Theorems of Paper B (Gate G4)**:
-     - **Polynomial-Time Soundness (`paper_B_polytime_soundness`)**:
+     - **Polynomial-Time Soundness (`paper_B_polytime_soundness` & `paper_B_tm_soundness`)**:
        Every well-formed `BCSafeDerivation` program `P` evaluates on every input word
        `w` with `w.length ≤ n` in at most `(synthTimePoly P).eval n` operational steps
-       to an output word of length at most `(synthSizePoly P).eval n`, and its erased
-       target execution agrees in lockstep.
+       to an output word of length at most `(synthSizePoly P).eval n`, agrees with its
+       erased target execution `eraseProg P`, and compiles via `toBC P : BC.Fn 1 0` to a
+       standard multi-tape Turing machine in `BC.FP` halting within `(BC.topTimePoly (toBC P)).eval n`
+       steps.
      - **Intensional Algorithmic Conversion + Resource Survival (`paper_B_intensional_idJ_soundness`)**:
-       Combining M1's decidable conversion (`Abel2018.MainTheorem.conversion_is_decidable`)
+       Combining M1's decidable conversion (`Abel2018.theorem_4_12_computational`)
        with `idJ` erasure shows that replacing M4's extensional equality reflection by
        intensional `Id` + `J` preserves both decidable type/conversion checking and
        the static polynomial time/size bounds.
-     - **First-Order FP Completeness (`paper_B_FP_completeness`)**:
-       Every polynomial-time word function presented by a clocked step transition with
-       polynomial step bound `p : Poly` is represented by an explicit `BCSafeDerivation`
-       whose operational semantics computes the exact same function within the synthesized
-       polynomial certificate.
+     - **First-Order FP Completeness & Equivalence (`paper_B_FP_completeness`, `paper_B_defFun_eq_FP`)**:
+       Every polynomial-time word function `f ∈ BC.FP` (computed by a multi-tape Turing
+       machine `M : BC.TM` within `p(|x|)` steps) is represented by an explicit
+       `BCSafeDerivation` program `P` whose operational semantics computes `f` within the
+       synthesized polynomial certificates.
 
   5. **Gate G4 Benchmarks & Failure Tests (`docs/proof-ideas.md` §§2–3)**:
      - **Benchmark 1 (`two_traversals_and_composition_cert`)**: static certificates for
@@ -75,6 +80,7 @@
 
 import Abel2018.Decidable
 import FeasibleUnivalence.PaperA
+import FeasibleUnivalence.BC.Completeness
 
 namespace FeasibleUnivalence.PaperB
 
@@ -84,93 +90,39 @@ open FeasibleUnivalence
 /-! ## 1. Binary Words (`Word`) & Univariate Polynomials (`Poly`) -/
 
 /-- Binary words `{0, 1}*` represented as `List Bool`, the standard first-order carrier
-    for feasible complexity (`FP`). -/
-abbrev Word := List Bool
+    for feasible complexity (`BC.FP`). -/
+abbrev Word := BC.Word
 
 /-- Syntax of univariate polynomials with natural-number coefficients (`ℕ[X]`),
-    equipped with explicit formal composition (`comp`). -/
-inductive Poly : Type where
-  | const (c : Nat)
-  | var
-  | add (p q : Poly)
-  | mul (p q : Poly)
-  | comp (p q : Poly)
-  deriving DecidableEq, Repr
-
-namespace Poly
-
-/-- Evaluate a polynomial `p : Poly` at input size `n : Nat`. -/
-def eval : Poly → Nat → Nat
-  | .const c, _ => c
-  | .var, n => n
-  | .add p q, n => p.eval n + q.eval n
-  | .mul p q, n => p.eval n * q.eval n
-  | .comp p q, n => p.eval (q.eval n)
-
-@[simp] theorem eval_const (c n : Nat) : (Poly.const c).eval n = c := rfl
-@[simp] theorem eval_var (n : Nat) : Poly.var.eval n = n := rfl
-@[simp] theorem eval_add (p q : Poly) (n : Nat) :
-    (Poly.add p q).eval n = p.eval n + q.eval n := rfl
-@[simp] theorem eval_mul (p q : Poly) (n : Nat) :
-    (Poly.mul p q).eval n = p.eval n * q.eval n := rfl
-@[simp] theorem eval_comp (p q : Poly) (n : Nat) :
-    (Poly.comp p q).eval n = p.eval (q.eval n) := rfl
-
-/-- Pointwise dominance of polynomials on all natural numbers. -/
-def le (p q : Poly) : Prop :=
-  ∀ n : Nat, p.eval n ≤ q.eval n
-
-/-- Formal degree upper bound of a polynomial. -/
-def degree : Poly → Nat
-  | .const _ => 0
-  | .var => 1
-  | .add p q => max p.degree q.degree
-  | .mul p q => p.degree + q.degree
-  | .comp p q => p.degree * q.degree
-
-/-- Every `Poly` has non-negative (`Nat`) coefficients and is therefore monotone:
-    if `n ≤ m`, then `p.eval n ≤ p.eval m`. -/
-theorem eval_mono (p : Poly) {n m : Nat} (h : n ≤ m) : p.eval n ≤ p.eval m := by
-  induction p generalizing n m with
-  | const c => exact Nat.le_refl c
-  | var => exact h
-  | add p q ihp ihq => exact Nat.add_le_add (ihp h) (ihq h)
-  | mul p q ihp ihq => exact Nat.mul_le_mul (ihp h) (ihq h)
-  | comp p q ihp ihq => exact ihp (ihq h)
-
-theorem le_refl (p : Poly) : p.le p :=
-  fun _ ↦ Nat.le_refl _
-
-theorem le_trans {p q r : Poly} (h₁ : p.le q) (h₂ : q.le r) : p.le r :=
-  fun n ↦ Nat.le_trans (h₁ n) (h₂ n)
-
-end Poly
+    equipped with explicit formal composition (`comp`), shared with `FeasibleUnivalence.BC`. -/
+abbrev Poly := BC.Poly
 
 /-! ## 2. Explicit Syntax of the Intensional Feasible Calculus (`FeasibleProg`)
 
-To ensure our soundness theorem is **non-circular** (`docs/proof-ideas.md` §2), we
-define an explicit inductive syntax of programs `FeasibleProg` over binary words,
-including:
-- Primitive word operations (`idProg`, `constWord`, `consBit`, `tailWord`, `flipBits`),
+To ensure our soundness theorem is **non-circular** and obeys **R2 (no oracle primitives)**,
+we define an explicit inductive syntax of programs `FeasibleProg` over binary words where
+every constructor is purely syntactic:
+- Primitive word operations (`idProg`, `constWord`, `consBit`, `tailWord`),
+- Embedded closed Bellantoni–Cook safe recursion programs (`bcProg (prog : BC.Fn 1 0)`),
 - Sequential composition (`compProg g f`, computing $g(f(w))$),
 - **Safe/Affine Step Operations (`SafeStepOp`)** for Bellantoni–Cook / Atkey bounded
-  recursion, where the recursive accumulator `acc` is used **at most once** per step
-  and grows by at most a constant number of bits (`pushBit`, `flipHead`, `idStep`,
-  `boundedStep`),
+  word iteration, consisting of a fixed finite list of affine bit operations (`pushBit`,
+  `pushNegClockBit`, `pushClockBit`, `idStep`),
 - **Graded Word Iteration (`wordIter clockGrade step base`)**, which annotates the
-  recursion clock with its usage grade `clockGrade : ErasureGrade` (`1` = live clock,
+  recursion clock with its usage grade `clockGrade : ZeroOneMany` (`1` = live clock,
   `0` = erased clock),
 - **Intensional Identity Elimination (`idJ proofGrade motiveTag body`)**, where
   an equality proof of grade `proofGrade` transports along a `0`-graded motive tag,
-- **Erased Specification Annotation (`erasedSpec specProg body`)**, attaching a
+- **Erased Specification Annotation (`erasedSpec specTag body`)**, attaching a
   `0`-graded specification term to a runtime computation `body`,
 - **Unrestricted Accumulator Duplication (`dupIter`)**, included in the raw syntax so
   that we can formally state and prove the **Failure Test** showing that `dupIter`
   causes $2^n$ blowup and is rejected by `BCSafeDerivation`! -/
 
-/-- Safe/affine per-step operations on the recursive accumulator `acc : Word` during
-    bounded word iteration. Each operation uses `acc` **affinely (grade `1`)** without
-    duplicating `acc`, and increases `acc.length` by at most `stepGrowth` bits. -/
+/-- Fixed finite set of safe/affine per-step operations on the recursive accumulator
+    `acc : Word` during bounded word iteration (R2: no arbitrary Lean functions). Each
+    operation uses `acc` **affinely (grade `1`)** without duplicating `acc`, and increases
+    `acc.length` by at most `growth` bits. -/
 inductive SafeStepOp : Type where
   /-- Prepend a constant bit `b` to the accumulator (`acc ↦ b :: acc`, growth `1`). -/
   | pushBit (b : Bool)
@@ -180,10 +132,7 @@ inductive SafeStepOp : Type where
   | pushClockBit
   /-- Leave the accumulator unchanged (`acc ↦ acc`, growth `0`). -/
   | idStep
-  /-- Apply a size-preserving single-step word transition `f : Word → Word`
-      (accompanied by proof that `∀ w, (f w).length ≤ w.length + k` and step cost `c`). -/
-  | boundedTransition (f : Word → Word) (growth : Nat) (stepCost : Nat)
-      (hsize : ∀ w : Word, (f w).length ≤ w.length + growth)
+  deriving DecidableEq, Repr
 
 namespace SafeStepOp
 
@@ -193,7 +142,6 @@ def growth : SafeStepOp → Nat
   | .pushNegClockBit => 1
   | .pushClockBit => 1
   | .idStep => 0
-  | .boundedTransition _ g _ _ => g
 
 /-- Operational step cost of a single application of `op`. -/
 def cost : SafeStepOp → Nat
@@ -201,7 +149,6 @@ def cost : SafeStepOp → Nat
   | .pushNegClockBit => 1
   | .pushClockBit => 1
   | .idStep => 1
-  | .boundedTransition _ _ c _ => c + 1
 
 /-- Execute one safe step on clock bit `c : Bool` and accumulator `acc : Word`. -/
 def apply (op : SafeStepOp) (c : Bool) (acc : Word) : Word :=
@@ -210,7 +157,6 @@ def apply (op : SafeStepOp) (c : Bool) (acc : Word) : Word :=
   | .pushNegClockBit => (!c) :: acc
   | .pushClockBit => c :: acc
   | .idStep => acc
-  | .boundedTransition f _ _ _ => f acc
 
 /-- Fundamental affine size invariant of `SafeStepOp`:
     applying `op` once increases `acc.length` by at most `op.growth` (and **never**
@@ -222,7 +168,6 @@ theorem length_apply_le (op : SafeStepOp) (c : Bool) (acc : Word) :
   | pushNegClockBit => simp [apply, growth]
   | pushClockBit => simp [apply, growth]
   | idStep => simp [apply, growth]
-  | boundedTransition f g sc hs => exact hs acc
 
 end SafeStepOp
 
@@ -238,6 +183,8 @@ inductive FeasibleProg : Type where
   | consBit (b : Bool)
   /-- Drop the leading bit (`w ↦ w.tail`). -/
   | tailWord
+  /-- Closed Bellantoni–Cook safe recursion program `prog : BC.Fn 1 0`. -/
+  | bcProg (prog : BC.Fn 1 0)
   /-- Graded safe word iteration: iterates `step : SafeStepOp` over the input clock
       (annotated with `clockGrade : ZeroOneMany`) starting from `base : FeasibleProg`. -/
   | wordIter (clockGrade : ZeroOneMany) (step : SafeStepOp) (base : FeasibleProg)
@@ -259,14 +206,15 @@ inductive FeasibleProg : Type where
     carves out the well-formed programs of the intensional feasible calculus by requiring:
     1. All recursion clocks in `wordIter` have live grade `.one` (`clockGrade = .one`),
        forbidding erased (`0`-graded) inputs from driving recursion,
-    2. All recursive steps use the safe/affine `SafeStepOp` interface (forbidding
-       `dupIter`),
+    2. All recursive steps use the safe/affine `SafeStepOp` interface or closed Bellantoni–Cook
+       safe recursion `BC.Fn 1 0` (forbidding `dupIter`),
     3. Intensional identity elimination `idJ` erases its equality proof (`proofGrade = .zero`). -/
 inductive BCSafeDerivation : FeasibleProg → Prop where
   | idProg : BCSafeDerivation .idProg
   | constWord (c : Word) : BCSafeDerivation (.constWord c)
   | consBit (b : Bool) : BCSafeDerivation (.consBit b)
   | tailWord : BCSafeDerivation .tailWord
+  | bcProg (prog : BC.Fn 1 0) : BCSafeDerivation (.bcProg prog)
   | wordIter (step : SafeStepOp) {base : FeasibleProg} :
       BCSafeDerivation base →
       BCSafeDerivation (.wordIter .one step base)
@@ -283,12 +231,13 @@ inductive BCSafeDerivation : FeasibleProg → Prop where
 
 /-- **Static Output-Size Certificate Synthesis (`synthSizePoly P`)**:
     computes a polynomial upper bound $s_P(n)$ on the output word length of `P`
-    **purely by structural recursion on `P`**, without executing `P` (`docs/proof-ideas.md` §3). -/
+    **purely by structural recursion on `P`**, without executing `P` (R3, `docs/proof-ideas.md` §3). -/
 def synthSizePoly : FeasibleProg → Poly
   | .idProg => .var
   | .constWord c => .const c.length
   | .consBit _ => .add .var (.const 1)
   | .tailWord => .var
+  | .bcProg prog => prog.sizePoly
   | .wordIter _ step base =>
       .add (synthSizePoly base) (.mul (.const step.growth) .var)
   | .compProg g f =>
@@ -299,7 +248,7 @@ def synthSizePoly : FeasibleProg → Poly
 
 /-- **Static Time-Bound Certificate Synthesis (`synthTimePoly P`)**:
     computes a polynomial upper bound $p_P(n)$ on the operational step count of `P`
-    **purely by structural recursion on `P`**, without executing `P`.
+    **purely by structural recursion on `P`**, without executing `P` (R3).
     Notice that for `compProg g f`, it synthesizes the exact composition formula from
     `docs/proof-ideas.md` §3:
     $$p_{g \circ f}(n) = p_f(n) + p_g(s_f(n)) + 1.$$ -/
@@ -308,6 +257,7 @@ def synthTimePoly : FeasibleProg → Poly
   | .constWord _ => .const 1
   | .consBit _ => .const 1
   | .tailWord => .const 1
+  | .bcProg prog => .add (BC.topTimePoly prog) (.const 1)
   | .wordIter _ step base =>
       .add (synthTimePoly base) (.add (.mul (.const step.cost) .var) (.const 1))
   | .compProg g f =>
@@ -340,6 +290,47 @@ structure ExecResult where
   steps : Nat
   deriving DecidableEq, Repr
 
+/-- Count the exact number of transitions taken by Turing machine `M : BC.TM` within
+    fuel `n` starting from configuration `c`. -/
+def stepsRunTM (M : BC.TM) : Nat → BC.Cfg M.k M.Q M.G → Nat
+  | 0, _ => 0
+  | n + 1, c =>
+    match M.step c with
+    | none => 0
+    | some c' => stepsRunTM M n c' + 1
+
+theorem stepsRunTM_le (M : BC.TM) : ∀ (n : Nat) (c : BC.Cfg M.k M.Q M.G),
+    stepsRunTM M n c ≤ n
+  | 0, _ => Nat.le_refl 0
+  | n + 1, c => by
+    simp only [stepsRunTM]
+    cases M.step c with
+    | none => exact Nat.zero_le (n + 1)
+    | some c' => exact Nat.succ_le_succ (stepsRunTM_le M n c')
+
+/-- Execute a closed Bellantoni–Cook program `prog : BC.Fn 1 0` on input word `w` by
+    running its compiled Turing machine `BC.stmtToTM (BC.topCompileBC prog)` and counting
+    the exact number of transitions (+ 1 halt step). -/
+def runBCProg (prog : BC.Fn 1 0) (w : Word) : ExecResult :=
+  let M := BC.stmtToTM (BC.topCompileBC prog)
+  let T := (BC.topTimePoly prog).eval w.length
+  ⟨prog.eval [w] [], stepsRunTM M T (M.init w) + 1⟩
+
+theorem runBCProg_bounds (prog : BC.Fn 1 0) (w : Word) {n : Nat} (hn : w.length ≤ n) :
+    (runBCProg prog w).steps ≤ (synthTimePoly (.bcProg prog)).eval n ∧
+    (runBCProg prog w).output.length ≤ (synthSizePoly (.bcProg prog)).eval n := by
+  refine ⟨?_, ?_⟩
+  · simp only [runBCProg, synthTimePoly, BC.Poly.eval_add, BC.Poly.eval_const]
+    exact Nat.add_le_add_right
+      (Nat.le_trans
+        (stepsRunTM_le (BC.stmtToTM (BC.topCompileBC prog))
+          ((BC.topTimePoly prog).eval w.length)
+          ((BC.stmtToTM (BC.topCompileBC prog)).init w))
+        ((BC.topTimePoly prog).eval_mono hn))
+      1
+  · simp only [runBCProg, synthSizePoly]
+    exact Nat.le_trans (prog.eval_one_length_le w) (prog.sizePoly.eval_mono hn)
+
 /-- Iterate a `SafeStepOp` over a clock word `clock : Word` starting from `(acc, steps)`. -/
 def runSafeIter (step : SafeStepOp) : Word → Word → Nat → ExecResult
   | [], acc, sc => ⟨acc, sc + 1⟩
@@ -356,13 +347,14 @@ def runDupIter : Word → ExecResult
       ⟨res.output ++ res.output, res.steps + res.output.length + 1⟩
 
 /-- Concrete operational evaluator `evalProg : FeasibleProg → Word → ExecResult`:
-    executes `P` on input `w : Word` and counts every primitive step, iteration step,
-    and composition glue step. -/
+    executes `P` on input `w : Word` and counts every primitive step, TM transition,
+    iteration step, and composition glue step. -/
 def evalProg : FeasibleProg → Word → ExecResult
   | .idProg, w => ⟨w, 1⟩
   | .constWord c, _ => ⟨c, 1⟩
   | .consBit b, w => ⟨b :: w, 1⟩
   | .tailWord, w => ⟨w.tail, 1⟩
+  | .bcProg prog, w => runBCProg prog w
   | .wordIter _ step base, w =>
       let bres := evalProg base w
       runSafeIter step w bres.output bres.steps
@@ -387,6 +379,7 @@ def eraseProg : FeasibleProg → FeasibleProg
   | .constWord c => .constWord c
   | .consBit b => .consBit b
   | .tailWord => .tailWord
+  | .bcProg prog => .bcProg prog
   | .wordIter .zero step _ => .compProg (.wordIter .one step (.idProg)) (.constWord [])
   | .wordIter .one step base => .wordIter .one step (eraseProg base)
   | .wordIter .omega step base => .wordIter .omega step (eraseProg base)
@@ -404,6 +397,7 @@ theorem evalProg_eraseProg_eq {P : FeasibleProg} (hP : BCSafeDerivation P) (w : 
   | constWord _ => rfl
   | consBit _ => rfl
   | tailWord => rfl
+  | bcProg _ => rfl
   | wordIter step _ ih =>
     simp [eraseProg, evalProg, ih]
   | compProg _ _ ihg ihf =>
@@ -413,7 +407,92 @@ theorem evalProg_eraseProg_eq {P : FeasibleProg} (hP : BCSafeDerivation P) (w : 
   | erasedSpec _ _ ih =>
     simp [eraseProg, evalProg, ih]
 
-/-! ## 5. Main Theorems of Paper B (Gate G4) -/
+/-! ## 5. Compilation of `FeasibleProg` to Bellantoni–Cook (`toBC`) & Turing Machines -/
+
+/-- Translate a single `SafeStepOp` on clock bit `b : Bool` to a Bellantoni–Cook step
+    function `BC.Fn 1 2` (with normal clock tail at index `0` and safe accumulator at index `0`). -/
+def stepToBC (step : SafeStepOp) (b : Bool) : BC.Fn 1 2 :=
+  match step with
+  | .pushBit b₀ =>
+      .comp (if b₀ then .s1 else .s0) Fin.elim0 (BC.vec1 (.projS ⟨0, Nat.zero_lt_succ 1⟩))
+  | .pushNegClockBit =>
+      .comp (if !b then .s1 else .s0) Fin.elim0 (BC.vec1 (.projS ⟨0, Nat.zero_lt_succ 1⟩))
+  | .pushClockBit =>
+      .comp (if b then .s1 else .s0) Fin.elim0 (BC.vec1 (.projS ⟨0, Nat.zero_lt_succ 1⟩))
+  | .idStep =>
+      .projS ⟨0, Nat.zero_lt_succ 1⟩
+
+theorem eval_stepToBC (step : SafeStepOp) (b : Bool) (u r acc : Word) :
+    (stepToBC step b).eval [u] [r, acc] = step.apply b r := by
+  cases step with
+  | pushBit b₀ =>
+    cases b₀ <;> simp [stepToBC, SafeStepOp.apply]
+  | pushNegClockBit =>
+    cases b <;> simp [stepToBC, SafeStepOp.apply]
+  | pushClockBit =>
+    cases b <;> simp [stepToBC, SafeStepOp.apply]
+  | idStep =>
+    simp [stepToBC, SafeStepOp.apply]
+
+/-- Bellantoni–Cook program `iterStepBC step : BC.Fn 1 1` iterating `step : SafeStepOp`
+    over normal clock `0` starting from safe accumulator `0`. -/
+def iterStepBC (step : SafeStepOp) : BC.Fn 1 1 :=
+  .srec (.projS ⟨0, Nat.zero_lt_one⟩) (stepToBC step false) (stepToBC step true)
+
+theorem eval_iterStepBC (step : SafeStepOp) (clock acc : Word) (sc : Nat) :
+    (iterStepBC step).eval [clock] [acc] = (runSafeIter step clock acc sc).output := by
+  induction clock with
+  | nil =>
+    simp [iterStepBC, runSafeIter]
+  | cons b bs ih =>
+    have hstep : (iterStepBC step).eval [b :: bs] [acc] =
+        (stepToBC step b).eval [bs] [(iterStepBC step).eval [bs] [acc], acc] := by
+      cases b <;> simp [iterStepBC, BC.Fn.eval_srec_cons]
+    rw [hstep, eval_stepToBC, ih]
+    rfl
+
+/-- Translate any `FeasibleProg` in the safe fragment into an explicit closed
+    Bellantoni–Cook program `toBC P : BC.Fn 1 0`. -/
+def toBC : FeasibleProg → BC.Fn 1 0
+  | .idProg => .projN ⟨0, Nat.zero_lt_one⟩
+  | .constWord c => .comp (BC.constWord c) Fin.elim0 Fin.elim0
+  | .consBit b => .comp (if b then .s1 else .s0) Fin.elim0 (BC.vec1 (.projN ⟨0, Nat.zero_lt_one⟩))
+  | .tailWord => .comp .pred Fin.elim0 (BC.vec1 (.projN ⟨0, Nat.zero_lt_one⟩))
+  | .bcProg prog => prog
+  | .wordIter _ step base =>
+      .comp (iterStepBC step) (BC.vec1 (.projN ⟨0, Nat.zero_lt_one⟩)) (BC.vec1 (toBC base))
+  | .compProg g f =>
+      .comp (toBC g) (BC.vec1 (toBC f)) Fin.elim0
+  | .idJ _ _ body => toBC body
+  | .erasedSpec _ body => toBC body
+  | .dupIter => .comp .zero Fin.elim0 Fin.elim0
+
+/-- For every well-formed `BCSafeDerivation P`, `toBC P` computes the exact same word
+    function as `evalProg P` on every input word `w`! -/
+theorem toBC_eval_eq {P : FeasibleProg} (hP : BCSafeDerivation P) (w : Word) :
+    (toBC P).eval [w] [] = (evalProg P w).output := by
+  induction hP generalizing w with
+  | idProg => rfl
+  | constWord c =>
+    simp [toBC, evalProg]
+  | consBit b =>
+    cases b <;> simp [toBC, evalProg]
+  | tailWord =>
+    simp [toBC, evalProg]
+  | bcProg prog => rfl
+  | wordIter step hbase ih =>
+    simp only [toBC, BC.Fn.eval_comp, List.ofFn_zero, List.ofFn_succ,
+      BC.vec1_zero, BC.Fn.eval_projN, List.getD_cons_zero, ih w, evalProg]
+    exact eval_iterStepBC step w (evalProg _ w).output (evalProg _ w).steps
+  | compProg hg hf ihg ihf =>
+    simp only [toBC, BC.Fn.eval_comp, List.ofFn_zero, List.ofFn_succ,
+      BC.vec1_zero, ihf w, ihg (evalProg _ w).output, evalProg]
+  | idJ _ _ ih =>
+    exact ih w
+  | erasedSpec _ _ ih =>
+    exact ih w
+
+/-! ## 6. Main Theorems of Paper B (Gate G4) -/
 
 /-- Helper lemma bounding `runSafeIter` step count and output size. -/
 theorem runSafeIter_bounds (step : SafeStepOp) (clock : Word) (acc : Word) (sc : Nat) :
@@ -434,6 +513,35 @@ theorem runSafeIter_bounds (step : SafeStepOp) (clock : Word) (acc : Word) (sc :
         Nat.mul_add_one step.growth bs.length
       omega
 
+/-- Helper size-bound lemma for `BCSafeDerivation`. -/
+theorem evalProg_size_le {P : FeasibleProg} (hP : BCSafeDerivation P)
+    (w : Word) {n : Nat} (hn : w.length ≤ n) :
+    (evalProg P w).output.length ≤ (synthSizePoly P).eval n := by
+  induction hP generalizing w n with
+  | idProg => exact hn
+  | constWord c => exact Nat.le_refl _
+  | consBit b =>
+    simp only [evalProg, List.length_cons, synthSizePoly, BC.Poly.eval_add, BC.Poly.eval_var, BC.Poly.eval_const]
+    omega
+  | tailWord =>
+    simp only [evalProg, List.length_tail, synthSizePoly, BC.Poly.eval_var]
+    omega
+  | bcProg prog =>
+    exact (runBCProg_bounds prog w hn).2
+  | @wordIter step base _ ih =>
+    simp only [evalProg, synthSizePoly, BC.Poly.eval_add, BC.Poly.eval_mul, BC.Poly.eval_const, BC.Poly.eval_var]
+    have hs := (runSafeIter_bounds step w (evalProg base w).output (evalProg base w).steps).2
+    have hb := ih w hn
+    have hm : step.growth * w.length ≤ step.growth * n := Nat.mul_le_mul_left step.growth hn
+    omega
+  | @compProg g f _ _ ihg ihf =>
+    simp only [evalProg, synthSizePoly, BC.Poly.eval_comp]
+    exact ihg (evalProg f w).output (ihf w hn)
+  | idJ _ _ ih =>
+    exact ih w hn
+  | erasedSpec _ _ ih =>
+    exact ih w hn
+
 /-- **Main Soundness Theorem of Paper B (`paper_B_polytime_soundness`, Gate G4)**:
     For every well-formed feasible derivation `hP : BCSafeDerivation P`, and every input
     word `w : Word` of length `w.length ≤ n`:
@@ -449,85 +557,50 @@ theorem paper_B_polytime_soundness {P : FeasibleProg} (hP : BCSafeDerivation P)
     (evalProg P w).steps ≤ (synthTimePoly P).eval n ∧
     (evalProg P w).output.length ≤ (synthSizePoly P).eval n ∧
     evalProg (eraseProg P) w = evalProg P w := by
-  refine ⟨?_, ?_, evalProg_eraseProg_eq hP w⟩
-  · induction hP generalizing w n with
-    | idProg => simp [evalProg, synthTimePoly]
-    | constWord c => simp [evalProg, synthTimePoly]
-    | consBit b => simp [evalProg, synthTimePoly]
-    | tailWord => simp [evalProg, synthTimePoly]
-    | @wordIter step base hbase ih =>
-      simp only [evalProg, synthTimePoly, Poly.eval_add, Poly.eval_mul, Poly.eval_const, Poly.eval_var]
-      have hstep := (runSafeIter_bounds step w (evalProg base w).output (evalProg base w).steps).1
-      have ih_t := ih w hn
-      have hmul : step.cost * w.length ≤ step.cost * n := Nat.mul_le_mul_left step.cost hn
-      omega
-    | @compProg g f hg hf ihg ihf =>
-      -- Need size bound of `f` to feed into `ihg`!
-      have h_size_f : ∀ {P₀ : FeasibleProg}, BCSafeDerivation P₀ →
-          ∀ (w₀ : Word) {n₀ : Nat}, w₀.length ≤ n₀ →
-            (evalProg P₀ w₀).output.length ≤ (synthSizePoly P₀).eval n₀ := by
-        intro P₀ hP₀
-        induction hP₀ with
-        | idProg => intro w₀ n₀ hn₀; exact hn₀
-        | constWord c => intro w₀ n₀ _; exact Nat.le_refl _
-        | consBit b =>
-          intro w₀ n₀ hn₀
-          simp only [evalProg, List.length_cons, synthSizePoly, Poly.eval_add, Poly.eval_var, Poly.eval_const]
-          omega
-        | tailWord =>
-          intro w₀ n₀ hn₀
-          simp only [evalProg, List.length_tail, synthSizePoly, Poly.eval_var]
-          omega
-        | @wordIter step₀ base₀ _ ih_s =>
-          intro w₀ n₀ hn₀
-          simp only [evalProg, synthSizePoly, Poly.eval_add, Poly.eval_mul, Poly.eval_const, Poly.eval_var]
-          have hs := (runSafeIter_bounds step₀ w₀ (evalProg base₀ w₀).output (evalProg base₀ w₀).steps).2
-          have hb := ih_s w₀ hn₀
-          have hm : step₀.growth * w₀.length ≤ step₀.growth * n₀ := Nat.mul_le_mul_left step₀.growth hn₀
-          omega
-        | @compProg g₀ f₀ _ _ ihg_s ihf_s =>
-          intro w₀ n₀ hn₀
-          simp only [evalProg, synthSizePoly, Poly.eval_comp]
-          exact ihg_s (evalProg f₀ w₀).output (ihf_s w₀ hn₀)
-        | idJ _ _ ih_s =>
-          intro w₀ n₀ hn₀
-          exact ih_s w₀ hn₀
-        | erasedSpec _ _ ih_s =>
-          intro w₀ n₀ hn₀
-          exact ih_s w₀ hn₀
-      simp only [evalProg, synthTimePoly, Poly.eval_add, Poly.eval_comp, Poly.eval_const]
-      have ht_f := ihf w hn
-      have hs_f := h_size_f hf w hn
-      have ht_g := ihg (evalProg f w).output hs_f
-      omega
-    | idJ _ _ ih =>
-      simp only [evalProg, synthTimePoly, Poly.eval_add, Poly.eval_const]
-      have ht := ih w hn
-      omega
-    | erasedSpec _ _ ih =>
-      exact ih w hn
-  · induction hP generalizing w n with
-    | idProg => exact hn
-    | constWord c => exact Nat.le_refl _
-    | consBit b =>
-      simp only [evalProg, List.length_cons, synthSizePoly, Poly.eval_add, Poly.eval_var, Poly.eval_const]
-      omega
-    | tailWord =>
-      simp only [evalProg, List.length_tail, synthSizePoly, Poly.eval_var]
-      omega
-    | @wordIter step base _ ih =>
-      simp only [evalProg, synthSizePoly, Poly.eval_add, Poly.eval_mul, Poly.eval_const, Poly.eval_var]
-      have hs := (runSafeIter_bounds step w (evalProg base w).output (evalProg base w).steps).2
-      have hb := ih w hn
-      have hm : step.growth * w.length ≤ step.growth * n := Nat.mul_le_mul_left step.growth hn
-      omega
-    | @compProg g f _ _ ihg ihf =>
-      simp only [evalProg, synthSizePoly, Poly.eval_comp]
-      exact ihg (evalProg f w).output (ihf w hn)
-    | idJ _ _ ih =>
-      exact ih w hn
-    | erasedSpec _ _ ih =>
-      exact ih w hn
+  refine ⟨?_, evalProg_size_le hP w hn, evalProg_eraseProg_eq hP w⟩
+  induction hP generalizing w n with
+  | idProg => simp [evalProg, synthTimePoly]
+  | constWord c => simp [evalProg, synthTimePoly]
+  | consBit b => simp [evalProg, synthTimePoly]
+  | tailWord => simp [evalProg, synthTimePoly]
+  | bcProg prog =>
+    exact (runBCProg_bounds prog w hn).1
+  | @wordIter step base _ ih =>
+    simp only [evalProg, synthTimePoly, BC.Poly.eval_add, BC.Poly.eval_mul, BC.Poly.eval_const, BC.Poly.eval_var]
+    have hstep := (runSafeIter_bounds step w (evalProg base w).output (evalProg base w).steps).1
+    have ih_t := ih w hn
+    have hmul : step.cost * w.length ≤ step.cost * n := Nat.mul_le_mul_left step.cost hn
+    omega
+  | @compProg g f _ hf ihg ihf =>
+    simp only [evalProg, synthTimePoly, BC.Poly.eval_add, BC.Poly.eval_comp, BC.Poly.eval_const]
+    have ht_f := ihf w hn
+    have hs_f := evalProg_size_le hf w hn
+    have ht_g := ihg (evalProg f w).output hs_f
+    omega
+  | idJ _ _ ih =>
+    simp only [evalProg, synthTimePoly, BC.Poly.eval_add, BC.Poly.eval_const]
+    have ht := ih w hn
+    omega
+  | erasedSpec _ _ ih =>
+    exact ih w hn
+
+/-- **Turing-Machine Soundness of `BCSafeDerivation` (`paper_B_tm_soundness`)**:
+    Every well-formed `BCSafeDerivation P` compiles via `toBC P : BC.Fn 1 0` to the
+    deterministic multi-tape Turing machine `BC.stmtToTM (BC.topCompileBC (toBC P))`,
+    establishing `(fun w => (evalProg P w).output) ∈ BC.FP`. -/
+theorem paper_B_tm_soundness {P : FeasibleProg} (hP : BCSafeDerivation P) :
+    BC.FP (fun w => (evalProg P w).output) ∧
+    ∀ (w : Word) {n : Nat}, w.length ≤ n →
+      (BC.stmtToTM (BC.topCompileBC (toBC P))).HaltsWithin w
+        ((BC.topTimePoly (toBC P)).eval n)
+        (evalProg P w).output := by
+  refine ⟨BC.bc_soundness (fun w => (evalProg P w).output) ⟨toBC P, toBC_eval_eq hP⟩, ?_⟩
+  intro w n hn
+  rw [← toBC_eval_eq hP w]
+  rcases BC.topCompileBC_haltsWithin (toBC P) w with ⟨s, hs, hstep, hout⟩
+  have hmono : (BC.topTimePoly (toBC P)).eval w.length ≤ (BC.topTimePoly (toBC P)).eval n :=
+    (BC.topTimePoly (toBC P)).eval_mono hn
+  exact ⟨s, Nat.le_trans hs hmono, hstep, hout⟩
 
 /-- **Intensional Conversion Decidability + `idJ` Resource Survival (`paper_B_intensional_idJ_soundness`)**:
     In the intensional core (without equality reflection):
@@ -553,64 +626,55 @@ theorem paper_B_intensional_idJ_soundness
   rcases paper_B_polytime_soundness hJ w hn with ⟨ht, hs, _⟩
   exact ⟨theorem_4_12_computational, hJ, rfl, ht, hs⟩
 
-/-! ## 6. First-Order FP Completeness (`paper_B_FP_completeness`)
+/-! ## 7. First-Order FP Completeness & Equivalence (`paper_B_FP_completeness`, `paper_B_defFun_eq_FP`)
 
-We now prove the converse direction for first-order polynomial-time word functions (`FP`):
-any polynomial-time word machine specified by:
-1. A unary polynomial clock generator `clockProg : FeasibleProg` (`hClock : BCSafeDerivation clockProg`)
-   that on input `w` produces a clock word of length `(clockProg w).length` (representing
-   $p(|w|)$ ticks), and
-2. A single-step machine transition `stepFn : Word → Word` with bounded per-step growth
-   `growth` (`∀ s, (stepFn s).length ≤ s.length + growth`) and step cost `stepCost`,
-is simulated by the explicit `BCSafeDerivation` program:
-$$\operatorname{simProg} := \operatorname{wordIter}\;1\;(\operatorname{boundedTransition}\;\operatorname{stepFn}) \;\operatorname{idProg}$$
-composed with the clock generator, computing the exact machine run within the
-synthesized polynomial time and size certificates! -/
-
-/-- Run a single-step transition `stepFn : Word → Word` for `k` ticks starting from `w`. -/
-def iterateTransition (stepFn : Word → Word) : Nat → Word → Word
-  | 0, w => w
-  | k + 1, w => stepFn (iterateTransition stepFn k w)
-
-/-- Running `runSafeIter (.boundedTransition stepFn g c hs)` over any clock word `clock`
-    starting from `w` computes `iterateTransition stepFn clock.length w`! -/
-theorem runSafeIter_boundedTransition_eq (stepFn : Word → Word) (g c : Nat)
-    (hs : ∀ w : Word, (stepFn w).length ≤ w.length + g)
-    (clock : Word) (w : Word) (sc : Nat) :
-    (runSafeIter (.boundedTransition stepFn g c hs) clock w sc).output =
-      iterateTransition stepFn clock.length w := by
-  induction clock with
-  | nil => rfl
-  | cons b bs ih =>
-    simp [runSafeIter, SafeStepOp.apply, ih, iterateTransition]
+Backed by the Bellantoni–Cook completeness theorem (`BC.bc_completeness` in
+`FeasibleUnivalence/BC/Completeness.lean`), we now prove the genuine, non-vacuous
+completeness theorem for `BC.FP`: every word function `f : Word → Word` computable in
+polynomial time by a deterministic multi-tape Turing machine is represented by an explicit
+well-formed `BCSafeDerivation` program `P : FeasibleProg` whose operational execution
+computes `f` within the statically synthesized polynomial time and size certificates. -/
 
 /-- **First-Order FP Completeness Theorem (`paper_B_FP_completeness`, Gate G4)**:
-    Every bounded-step word transition `stepFn : Word → Word` (with per-step growth
-    bound `growth` and step cost `stepCost`) iterated over the input word `w` is
-    definable by an explicit well-formed `BCSafeDerivation` program `P` such that for
-    all `w : Word` and `w.length ≤ n`:
+    Every polynomial-time computable word function `f : Word → Word` (`hf : BC.FP f`,
+    defined independently via deterministic multi-tape Turing machines in `BC/TM.lean`)
+    is represented by an explicit well-formed `BCSafeDerivation` program `P : FeasibleProg`
+    such that for all `w : Word` and `w.length ≤ n`:
     1. `BCSafeDerivation P`,
-    2. `(evalProg P w).output = iterateTransition stepFn w.length w`,
+    2. `(evalProg P w).output = f w`,
     3. `(evalProg P w).steps ≤ (synthTimePoly P).eval n`,
-    4. `(evalProg P w).output.length ≤ (synthSizePoly P).eval n`. -/
-theorem paper_B_FP_completeness
-    (stepFn : Word → Word) (growth stepCost : Nat)
-    (hsize : ∀ s : Word, (stepFn s).length ≤ s.length + growth) :
-    let P : FeasibleProg :=
-      .wordIter .one (.boundedTransition stepFn growth stepCost hsize) .idProg
-    BCSafeDerivation P ∧
-    ∀ (w : Word) {n : Nat}, w.length ≤ n →
-      (evalProg P w).output = iterateTransition stepFn w.length w ∧
-      (evalProg P w).steps ≤ (synthTimePoly P).eval n ∧
-      (evalProg P w).output.length ≤ (synthSizePoly P).eval n := by
-  intro P
-  have hP : BCSafeDerivation P := .wordIter _ .idProg
-  refine ⟨hP, fun w {n} hn ↦ ?_⟩
-  rcases paper_B_polytime_soundness hP w hn with ⟨ht, hs, _⟩
-  refine ⟨?_, ht, hs⟩
-  exact runSafeIter_boundedTransition_eq stepFn growth stepCost hsize w w 1
+    4. `(evalProg P w).output.length ≤ (synthSizePoly P).eval n`,
+    5. `evalProg (eraseProg P) w = evalProg P w`. -/
+theorem paper_B_FP_completeness (f : Word → Word) (hf : BC.FP f) :
+    ∃ P : FeasibleProg,
+      BCSafeDerivation P ∧
+      ∀ (w : Word) {n : Nat}, w.length ≤ n →
+        (evalProg P w).output = f w ∧
+        (evalProg P w).steps ≤ (synthTimePoly P).eval n ∧
+        (evalProg P w).output.length ≤ (synthSizePoly P).eval n ∧
+        evalProg (eraseProg P) w = evalProg P w := by
+  rcases BC.bc_completeness f hf with ⟨prog, hprog⟩
+  refine ⟨.bcProg prog, .bcProg prog, fun w {n} hn => ?_⟩
+  rcases paper_B_polytime_soundness (.bcProg prog) w hn with ⟨ht, hs, herase⟩
+  exact ⟨hprog w, ht, hs, herase⟩
 
-/-! ## 7. Gate G4 Benchmarks & Failure Tests (`docs/proof-ideas.md` §§2–3) -/
+/-- **Exact First-Order Expressive Power (`paper_B_defFun_eq_FP`)**:
+    A unary word function `f : Word → Word` is computed by a well-formed `BCSafeDerivation`
+    program `P : FeasibleProg` if and only if `f ∈ BC.FP`. -/
+theorem paper_B_defFun_eq_FP (f : Word → Word) :
+    (∃ P : FeasibleProg, BCSafeDerivation P ∧ ∀ w : Word, (evalProg P w).output = f w) ↔
+      BC.FP f := by
+  constructor
+  · rintro ⟨P, hP, hEval⟩
+    rcases (paper_B_tm_soundness hP).1 with ⟨M, p, hM⟩
+    refine ⟨M, p, fun x => ?_⟩
+    rw [← hEval x]
+    exact hM x
+  · intro hf
+    rcases paper_B_FP_completeness f hf with ⟨P, hP, hEval⟩
+    exact ⟨P, hP, fun w => (hEval w (Nat.le_refl w.length)).1⟩
+
+/-! ## 8. Gate G4 Benchmarks & Failure Tests (`docs/proof-ideas.md` §§2–3) -/
 
 section BenchmarksAndFailureTests
 
