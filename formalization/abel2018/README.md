@@ -1,9 +1,9 @@
 # Abel 2018 & Feasible Univalence: Complete Lean 4.33.1 Formalization
 
-This directory contains two complete, zero-`sorry`, constructive (`[propext]` / `[Quot.sound]` only, zero `Classical.choice`) Lean 4.33.1 libraries totaling **26,931 lines** across 22 modules (plus 2 executable check suites):
+This directory contains two complete, zero-`sorry`, constructive (`[propext]` / `[Quot.sound]` only, zero `Classical.choice`) Lean 4.33.1 libraries totaling **31,685 lines** across 30 modules (plus 2 executable check suites):
 
-1. **`Abel2018`** (14 modules, 12,979 lines): Complete formalization of **M1** — Andreas Abel, Joakim Öhman, and Andrea Vezzosi, *Decidability of Conversion for Type Theory in Type Theory*, Proc. ACM Program. Lang. 2 (POPL 2018), Article 23, DOI [10.1145/3158111](https://doi.org/10.1145/3158111), matching the [v2.1 Agda artifact](https://github.com/mr-ohman/logrel-mltt/tree/eb2b15ab1c4b45923025834d3bb798943cb44b8e) (`eb2b15ab1c4b45923025834d3bb798943cb44b8e`).
-2. **`FeasibleUnivalence`** (8 modules, 13,763 lines): Complete formalization of **M2** ([arXiv:2603.29716v2](https://arxiv.org/abs/2603.29716v2) / ICFP 2023), **M3** (ICFP 2026, DOI [10.1145/3828677](https://doi.org/10.1145/3828677)), and formalized models of the programme's research stages: **Paper A** (Gates G2–G3), **Paper B** (Gate G4), **Paper C & M11** (Gate G5), and the **Final Feasible Univalence Synthesis** (Gate G6).
+1. **`Abel2018`** (15 modules, 13,120 lines): Complete formalization of **M1** — Andreas Abel, Joakim Öhman, and Andrea Vezzosi, *Decidability of Conversion for Type Theory in Type Theory*, Proc. ACM Program. Lang. 2 (POPL 2018), Article 23, DOI [10.1145/3158111](https://doi.org/10.1145/3158111), matching the [v2.1 Agda artifact](https://github.com/mr-ohman/logrel-mltt/tree/eb2b15ab1c4b45923025834d3bb798943cb44b8e) (`eb2b15ab1c4b45923025834d3bb798943cb44b8e`), plus fuel-free deciders in `Decider.lean`.
+2. **`FeasibleUnivalence`** (15 modules, 18,347 lines): Complete formalizations of **M2** ([arXiv:2603.29716v2](https://arxiv.org/abs/2603.29716v2) / ICFP 2023), **M3** (ICFP 2026, DOI [10.1145/3828677](https://doi.org/10.1145/3828677)), and **BC** (Bellantoni & Cook 1992 characterization of $\mathrm{FP}$ over deterministic multi-tape Turing machines, [`FeasibleUnivalence/BC/`](FeasibleUnivalence/BC/README.md), 7 modules, 4,442 lines), alongside research prototypes (**Paper A**, **Paper B**) and interface models (**Paper C & M11**, **Final Synthesis**; see [source-review.md](source-review.md) for evidential status and scope boundaries).
 
 Both libraries use core Lean 4.33.1 only; no Mathlib dependency is required. The upstream MIT license is retained in [LICENSE](LICENSE).
 
@@ -30,9 +30,11 @@ Both libraries use core Lean 4.33.1 only; no Mathlib dependency is required. The
 
 ---
 
-## Part II: `FeasibleUnivalence` — M2, M3, Papers A–C, and Final Synthesis (8 Modules, 13,763 Lines)
+## Part II: `FeasibleUnivalence` — M2, M3, Bellantoni–Cook (`BC`), Papers A–C, and Final Synthesis (15 Modules, 18,347 Lines)
 
-- [`FeasibleUnivalence/Modality.lean`](FeasibleUnivalence/Modality.lean) (1,262 lines):
+- [`FeasibleUnivalence/BC/`](FeasibleUnivalence/BC/README.md) (7 modules, 4,442 lines):
+  - **Bellantoni & Cook (1992) Characterization of $\mathrm{FP}$**: Syntactic univariate polynomials (`BC/Poly.lean`), normal/safe function algebra `Fn n m` and Lemma 2.1 output-length bound (`BC/Syntax.lean`), multi-stack intermediate language (`BC/StackProg.lean`), deterministic multi-tape Turing machines and complexity class `FP` (`BC/TM.lean`), verified `Stmt`-to-`TM` compiler (`BC/CompileStmt.lean`), polynomial-time soundness `bc_soundness : BCDefinable f → FP f` (`BC/Soundness.lean`), and polynomial-time completeness `bc_completeness : FP f → BCDefinable f` & `defFun_eq_FP` (`BC/Completeness.lean`).
+- [`FeasibleUnivalence/Modality.lean`](FeasibleUnivalence/Modality.lean) (1,268 lines):
   - **M2 Sections 2–3 & 6.1** (`Graded.Modality`, `Graded.Context`, `Has-well-behaved-zero`): Ordered semiring with meet (`Modality`), usage contexts (`Conₘ`) and semimodule laws, `HasWellBehavedZero`.
   - **M3 Sections 4.1 & 5** (`Subtraction`, `Natrec`, `Has-well-behaved-GLBs`): Canonical grade subtraction (`SubEq`, `SubLe`, `SupportsSubtraction`), recursion sequence `nrᵢ`, GLB characterization (`HasWellBehavedGLBs`), and the five concrete modalities (`ErasureGrade.erasureModality`, `ZeroOneMany.linearityModality`, `ZeroOneMany.affineModality`, `NatPlusInfinity.natPlusInfinityModality`, `SecurityLevel.securityModality`), plus the counterexample `nat_no_nr_glb` showing why plain `ℕ` without `∞` lacks `nrᵢ` GLBs.
 - [`FeasibleUnivalence/Usage.lean`](FeasibleUnivalence/Usage.lean) (1,881 lines):
