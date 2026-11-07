@@ -1,0 +1,64 @@
+name: Lean
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: ${{ matrix.package.dir }}
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        package:
+          - dir: formalization/abel2018
+            roots: Abel2018 FeasibleUnivalence
+            checks: AlgorithmChecks.lean FeasibleUnivalenceChecks.lean
+          - dir: formalization/atkey2024
+            roots: Atkey2024
+            checks: MachineChecks.lean
+    defaults:
+      run:
+        shell: bash
+        working-directory: ${{ matrix.package.dir }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install elan
+        run: |
+          curl -sSfL https://raw.githubusercontent.com/leanprover/elan/master/elan-init.sh \
+            | sh -s -- -y --default-toolchain none
+          echo "$HOME/.elan/bin" >> "$GITHUB_PATH"
+
+      - name: Cache Lake build
+        uses: actions/cache@v4
+        with:
+          path: ${{ matrix.package.dir }}/.lake
+          key: lake-${{ matrix.package.dir }}-${{ hashFiles(format('{0}/lean-toolchain', matrix.package.dir), format('{0}/lake-manifest.json', matrix.package.dir)) }}-${{ github.sha }}
+          restore-keys: |
+            lake-${{ matrix.package.dir }}-${{ hashFiles(format('{0}/lean-toolchain', matrix.package.dir), format('{0}/lake-manifest.json', matrix.package.dir)) }}-
+
+      - name: Build (warnings, including "declaration uses 'sorry'", fail the job)
+        run: |
+          set -o pipefail
+          lake build 2>&1 | tee /tmp/build.log
+          if grep -qE "declaration uses 'sorry'|^warning:" /tmp/build.log; then
+            echo "::error::build emitted warnings or sorry"; exit 1
+          fi
+
+      - name: Regression checks
+        run: |
+          set -o pipefail
+          for f in ${{ matrix.package.checks }}; do
+            echo "== $f"
+            lake env lean "$f" 2>&1 | tee "/tmp/$(basename "$f").log"
+            if grep -qE '(^|: )(error|warning)' "/tmp/$(basename "$f").log"; then
+              echo "::error::$f reported errors or warnings"; exit 1
+            fi
+          done
+
+      - name: Axiom audit (only propext, Quot.sound)
+        run: lake env lean --run "$GITHUB_WORKSPACE/scripts/AxiomAudit.lean" ${{ matrix.package.roots }}

@@ -754,7 +754,13 @@ def natModality : Modality Nat where
 theorem le_iff_ge (p q : Nat) : natModality.le p q ↔ q ≤ p := by
   change p = natMax p q ↔ q ≤ p
   unfold natMax
-  split <;> omega
+  -- Case split on the decidable `Nat` order (a bare `split` here pulled in `Classical.choice`).
+  -- `omega` on an `↔` goal also pulled in `Classical.choice`, so both directions are explicit.
+  by_cases h : p ≤ q
+  · rw [if_pos h]
+    exact ⟨fun e => e ▸ Nat.le_refl p, fun hqp => Nat.le_antisymm h hqp⟩
+  · rw [if_neg h]
+    exact ⟨fun _ => Nat.le_of_lt (Nat.gt_of_not_le h), fun _ => rfl⟩
 
 theorem natHasWellBehavedZero : natModality.HasWellBehavedZero where
   nonTrivial := by decide
